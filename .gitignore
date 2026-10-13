@@ -1,0 +1,36 @@
+# --- Secrets (never commit) ---
+.env
+.env.*
+!.env.example
+
+# --- Local tooling (MongoDB binary + data downloaded by scripts/dev_mongo.sh) ---
+.local/
+
+# --- Python ---
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# --- Node / frontend ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/test-results/
+frontend/playwright-report/
+
+# --- Downloaded ML models (repo-root cache only; never backend/app/models/) ---
+/models/
+
+# --- Runtime output ---
+*.log
+tmp/
+exports/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/

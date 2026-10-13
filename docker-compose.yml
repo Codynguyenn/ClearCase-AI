@@ -1,0 +1,51 @@
+# Local development stack for ClearCase.
+#
+# Usage:
+#   docker compose up mongo          # only the database (then run backend/frontend natively)
+#   docker compose up --build        # everything
+#
+# The MongoDB image tag matches the version used by scripts/dev_mongo.sh so that
+# the native and Docker paths behave the same way.
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: clearcase-mongo
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: clearcase-backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      CLEARCASE_MONGODB_URI: mongodb://mongo:27017
+      CLEARCASE_MONGODB_DB: clearcase
+      CLEARCASE_HOST: 0.0.0.0 # inside the container only; published to localhost below
+      CLEARCASE_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: clearcase-frontend
+    depends_on:
+      - backend
+    environment:
+      # The dev server proxies /api to this address (see frontend/vite.config.ts).
+      VITE_API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "127.0.0.1:5173:5173"
+
+volumes:
+  mongo-data:

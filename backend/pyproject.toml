@@ -1,0 +1,31 @@
+[project]
+name = "clearcase-backend"
+version = "0.1.0"
+description = "ClearCase backend: AI-assisted legal document redaction (FastAPI + MongoDB + PyMuPDF)"
+requires-python = ">=3.11"
+license = "AGPL-3.0-only"
+# Direct dependencies are pinned exactly. `requirements.lock` is the full
+# transitive freeze produced from a clean virtualenv (see README "Dependencies").
+dependencies = [
+    "fastapi==0.143.0",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.15.0",
+    "pymongo==4.18.3",
+    "pymupdf==1.28.2",
+    "python-multipart==0.0.32",
+    "spacy==3.8.16",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "httpx==0.28.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+filterwarnings = [
+    "error::DeprecationWarning:app.*",
+]
