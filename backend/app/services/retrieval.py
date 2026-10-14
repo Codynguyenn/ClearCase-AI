@@ -47,6 +47,7 @@ from app.services.embeddings import EmbeddingUnavailable, embedding_status
 from app.services.policy_service import EmbedderProvider, passage_from_docs
 
 MAX_QUERY_CHARS = 500
+WEAK_PASSAGE_LIMIT = 3
 _STOP = set(
     "the and for with that this what when how are does can should about have from your you our any not but they them there their".split()
 )
@@ -75,7 +76,10 @@ class MongoCosineRetriever:
 
     def _method(self) -> RetrievalMethod:
         s = self._settings
-        return RetrievalMethod(model=s.embedding_model, revision=s.embedding_revision, min_score=s.retrieval_min_score)
+        weak = s.retrieval_weak_min_score if s.retrieval_weak_min_score < s.retrieval_min_score else None
+        return RetrievalMethod(
+            model=s.embedding_model, revision=s.embedding_revision, min_score=s.retrieval_min_score, weak_min_score=weak
+        )
 
     def _result(self, status: RetrievalStatus, message: str, query: str, **extra) -> RetrievalResult:
         return RetrievalResult(status=status, message=message, query=query, passages=[], method=self._method(), **extra)
@@ -144,18 +148,33 @@ class MongoCosineRetriever:
 
         passing = [i for i in np.argsort(-ordering, kind="stable") if cosine[i] >= settings.retrieval_min_score]
         best = float(cosine.max())
+        parents = {policy_key(d["policy_id"], d["version"]): d for d in self._policies.list(owner_id) if d["status"] == PolicyStatus.ACTIVE.value}
         if not passing:
+            # Nothing reached the cutoff. The reviewer (not the assistant) may still be offered a few weak matches.
+            weak: list[RetrievedPassage] = []
+            if settings.retrieval_weak_min_score < settings.retrieval_min_score:
+                near = [
+                    i
+                    for i in np.argsort(-ordering, kind="stable")
+                    if settings.retrieval_weak_min_score <= cosine[i] < settings.retrieval_min_score
+                ][:WEAK_PASSAGE_LIMIT]
+                for rank, i in enumerate(near, start=1):
+                    parent = parents.get(candidates[i]["policy_key"])
+                    if parent is not None:
+                        base = passage_from_docs(candidates[i], parent)
+                        weak.append(RetrievedPassage(**base.model_dump(), score=round(float(cosine[i]), 4), rank=rank))
             return self._result(
                 RetrievalStatus.NO_RELEVANT_POLICY,
-                "The active policies do not appear to address this question. Do not assume a rule; "
-                "refer the question to the legal team or the reviewer.",
+                "No policy passage was similar enough to this question. That is a similarity heuristic, not proof "
+                "that the policy is silent. Do not assume a rule either way: tell the user that no matching passage "
+                "was found and refer the question to the reviewer.",
                 query,
                 chunks_considered=len(candidates),
                 chunks_stale_ignored=stale,
                 top_score_below_cutoff=round(best, 4),
+                weak_passages=weak,
             )
 
-        parents = {policy_key(d["policy_id"], d["version"]): d for d in self._policies.list(owner_id) if d["status"] == PolicyStatus.ACTIVE.value}
         passages: list[RetrievedPassage] = []
         for rank, i in enumerate(passing[:top_k], start=1):
             chunk = candidates[i]

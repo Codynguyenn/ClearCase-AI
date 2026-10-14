@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { api } from '../api/client'
-import type { EmbeddingState, PolicyRecord, RetrievalResult } from '../api/types'
+import type { EmbeddingState, PolicyRecord, RetrievalResult, RetrievedPassage } from '../api/types'
 import { usePolicies } from '../hooks/usePolicies'
 
 const EMBEDDING_STYLES: Record<EmbeddingState, string> = {
@@ -296,6 +296,45 @@ function RetrievalView({ result, onOpenCitation }: { result: RetrievalResult; on
           Best similarity was {result.top_score_below_cutoff.toFixed(2)}, below the cutoff of {m.min_score}.
         </p>
       )}
+      {result.status === 'no_relevant_policy' && result.weak_passages.length > 0 && (
+        <WeakMatches passages={result.weak_passages} onOpenCitation={onOpenCitation} />
+      )}
     </div>
+  )
+}
+
+/** Reviewer-only: passages that scored a little below the cutoff. Collapsed, and clearly not policy guidance. */
+function WeakMatches({ passages, onOpenCitation }: { passages: RetrievedPassage[]; onOpenCitation: (id: string) => void }) {
+  return (
+    <details className="mt-2 rounded border border-amber-300 bg-white p-2 text-slate-800" data-testid="weak-matches">
+      <summary className="cursor-pointer text-[11px] font-medium text-amber-900">
+        Possibly related (weak matches): {passages.length}
+      </summary>
+      <p className="mt-1 text-[11px] text-amber-900">
+        These scored below the cutoff, so they often are not an answer, but sometimes they are. The assistant is not
+        given them and they should not be cited as policy. Read them yourself before relying on them.
+      </p>
+      <ul className="mt-1 space-y-1.5">
+        {passages.map((p) => (
+          <li key={p.citation_id} className="rounded bg-slate-50 p-1.5 text-xs">
+            <div className="text-[11px] text-slate-500">
+              {p.policy_title} · {p.section}
+            </div>
+            <p className="mt-0.5 whitespace-pre-wrap">{p.text}</p>
+            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-slate-500">
+              <span>similarity {p.score.toFixed(2)} (weak)</span>
+              <button
+                type="button"
+                onClick={() => onOpenCitation(p.citation_id)}
+                className="font-mono text-indigo-700 hover:underline"
+                aria-label={`Open weak-match passage ${p.citation_id}`}
+              >
+                {p.citation_id}
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </details>
   )
 }

@@ -234,10 +234,16 @@ export interface ExportRecord {
   output_size_bytes: number | null
   filename: string | null
   checks: VerificationCheck[]
-  retained: { intentionally_retained: number; unresolved: number }
+  retained: { intentionally_retained: number; unresolved: number; unresolved_locations: { page: number; group: number }[] }
   unsupported_pages_acknowledged: number[]
   scope_statement: string
   stale: boolean
+  /** verified, but an advisory check did not pass */
+  has_warnings: boolean
+  /** copies of approved text remain in the file: the reviewer must acknowledge before downloading */
+  requires_acknowledgement: boolean
+  warnings_acknowledged: boolean
+  /** true only if verified, current and (when required) acknowledged */
   downloadable: boolean
   created_at: string
 }
@@ -297,7 +303,9 @@ export interface RetrievalResult {
   message: string
   query: string
   passages: RetrievedPassage[]
-  method: { kind: string; model: string; revision: string; min_score: number; note: string }
+  method: { kind: string; model: string; revision: string; min_score: number; weak_min_score: number | null; note: string }
+  /** For the human reviewer only: weak matches below the cutoff. Never shown as policy, never given to the assistant. */
+  weak_passages: RetrievedPassage[]
   chunks_considered: number
   chunks_stale_ignored: number
   top_score_below_cutoff: number | null

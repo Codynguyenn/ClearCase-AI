@@ -59,10 +59,14 @@ item. Sample documents and the seeded policy are synthetic and fictional.
 - The assistant's MCP tool `retrieve_policy_guidance` uses the same retrieval, and
   `propose_redactions` accepts only citations that really exist.
 
-Honest numbers (synthetic dev set, see `docs/decisions.md` #30): the right passage is
-ranked first for 19 of 25 answerable questions, and the cutoff correctly refuses all
-10 questions the policies do not cover, at the cost of wrongly turning away 8 of the
-25 answerable ones. It is a small, easy, same-author test, not real-world accuracy.
+Honest numbers (synthetic, same-author questions; see `evaluation/README.md`): on questions it was
+tuned on, the right passage is first for 19 of 25 and the cutoff refuses all 10 unanswerable ones.
+On a **frozen held-out set it was never tuned on**, the right passage is first for 18 of 28 (64%),
+the app shows a relevant passage for only 12 of 28 answerable questions, tells 13 of 28 "no matching
+policy" when there is one, and still shows a passage for 5 of 16 questions the policies do not cover
+(near-miss topics). In short: ranking is decent, but a similarity cutoff cannot reliably decide
+whether the policy answers a question. Treat "no matching passage" as a hint, not a verdict, and
+read the passages and the library yourself.
 
 ## Stack
 
@@ -142,7 +146,8 @@ scripts/dev_mongo.sh start
 cd backend && .venv/bin/python -m pytest -q
 ```
 
-Frontend checks:
+Frontend checks (58 tests: geometry maths plus React component tests that run in a simulated
+browser with a faked network; the real-browser end-to-end test arrives in Phase 6):
 
 ```bash
 cd frontend && npm run lint && npm test && npm run build
@@ -175,7 +180,8 @@ CI (`.github/workflows/ci.yml`) runs both jobs with a MongoDB service container.
 | `POST` | `/api/documents/{id}/export-authorizations` | Short-lived reviewer grant (5 minutes) |
 | `POST` | `/api/documents/{id}/exports` | Redact, verify, store only if required checks pass |
 | `GET` | `/api/documents/{id}/exports` | List exports |
-| `GET` | `/api/documents/{id}/exports/{eid}/file` | Download a verified, non-stale export |
+| `POST` | `/api/documents/{id}/exports/{eid}/acknowledge-warnings` | Reviewer-only: acknowledge that readable copies of approved text remain, which unlocks the download |
+| `GET` | `/api/documents/{id}/exports/{eid}/file` | Download a verified, non-stale export (named `redacted_<hash>.pdf`, never after the upload) |
 | `DELETE` | `/api/documents/{id}` | Delete document and everything derived from it |
 | `GET` | `/api/policies` | List policies with version, status and embedding state |
 | `POST` | `/api/policies` | Upload a `.md` / `.txt` policy (multipart `file`); it becomes the active version |
@@ -209,10 +215,12 @@ for the reasoning behind each major choice.
 - The assistant itself (the tool-calling loop and chat) and the Playwright end-to-end test are later phases.
 - Policy retrieval is small-scale by design: brute-force cosine in Python over vectors
   in MongoDB (fine for a few thousand passages; use a vector index beyond that).
-- The embedding model reads only the first 256 tokens of a passage (passages are kept
-  well under that), understands English best, and its similarity cutoff (0.38) is a
-  heuristic tuned on a small synthetic set: it will sometimes say "the policy does not
-  address this" when it does (8 of 25 on the dev set). A human still decides.
+- The embedding model reads only the first 256 tokens of a passage (passages are kept well
+  under that) and understands English best. Its similarity cutoff (0.38) is a **heuristic that
+  overfitted its tuning set**: on a held-out set it wrongly says "no matching policy" for 13 of 28
+  answerable questions and wrongly shows passages for 5 of 16 unanswerable ones (see
+  `evaluation/README.md`). When nothing reaches the cutoff the reviewer can open a collapsed
+  "possibly related" list of weaker matches. A human still decides.
 - The first policy question after the app starts takes ~15-20 s while the model loads.
 - The MCP server and client exist and are tested, but nothing in the UI calls them yet; that is Phase 5.
 
@@ -245,7 +253,7 @@ Tests that do exactly that: `backend/tests/test_mcp_protocol.py` and
 | Policy tab says "search unavailable" / amber banner | The embedding model is missing or disabled. Run `scripts/download_models.sh` (Docker: `docker compose run --rm backend python -m app.cli download-embedding-model`), then click **Re-index** on each policy (no restart needed). |
 | Policy shows "needs re-index" | It was embedded with a different model revision (or embedding failed). Click **Re-index**. |
 | Policy upload says `policy_version_exists` | That version already exists with different text. Change the `version:` in the file's front matter and upload again. |
-| "Policy search found nothing" for a question you expected to match | The cutoff is conservative (see Limitations). Rephrase with the policy's own words, or read the passages in the library. |
+| "No policy passage was similar enough" for a question you expected to match | The cutoff is a rough heuristic and often wrong (see Limitations). Open **Possibly related** under the message, rephrase with the policy's own words, or read the library. |
 | MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Authorize export** in the Export tab (valid 5 minutes), then ask again. |
 | Export button disabled | Every proposal must be approved or rejected. Check the Review tab badge. |
 

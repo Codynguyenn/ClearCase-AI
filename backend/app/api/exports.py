@@ -41,6 +41,14 @@ def get_export(document_id: DocumentId, export_id: ExportId, service: ExportSvc,
     return service.get_export(document_id, owner_id, export_id)
 
 
+@router.post("/exports/{export_id}/acknowledge-warnings", response_model=ExportRecord)
+def acknowledge_warnings(
+    document_id: DocumentId, export_id: ExportId, service: ExportSvc, owner_id: OwnerId
+) -> ExportRecord:
+    """Reviewer-only: "I understand other copies of approved text remain in this file". Unlocks the download."""
+    return service.acknowledge_warnings(document_id, owner_id, export_id)
+
+
 @router.get("/exports/{export_id}/file")
 def download_export(
     document_id: DocumentId, export_id: ExportId, service: ExportSvc, owner_id: OwnerId

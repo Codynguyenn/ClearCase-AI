@@ -57,8 +57,10 @@ Export (`backend/app/services/export_service.py`, `redaction.py`):
 - Verification: output opens, no text in approved boxes, boxes render black,
   metadata/attachments gone, single `%%EOF`, original hash unchanged, remaining
   copies classified as intentional (rejected) vs unresolved.
-- Download blocked if required checks fail or the export is stale.
-- Filenames never include original sensitive text.
+- Download blocked if required checks fail or the export is stale, or (since the audit fixes) if readable
+  copies of approved text remain and the reviewer has not acknowledged them.
+- Export file names come from the output's hash (`redacted_<10 hex>.pdf`), **never from the uploaded
+  name**. (An earlier version of this file claimed this while the code did the opposite; fixed, see below.)
 
 ### Phase 3 additions (MCP)
 
@@ -177,14 +179,80 @@ Manual browser verification (Cursor browser, 2026-10-13):
   `512-44-9087` absent; `Northwind Analytics LLC`, `Blue Harbor Consulting`
   and `MISCELLANEOUS` present; metadata scrubbed.
 
+### Audit of Phases 1-4 and the three fixes (2026-10-14)
+
+**Audit method and what held up** (details `docs/decisions.md` #40): `pip-audit` on 96 pinned packages and
+`npm audit` found no known vulnerabilities; 34 endpoints called as a different owner leaked nothing and
+could not delete or unlock another owner's data; hostile search queries ran in under a second; 12 parallel
+policy uploads kept at most one active version; and an adversarial PDF hiding one name in 11 places
+(annotation, form field, attachment, metadata, XMP, bookmark, white and invisible text, a page deleted by
+an incremental save) was exported with **zero hits** for the name in the output bytes, apart from the two
+hidden-text copies the reviewer had not approved (reported by the app).
+
+**Fixed (all three have tests that were mutation-checked and a real-browser check):**
+1. Export file name leaked the upload's name -> now `redacted_<hash10>.pdf` everywhere, including for
+   exports stored before the fix.
+2. Green "verified" badge with the unresolved-copies warning buried -> "verified · with warnings";
+   download refused (409 `warnings_unacknowledged`) until the reviewer acknowledges
+   (`POST .../acknowledge-warnings`, idempotent, audited with counts/pages only, not an assistant tool).
+3. False "words lost" alarm for PDFs with annotations/form fields -> compares page content only; a real
+   loss is still caught.
+
+**Still open from the audit, NOT fixed (the user asked for 1-3 only):**
+- Oversized uploads are fully read into memory before the size limit rejects them (measured: a 120 MB
+  body was received whole against a 20 MB limit). Low risk on localhost; fix = bound the read / limit at the
+  ASGI layer.
+- A page with a small image (< 30% of its area) is not flagged as "mixed", so text inside it is silently not
+  searched; if an image's rectangle cannot be read the page is classified as if it had no image. Extraction
+  has size and page limits but no time limit.
+- No resettable seed script for sample *documents* (spec deliverable); only policies can be seeded.
+- Docker: containers run as root, no HEALTHCHECK; the PDF viewer could set `isEvalSupported: false`.
+- 7 minor lint findings in `backend/app` (none are bugs).
+
+### Phase 4 follow-ups (2026-10-14, after merge)
+
+**Totals after the follow-ups and the three audit fixes: backend `271 passed in 351.00s`; frontend lint, typecheck and build clean, `npm test` 58 passed.** CI has not yet run on this work.
+
+
+- **Dev database cleaned**: the 2 assistant-proposed test findings I had created on one sample
+  document were removed (exact ids, guarded by checks), and that document's review revision was
+  restored to 0. Everything else (18 other findings, 2 sample policies) was left alone.
+- **Branches**: the merged remote branches `phase-3-mcp`, `phase-4-rag` and
+  `cursor/phase-1-2-document-redaction` were deleted (git confirmed all were fully merged);
+  only `main` remains. PRs #1-#3 and the full history are intact.
+- **Frontend component tests added**: 33 tests (44 total at that point; 49 now with the weak-tier
+  tests); lint, typecheck and build clean; `npm audit` 0 vulnerabilities; test
+  libraries are not in the production bundle. Six deliberate breakages were each caught by a
+  test. Tooling and limits: `docs/decisions.md` #35. A real mistake the build caught: Vitest
+  ignores TypeScript types, but `tsc` (build/CI) did not, and found two type errors in the new
+  tests, now fixed.
+- **Retrieval cutoff investigated with a frozen held-out set** (done; details `evaluation/README.md`,
+  `docs/decisions.md` #36-#39). Protocol fixed in advance: 44 held-out questions (28 answerable, 16
+  unanswerable, near-miss traps) frozen by SHA-256, at most two recorded runs, adoption rules written
+  before measuring. **Finding: the cutoff overfitted the dev set.** Dev (tuned) vs held-out: right
+  passage first 0.76 vs **0.64**; relevant passage shown 0.68 vs **0.43**; unanswerable wrongly shown
+  a passage 0.00 vs **0.31**; balanced accuracy 0.84 vs **0.56**; margin +0.016 vs **-0.193**. Cause:
+  similarity measures topic closeness, not answerability (near-miss questions score as high as real
+  ones; many real questions score low). Ranking is decent (right passage in the top 3 for 21/28).
+  Three small models were compared on dev: better ranking (MRR up to 0.893) but not better
+  refuse/answer decisions, so **no model was adopted**. A reviewer-only "possibly related" tier
+  (cosine 0.30 to 0.38) met its rule on dev and was **adopted**; on held-out it recovered 5/13 wrongly
+  refused questions and showed weak passages for 4/16 unanswerable ones. It never reaches the assistant
+  (tested; a test caught a docstring of mine that would have told the assistant it exists). The
+  retrieval message now calls "no matching passage" a heuristic. Both held-out runs are used up.
+- **Suggested small extras, not started**: store a chunker version on each policy so older
+  chunking shows "needs re-index"; a script that regenerates `requirements.lock` with the
+  PyTorch markers; show how many findings cite a policy in its delete confirmation.
+
 ### Phase 4 verification (2026-10-14)
 
 - Backend full suite: **`247 passed in 301.92s`** (178 before this phase). By file: `test_mcp_protocol` 36, `test_policy_api` 34, `test_detection` 34,
   `test_search` 25, `test_review_api` 22, `test_export_api` 18, `test_documents_api` 15,
   `test_retrieval_semantic` 14, `test_redaction` 13, `test_policy_chunking` 13,
   `test_pdf_processing` 13, `test_mcp_client` 6, `test_search_api` 4.
-- Frontend: lint clean, typecheck clean, `npm test` 11 passed, build OK. There are **no
-  frontend unit tests for the new components**; they were verified in the browser (below).
+- Frontend at the end of Phase 4: lint, typecheck, `npm test` 11 passed, build OK. The new
+  components were then verified in the browser (below) and later got component tests (see
+  "Phase 4 follow-ups").
 - **Mutation checks**: temporarily removing the owner filter, the active-version filter and
   the model-revision filter from the retrieval query each made a specific test fail (this
   exposed two missing tests, which were added).
@@ -332,7 +400,7 @@ because of the port conflicts above.
 
 ## Remaining work (by phase)
 
-**Phase 5 — Agent**: bounded tool loop using `McpToolClient` (reuse ONE MCP server per
+**Phase 5 — Agent** (read `docs/decisions.md` #39 first): bounded tool loop using `McpToolClient` (reuse ONE MCP server per
 conversation: each fresh server pays a ~20 s model-load on its first policy question), one hosted provider
 via its official SDK (verify model ids against current docs first), demo mode with
 scripted commands, persisted conversations/messages/agent_runs/tool_events,
@@ -349,12 +417,15 @@ interview guide, evaluation report, polish, full Compose re-run.
 - The UI does not call MCP yet (Phase 5).
 - Tool results include document text snippets by design; Phase 5 must show the user when
   text goes to a hosted provider.
-- Retrieval cutoff (0.38) is conservative: 8/25 answerable dev questions are wrongly turned
-  away. Held-out evaluation (Phase 6) must use a *different* question set than
-  `evaluation/retrieval_dev.json`.
+- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (held-out balanced
+  accuracy 0.56). Phase 5 must not rely on it alone: give the assistant top candidates with scores and
+  require it to quote supporting text or say the policy does not address the question. A cross-encoder
+  re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one has had
+  its two allowed runs).
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
-- No frontend unit tests for the new components (verified manually in the browser). A
-  Playwright test in Phase 6 should cover the Policy tab and the citation dialog.
+- Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real
+  layout. The Phase 6 Playwright test must cover the Policy tab and the citation dialog in a
+  real browser.
 - Policies cited by findings can be deleted; the UI then says the passage is unavailable
   (it does not block deletion).
 - Chunker changes do not re-chunk existing policy versions (their content hash is

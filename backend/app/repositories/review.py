@@ -192,6 +192,13 @@ class ExportRepository:
             self._col.find({"document_id": document_id, "owner_id": owner_id}).sort("created_at", DESCENDING)
         )
 
+    def set_acknowledged(self, document_id: str, owner_id: str, export_id: str, now: datetime) -> None:
+        """Record the reviewer's acknowledgement once (a second call changes nothing)."""
+        self._col.update_one(
+            {"_id": ObjectId(export_id), "document_id": document_id, "owner_id": owner_id, "warnings_acknowledged_at": None},
+            {"$set": {"warnings_acknowledged_at": now}},
+        )
+
     def delete_for_document(self, document_id: str, owner_id: str) -> int:
         return self._col.delete_many({"document_id": document_id, "owner_id": owner_id}).deleted_count
 

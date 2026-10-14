@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import re
 import secrets
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
@@ -86,10 +85,14 @@ def _aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def _safe_filename(name: str) -> str:
-    stem = re.sub(r"\.pdf$", "", name, flags=re.IGNORECASE)
-    stem = re.sub(r"[^A-Za-z0-9._ -]+", "_", stem).strip(" .") or "document"
-    return f"{stem[:150]}_redacted.pdf"
+def neutral_export_filename(output_hash: str) -> str:
+    """The name of an exported file. It says nothing about the document.
+
+    The uploaded file's own name can contain exactly the sensitive text that was just redacted
+    ("Jane Doe NDA.pdf"), so it must never be reused for the redacted copy. The first characters
+    of the output's SHA-256 make the name unique and let a reviewer match a file to an export.
+    """
+    return f"redacted_{output_hash[:10]}.pdf"
 
 
 class ExportService:
@@ -292,7 +295,8 @@ class ExportService:
         base["checks"] = [c.model_dump() for c in checks]
         base["retained"] = retained.model_dump()
         if all(c.passed for c in checks if c.required):
-            filename = _safe_filename(record.filename)
+            output_hash = hashlib.sha256(output).hexdigest()
+            filename = neutral_export_filename(output_hash)
             file_id = self.files.put(
                 output,
                 filename=filename,
@@ -307,7 +311,7 @@ class ExportService:
                 status=ExportStatus.VERIFIED.value,
                 file_id=file_id,
                 filename=filename,
-                output_hash=hashlib.sha256(output).hexdigest(),
+                output_hash=output_hash,
                 output_size_bytes=len(output),
             )
         else:
@@ -331,6 +335,7 @@ class ExportService:
             "output_size_bytes": None,
             "filename": None,
             "file_id": None,
+            "warnings_acknowledged_at": None,
             "checks": [],
             "retained": RetainedCopies().model_dump(),
             "unsupported_pages_acknowledged": acknowledged,
@@ -349,6 +354,13 @@ class ExportService:
     def _to_record(self, doc: dict[str, Any], current: DocumentRecord) -> ExportRecord:
         stale = current.review_revision != doc["review_revision"] or current.content_hash != doc["content_hash"]
         status = ExportStatus(doc["status"])
+        verified = status == ExportStatus.VERIFIED
+        retained = RetainedCopies.model_validate(doc.get("retained") or {})
+        # Copies of text the reviewer approved are still readable in the file: the reviewer must say they
+        # understand before the file can be downloaded. (Other advisory warnings are informational only.)
+        requires_ack = verified and retained.unresolved > 0
+        acknowledged = doc.get("warnings_acknowledged_at") is not None
+        output_hash = doc.get("output_hash")
         return ExportRecord(
             id=str(doc["_id"]),
             document_id=doc["document_id"],
@@ -359,13 +371,18 @@ class ExportService:
             by_category=doc["by_category"],
             output_hash=doc.get("output_hash"),
             output_size_bytes=doc.get("output_size_bytes"),
-            filename=doc.get("filename"),
+            # Always derived from the output hash, never read back from storage: exports made before this
+            # rule existed may have been stored under the uploaded file's name.
+            filename=neutral_export_filename(output_hash) if output_hash else None,
             checks=[VerificationCheck.model_validate(c) for c in doc["checks"]],
-            retained=RetainedCopies.model_validate(doc.get("retained") or {}),
+            retained=retained,
             unsupported_pages_acknowledged=doc.get("unsupported_pages_acknowledged", []),
             scope_statement=doc.get("scope_statement", ""),
             stale=stale,
-            downloadable=status == ExportStatus.VERIFIED and not stale and doc.get("file_id") is not None,
+            has_warnings=any(not c.get("passed", True) and not c.get("required", True) for c in doc["checks"]),
+            requires_acknowledgement=requires_ack,
+            warnings_acknowledged=acknowledged,
+            downloadable=verified and not stale and doc.get("file_id") is not None and (not requires_ack or acknowledged),
             created_at=doc["created_at"],
         )
 
@@ -376,6 +393,34 @@ class ExportService:
     def list_exports(self, document_id: str, owner_id: str) -> list[ExportRecord]:
         current = self.documents.get(document_id, owner_id=owner_id)
         return [self._to_record(d, current) for d in self.exports.list_raw(document_id, owner_id)]
+
+    def acknowledge_warnings(self, document_id: str, owner_id: str, export_id: str) -> ExportRecord:
+        """The reviewer's statement: "I know other copies of approved text remain in this file".
+
+        REST only. The assistant has no tool for this, so it can never unlock a download.
+        Harmless to repeat, and a no-op for an export with nothing to acknowledge.
+        """
+        current = self.documents.get(document_id, owner_id=owner_id)
+        raw = self.exports.get_raw(document_id, owner_id, export_id)
+        record = self._to_record(raw, current)
+        if record.status != ExportStatus.VERIFIED:
+            raise ConflictError("This export failed verification; there is nothing to acknowledge.", code="export_not_verified")
+        if record.stale:
+            raise ConflictError(
+                "The review changed after this export was created. Export again to get a current file.",
+                code="export_stale",
+            )
+        if record.requires_acknowledgement and not record.warnings_acknowledged:
+            self.exports.set_acknowledged(document_id, owner_id, export_id, utcnow())
+            pages = sorted({int(loc["page"]) for loc in record.retained.unresolved_locations})
+            # Counts and page numbers only; never text.
+            self.audit.record(
+                document_id,
+                owner_id,
+                "export_warnings_acknowledged",
+                {"export_id": export_id, "unresolved_copies": record.retained.unresolved, "pages": pages},
+            )
+        return self._to_record(self.exports.get_raw(document_id, owner_id, export_id), current)
 
     def open_download(self, document_id: str, owner_id: str, export_id: str):
         """Return (record, stream). Refuses unverified or stale exports."""
@@ -388,6 +433,14 @@ class ExportService:
             raise ConflictError(
                 "The review changed after this export was created. Export again to get a current file.",
                 code="export_stale",
+            )
+        if record.requires_acknowledgement and not record.warnings_acknowledged:
+            pages = sorted({int(loc["page"]) for loc in record.retained.unresolved_locations})
+            raise ConflictError(
+                f"This file still contains {record.retained.unresolved} other copy(ies) of text you approved for "
+                f"redaction (page(s) {', '.join(map(str, pages))}) that no finding covers. Review them, or "
+                "acknowledge them in the Export tab, before downloading.",
+                code="warnings_unacknowledged",
             )
         stream = self.files.open_stream(raw["file_id"], owner_id=owner_id)
         self.audit.record(document_id, owner_id, "export_downloaded", {"export_id": export_id})

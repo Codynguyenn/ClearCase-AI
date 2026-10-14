@@ -80,7 +80,10 @@ def test_full_export_flow_produces_a_verified_redacted_pdf(client: TestClient):
 
     dl = client.get(f"/api/documents/{doc_id}/exports/{export['id']}/file")
     assert dl.status_code == 200 and dl.headers["content-type"] == "application/pdf"
-    assert 'attachment; filename="test_redacted.pdf"' == dl.headers["content-disposition"]
+    # The name is derived from the output hash only: the uploaded file was called "test.pdf" and must not leak.
+    assert f'attachment; filename="redacted_{export["output_hash"][:10]}.pdf"' == dl.headers["content-disposition"]
+    assert export["filename"] == f"redacted_{export['output_hash'][:10]}.pdf"
+    assert export["has_warnings"] is False and export["requires_acknowledgement"] is False
     assert hashlib.sha256(dl.content).hexdigest() == export["output_hash"]
     text = pdf_text(dl.content)
     assert "alice@example.com" not in text and "bob@example.org" not in text

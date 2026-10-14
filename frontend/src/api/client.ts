@@ -161,6 +161,10 @@ export const api = {
 
   listExports: (id: string) => request<ExportRecord[]>(`/api/documents/${id}/exports`),
 
+  /** Reviewer-only: "I understand other copies of approved text remain in this file". Unlocks the download. */
+  acknowledgeExportWarnings: (id: string, exportId: string) =>
+    request<ExportRecord>(`/api/documents/${id}/exports/${exportId}/acknowledge-warnings`, { method: 'POST' }),
+
   exportFileUrl: (id: string, exportId: string) => `/api/documents/${id}/exports/${exportId}/file`,
 
   // ---- policies

@@ -165,6 +165,14 @@ def _words(page: pymupdf.Page) -> list[tuple[BBox, str]]:
     ]
 
 
+def _drop_annotations_and_widgets(page: pymupdf.Page) -> None:
+    """Remove annotations and form fields from an in-memory page (so their text is not extracted)."""
+    for annot in list(page.annots() or []):
+        page.delete_annot(annot)
+    for widget in list(page.widgets() or []):
+        page.delete_widget(widget)
+
+
 def _fmt_pages(pages: Sequence[int]) -> str:
     return ", ".join(str(p) for p in sorted(set(pages))) or "none"
 
@@ -284,6 +292,9 @@ def verify_redaction(
         lost_pages: dict[int, int] = {}
         for pn in range(1, src.page_count + 1):
             boxes = list(approved.get(pn, []))
+            # The export removes annotations and form fields on purpose (they can hold hidden copies of
+            # sensitive text), so their words are not "lost": compare page content only.
+            _drop_annotations_and_widgets(src[pn - 1])
             before = Counter(t for wb, t in _words(src[pn - 1]) if not any(boxes_overlap(wb, b) for b in boxes))
             after = Counter(t for _, t in _words(out[pn - 1]))
             missing = sum((before - after).values())
