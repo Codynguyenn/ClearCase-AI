@@ -12,7 +12,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 1 | Repository setup, MongoDB, upload, extraction, PDF viewing | **Complete and verified** |
 | 2 | Search, candidate detection, manual review, real export, verification | **Complete and verified** |
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
-| 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (branch `phase-4-rag`, not yet committed/merged) |
+| 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | Not started |
 | 6 | Integration tests, evaluation, interface polish, documentation | Not started |
 
@@ -209,7 +209,10 @@ Manual browser verification (Cursor browser, 2026-10-13):
   available with no restart and **Re-index** makes both policies ready; the MCP child finds
   the model in `/models`; retrieval, refusal and a cited proposal work; probe scores matched
   the macOS run (0.500 and 0.0106).
-- GitHub Actions has **not** yet run for this phase (CI now also downloads the model).
+- **GitHub Actions on PR #3: both jobs passed.** Backend: `247 passed in 140.82s` with no skips on
+  x86 Linux / Python 3.12 (`torch 2.14.1+cpu`, a 196 MB wheel, installed from PyTorch's CPU index;
+  the pinned model downloaded and reported `available: true`, so the real-model tests ran).
+  Frontend: lint, typecheck, 11 tests and build passed.
 
 ### Self-review after Phase 3 (2026-10-14)
 
@@ -356,7 +359,6 @@ interview guide, evaluation report, polish, full Compose re-run.
   (it does not block deletion).
 - Chunker changes do not re-chunk existing policy versions (their content hash is
   unchanged); use `seed-samples` with `reset`, or upload a new version.
-- GitHub Actions has not run on Phase 4 yet; the first run also downloads the model.
 
 ## Next implementation step
 
