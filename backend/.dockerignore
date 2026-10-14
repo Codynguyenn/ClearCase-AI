@@ -1,0 +1,6 @@
+# Keep the Docker build context small and reproducible: the image installs its own dependencies.
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+tests/

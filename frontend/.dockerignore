@@ -1,0 +1,6 @@
+# The image runs `npm ci` itself; never copy the host's node_modules (different OS/arch binaries).
+node_modules/
+dist/
+.vite/
+test-results/
+playwright-report/

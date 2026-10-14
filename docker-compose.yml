@@ -3,6 +3,7 @@
 # Usage:
 #   docker compose up mongo          # only the database (then run backend/frontend natively)
 #   docker compose up --build        # everything
+#   docker compose run --rm backend python -m app.cli download-embedding-model   # ONCE: policy-search model
 #
 # The MongoDB image tag matches the version used by scripts/dev_mongo.sh so that
 # the native and Docker paths behave the same way.
@@ -32,6 +33,13 @@ services:
       CLEARCASE_MONGODB_DB: clearcase
       CLEARCASE_HOST: 0.0.0.0 # inside the container only; published to localhost below
       CLEARCASE_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      # Embedding model cache (a volume, downloaded once; never baked into the image) and the
+      # fictional sample policies (mounted read-only from the repository).
+      CLEARCASE_MODELS_DIR: /models
+      CLEARCASE_SAMPLE_DATA_DIR: /sample_data
+    volumes:
+      - models:/models
+      - ./sample_data:/sample_data:ro
     ports:
       - "127.0.0.1:8000:8000"
 
@@ -49,3 +57,4 @@ services:
 
 volumes:
   mongo-data:
+  models:

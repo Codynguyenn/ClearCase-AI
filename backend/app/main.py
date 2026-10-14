@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
-from app.api import documents, exports, health, review
+from app.api import documents, exports, health, policies, review
 from app.api.errors import register_error_handlers
 from app.config import Settings, get_settings
 from app.db import Mongo
@@ -65,6 +65,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(documents.router, prefix="/api")
     app.include_router(review.router, prefix="/api")
     app.include_router(exports.router, prefix="/api")
+    app.include_router(policies.router, prefix="/api")
     return app
 
 

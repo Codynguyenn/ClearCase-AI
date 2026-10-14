@@ -255,3 +255,146 @@ not depend on the model.
   a generic "Error executing tool"; the traceback goes to stderr.
 - **Logs.** The server logs tool name, outcome and duration, never arguments or
   document text.
+
+## 24. RAG in one picture: chunk → embed → store → retrieve → cite
+
+**RAG (retrieval-augmented generation)** means: before an assistant answers, look up
+the relevant passages from a trusted reference and give *only those* to the model,
+so its answer is grounded in real text instead of memory. Here the reference is the
+company redaction policy.
+
+1. **Chunk** the Markdown policy along its headings (`policy_chunking.py`), at most
+   140 words each.
+2. **Embed** each chunk: a local pretrained model turns the text into 384 numbers so
+   that similar *meanings* have similar numbers.
+3. **Store** the text, the numbers and the model that made them in MongoDB.
+4. **Retrieve**: embed the question the same way and compare it with the stored
+   chunks (cosine similarity).
+5. **Cite**: every passage carries a stable id such as
+   `northwind-redaction-policy:1.0:3` that the user can click to read the real text.
+
+The reference policies are a separate corpus from the documents being reviewed
+(their own collections; deleting a document never touches them).
+
+## 25. The embedding model, and why chunks are small
+
+`sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0, 22.7M parameters, 384
+dimensions, ~87 MB). It is **pretrained; we did not train it.** We pin the exact
+repository commit (`1110a243…`) because that is the model's *version*: every stored
+vector records the model name and revision that produced it.
+
+It reads at most **256 tokens** and silently ignores the rest, which is why chunks
+are capped at 140 words, and why a chunk that would still exceed the limit is flagged
+(`truncated_chunks`) instead of being quietly half-searched.
+
+Safety choices: `trust_remote_code` is always off (a model repo can never run code
+on your machine), and the model is loaded with `local_files_only`: it is downloaded
+once by `scripts/download_models.sh`, and the running app never touches the network.
+If it is missing, policy search says **unavailable**, with the reason.
+
+## 26. CPU-only PyTorch, and the lockfile trick
+
+`pip install torch` on Linux pulls several GB of NVIDIA CUDA libraries that a laptop
+(and CI) never uses. PyTorch publishes CPU-only builds on its own index, so
+`requirements.lock` starts with `--extra-index-url https://download.pytorch.org/whl/cpu`
+and pins two lines with environment markers: `torch==2.14.1` on macOS (PyPI) and
+`torch==2.14.1+cpu` on Linux. Measured: the backend image has **0** CUDA packages and
+is 2.31 GB (about 0.9 GB more than before Phase 4). Trade-off to know: an extra index
+is a (small) supply-chain consideration, because pip will look for *any* package
+there; PyTorch's CPU index only hosts torch-related wheels.
+
+## 27. Retrieval is brute-force cosine over vectors in MongoDB
+
+The spec allows this for a small corpus. We load the candidate vectors and take a
+dot product in NumPy. **Scale limit:** fine for hundreds to a few thousand chunks (one
+user's policy library); not for tens of thousands, or many users. Retrieval hides
+behind a `PolicyRetriever` interface (`retrieval.py`), so a vector index (for example
+a MongoDB Atlas vector index, or pgvector) can replace it without touching callers.
+
+## 28. Filter first, rank second
+
+The database query selects only chunks that (a) belong to this owner, (b) belong to
+an **active** policy version, and (c) were embedded with the **current** model
+revision, and only then are the survivors scored. Vectors from a different model
+cannot be compared meaningfully, so stale chunks are never mixed in; they are counted
+and reported (`chunks_stale_ignored`) and re-indexing rebuilds only what is stale.
+Tests were checked by *mutation*: removing each filter makes a specific test fail.
+
+## 29. Policy versions: one active, old ones stay readable
+
+A policy has versions; exactly one is **active** (the one searched). The database
+enforces that with a partial unique index, not just application code. Uploading a new
+version stages it, embeds it, then switches the active flag, so there is never a
+moment with two active versions. Old versions stay readable (an older finding's
+citation still resolves) and can be re-activated to roll back. Uploading the same
+version with different content is refused (`policy_version_exists`): "bump the
+version" keeps citations trustworthy.
+
+## 30. The similarity cutoff comes from measurement, and it is conservative
+
+A passage is shown only if its cosine similarity reaches **0.38**. That number is a
+**similarity heuristic, not a probability**, chosen by `evaluation/tune_retrieval.py`
+on a small *development* set (25 answerable and 10 unanswerable questions, written by
+the same author as the policies, so easier than real questions):
+
+| Measured on the dev set | Result |
+| --- | --- |
+| Right passage first (hit@1), semantic only | 17/25 = 0.68 |
+| Right passage first, semantic + keyword reorder (used) | 19/25 = 0.76 |
+| Right passage in top 3 (hit@3), same two | 20/25 = 0.80 / 22/25 = 0.88 |
+| Mean reciprocal rank (MRR) | 0.759 / 0.822 |
+| Cutoff 0.38: unanswerable questions correctly refused | 10/10 |
+| Cutoff 0.38: answerable questions wrongly told "policy does not address this" | **8/25** |
+| Margin between the cutoff and the best unanswerable score | 0.016 (thin) |
+
+How to read this: the cutoff errs toward **"I don't see a rule for that"** over
+inventing one, which is what the spec asks for. The price is real: about a third of
+correct dev questions fall below it. Keyword overlap only *reorders* passages that
+already passed the cutoff (its 0.15 weight was fixed before looking at results), so
+the cutoff stays an interpretable cosine value. This is synthetic, small-sample
+evidence; the held-out evaluation in Phase 6 must use a different question set.
+
+## 31. Citations are validated, resolvable and honest
+
+- Citation ids are `policy_id:version:ordinal`; the format is checked before any
+  lookup, and an id that is malformed, unknown or belongs to another owner is reported
+  as "missing" and never displayed.
+- `propose_redactions` accepts `policy_refs` only if every cited passage exists for
+  this owner; an item citing a made-up passage is refused (others in the batch still
+  save). Citing an *archived* version is allowed (the passage is real).
+- The UI resolves a citation by asking the server for the passage; if the policy was
+  deleted it says "this passage is not available" instead of showing stale text.
+- Policy text is treated as **data**: tool results carry a notice that passages cannot
+  change the assistant's tools, permissions or the user's request.
+
+## 32. Unavailable means unavailable (no keyword stand-in)
+
+If the model is missing, disabled, or the stored vectors are stale, the result is
+`status: unavailable` with a reason, an empty list, and an explicit message that
+keyword search is not used as a substitute. A policy uploaded while embeddings are
+unavailable is still saved (nothing is lost) and shown as "search unavailable" until
+you re-index.
+
+## 33. Operational costs worth knowing
+
+- **Cold start:** a fresh process loads PyTorch and the model on its first policy
+  question: measured about 12 s in a plain Python process and 20-21 s in a fresh MCP server
+  process (Apple Silicon; the same 21 s inside Docker). The client allows 90 s for that call, and the UI
+  says so. Phase 5 should reuse one MCP server for a whole conversation rather than
+  starting a new one per question.
+- **Memory:** the API process and the MCP process each hold their own copy of the
+  model.
+- **Docker:** the model lives in a named volume, downloaded once with
+  `docker compose run --rm backend python -m app.cli download-embedding-model`; it is
+  never baked into the image.
+- **Child process settings:** the MCP server is started with the model location,
+  revision and cutoff (non-secret settings only) so it matches the API process.
+
+## 34. Two kinds of tests for retrieval
+
+- **Logic tests** use a tiny deterministic fake embedder (a hashed bag of words, not
+  a model of meaning): versioning, ownership, stale vectors, unavailable embeddings,
+  limits, citations. Fast, no download.
+- **Quality tests** use the real model and skip (with the reason printed) if it is not
+  downloaded; CI downloads and caches it. They assert clear-cut cases only, not
+  borderline scores, so they do not break from tiny floating-point differences.

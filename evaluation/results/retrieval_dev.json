@@ -1,0 +1,364 @@
+{
+  "date": "2026-10-13",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "chunks_in_corpus": 19,
+  "policies": [
+    "northwind-redaction-policy",
+    "northwind-sharing-guidelines"
+  ],
+  "answerable_questions": 25,
+  "unanswerable_questions": 10,
+  "note": "Synthetic DEV set; same author as the policies. Not real-world accuracy.",
+  "semantic": {
+    "hit@1": 0.68,
+    "hit@3": 0.8,
+    "mrr": 0.7585973266499583,
+    "n": 25
+  },
+  "semantic_plus_keyword": {
+    "hit@1": 0.76,
+    "hit@3": 0.88,
+    "mrr": 0.8221052631578948,
+    "n": 25
+  },
+  "score_distribution": {
+    "answerable_best": {
+      "min": 0.1733282208442688,
+      "median": 0.41910216212272644,
+      "max": 0.7019740343093872
+    },
+    "unanswerable_best": {
+      "min": -0.02454882487654686,
+      "median": 0.24100808054208755,
+      "max": 0.3639848530292511
+    }
+  },
+  "cutoff_sweep": [
+    {
+      "cutoff": 0.1,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.3,
+      "balanced": 0.59
+    },
+    {
+      "cutoff": 0.11,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.3,
+      "balanced": 0.59
+    },
+    {
+      "cutoff": 0.12,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.3,
+      "balanced": 0.59
+    },
+    {
+      "cutoff": 0.13,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.3,
+      "balanced": 0.59
+    },
+    {
+      "cutoff": 0.14,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.3,
+      "balanced": 0.59
+    },
+    {
+      "cutoff": 0.15,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.4,
+      "balanced": 0.64
+    },
+    {
+      "cutoff": 0.16,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.4,
+      "balanced": 0.64
+    },
+    {
+      "cutoff": 0.17,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.4,
+      "balanced": 0.64
+    },
+    {
+      "cutoff": 0.18,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.4,
+      "balanced": 0.64
+    },
+    {
+      "cutoff": 0.19,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.69
+    },
+    {
+      "cutoff": 0.2,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.69
+    },
+    {
+      "cutoff": 0.21,
+      "answerable_served": 0.88,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.69
+    },
+    {
+      "cutoff": 0.22,
+      "answerable_served": 0.84,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.6699999999999999
+    },
+    {
+      "cutoff": 0.23,
+      "answerable_served": 0.84,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.6699999999999999
+    },
+    {
+      "cutoff": 0.24,
+      "answerable_served": 0.84,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.6699999999999999
+    },
+    {
+      "cutoff": 0.25,
+      "answerable_served": 0.84,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.6699999999999999
+    },
+    {
+      "cutoff": 0.26,
+      "answerable_served": 0.8,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.65
+    },
+    {
+      "cutoff": 0.27,
+      "answerable_served": 0.8,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.65
+    },
+    {
+      "cutoff": 0.28,
+      "answerable_served": 0.8,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.65
+    },
+    {
+      "cutoff": 0.29,
+      "answerable_served": 0.8,
+      "unanswerable_rejected": 0.5,
+      "balanced": 0.65
+    },
+    {
+      "cutoff": 0.3,
+      "answerable_served": 0.8,
+      "unanswerable_rejected": 0.6,
+      "balanced": 0.7
+    },
+    {
+      "cutoff": 0.31,
+      "answerable_served": 0.76,
+      "unanswerable_rejected": 0.6,
+      "balanced": 0.6799999999999999
+    },
+    {
+      "cutoff": 0.32,
+      "answerable_served": 0.76,
+      "unanswerable_rejected": 0.6,
+      "balanced": 0.6799999999999999
+    },
+    {
+      "cutoff": 0.33,
+      "answerable_served": 0.76,
+      "unanswerable_rejected": 0.6,
+      "balanced": 0.6799999999999999
+    },
+    {
+      "cutoff": 0.34,
+      "answerable_served": 0.76,
+      "unanswerable_rejected": 0.8,
+      "balanced": 0.78
+    },
+    {
+      "cutoff": 0.35,
+      "answerable_served": 0.76,
+      "unanswerable_rejected": 0.8,
+      "balanced": 0.78
+    },
+    {
+      "cutoff": 0.36,
+      "answerable_served": 0.72,
+      "unanswerable_rejected": 0.9,
+      "balanced": 0.81
+    },
+    {
+      "cutoff": 0.37,
+      "answerable_served": 0.68,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.8400000000000001
+    },
+    {
+      "cutoff": 0.38,
+      "answerable_served": 0.68,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.8400000000000001
+    },
+    {
+      "cutoff": 0.39,
+      "answerable_served": 0.6,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.8
+    },
+    {
+      "cutoff": 0.4,
+      "answerable_served": 0.44,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.72
+    },
+    {
+      "cutoff": 0.41,
+      "answerable_served": 0.44,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.72
+    },
+    {
+      "cutoff": 0.42,
+      "answerable_served": 0.4,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.7
+    },
+    {
+      "cutoff": 0.43,
+      "answerable_served": 0.32,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.66
+    },
+    {
+      "cutoff": 0.44,
+      "answerable_served": 0.32,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.66
+    },
+    {
+      "cutoff": 0.45,
+      "answerable_served": 0.24,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.62
+    },
+    {
+      "cutoff": 0.46,
+      "answerable_served": 0.2,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.6
+    },
+    {
+      "cutoff": 0.47,
+      "answerable_served": 0.2,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.6
+    },
+    {
+      "cutoff": 0.48,
+      "answerable_served": 0.2,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.6
+    },
+    {
+      "cutoff": 0.49,
+      "answerable_served": 0.12,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.56
+    },
+    {
+      "cutoff": 0.5,
+      "answerable_served": 0.12,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.56
+    },
+    {
+      "cutoff": 0.51,
+      "answerable_served": 0.08,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.54
+    },
+    {
+      "cutoff": 0.52,
+      "answerable_served": 0.08,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.54
+    },
+    {
+      "cutoff": 0.53,
+      "answerable_served": 0.08,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.54
+    },
+    {
+      "cutoff": 0.54,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.55,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.56,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.57,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.58,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.59,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    },
+    {
+      "cutoff": 0.6,
+      "answerable_served": 0.04,
+      "unanswerable_rejected": 1.0,
+      "balanced": 0.52
+    }
+  ],
+  "best_balanced_accuracy": 0.8400000000000001,
+  "best_cutoff_plateau": [
+    0.37,
+    0.38
+  ],
+  "suggested_cutoff": 0.38,
+  "at_suggested_cutoff": {
+    "answerable_wrongly_turned_away": [
+      "a02",
+      "a15",
+      "a17",
+      "a19",
+      "a20",
+      "a22",
+      "a24",
+      "a25"
+    ],
+    "highest_unanswerable_score": 0.3639848530292511
+  }
+}

@@ -22,6 +22,7 @@ interface Props {
   onBulk: (ids: string[], action: DecisionAction) => void
   onStartManual: () => void
   onStartAdjust: (finding: Finding) => void
+  onOpenCitation: (citationId: string) => void
 }
 
 const STATUS_STYLES: Record<ReviewStatus, string> = {
@@ -184,6 +185,7 @@ export function FindingsPanel(p: Props) {
             onSelect={() => p.onSelect(f)}
             onDecide={(a, all) => p.onDecide(f.id, a, all)}
             onAdjust={() => p.onStartAdjust(f)}
+            onOpenCitation={p.onOpenCitation}
           />
         ))}
       </ul>
@@ -223,6 +225,7 @@ function FindingRow({
   onSelect,
   onDecide,
   onAdjust,
+  onOpenCitation,
 }: {
   finding: Finding
   selected: boolean
@@ -231,6 +234,7 @@ function FindingRow({
   onSelect: () => void
   onDecide: (action: DecisionAction, applyToAll: boolean) => void
   onAdjust: () => void
+  onOpenCitation: (citationId: string) => void
 }) {
   const [applyAll, setApplyAll] = useState(false)
   const isStale = f.status === 'stale'
@@ -249,6 +253,9 @@ function FindingRow({
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
             {f.category.toLowerCase()}
           </span>
+          {f.origin === 'agent' && (
+            <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-900">assistant</span>
+          )}
           <span className="ml-auto text-[11px] text-slate-500">p.{f.page_number}</span>
         </div>
         <p className="mt-1 break-words font-medium text-slate-900">{display || '(empty)'}</p>
@@ -256,6 +263,26 @@ function FindingRow({
           {f.sources.join(' + ') || f.source} · {LABELS[f.label]}
         </p>
       </button>
+
+      {f.explanation && f.origin === 'agent' && (
+        <p className="mt-1 text-[11px] text-slate-600">Reason given: {f.explanation}</p>
+      )}
+      {f.policy_refs.length > 0 && (
+        <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-600">
+          Policy:
+          {f.policy_refs.map((ref) => (
+            <button
+              key={ref}
+              type="button"
+              onClick={() => onOpenCitation(ref)}
+              aria-label={`Read policy passage ${ref}`}
+              className="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 font-mono text-indigo-800 hover:bg-indigo-100"
+            >
+              {ref}
+            </button>
+          ))}
+        </p>
+      )}
 
       {(f.partial_word || !f.mappable || f.overlaps.length > 0 || f.adjusted) && (
         <ul className="mt-1 space-y-0.5 text-[11px] text-amber-800">

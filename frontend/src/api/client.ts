@@ -12,7 +12,10 @@ import type {
   HealthResponse,
   PageSummary,
   PageText,
+  PolicyPassage,
+  PolicyRecord,
   ProposalResult,
+  RetrievalResult,
   ReviewSummary,
   SearchResult,
 } from './types'
@@ -159,4 +162,36 @@ export const api = {
   listExports: (id: string) => request<ExportRecord[]>(`/api/documents/${id}/exports`),
 
   exportFileUrl: (id: string, exportId: string) => `/api/documents/${id}/exports/${exportId}/file`,
+
+  // ---- policies
+  listPolicies: () => request<PolicyRecord[]>('/api/policies'),
+
+  uploadPolicy: (file: File) => {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    return request<PolicyRecord>('/api/policies', { method: 'POST', body: form })
+  },
+
+  seedPolicies: () => request<PolicyRecord[]>('/api/policies/seed-samples', jsonInit('POST', { reset: false })),
+
+  activatePolicy: (policyId: string, version: string) =>
+    request<PolicyRecord>(
+      `/api/policies/${encodeURIComponent(policyId)}/versions/${encodeURIComponent(version)}/activate`,
+      { method: 'POST' },
+    ),
+
+  reindexPolicy: (policyId: string, version: string) =>
+    request<PolicyRecord>(
+      `/api/policies/${encodeURIComponent(policyId)}/versions/${encodeURIComponent(version)}/reindex`,
+      { method: 'POST' },
+    ),
+
+  deletePolicy: (policyId: string) =>
+    request<unknown>(`/api/policies/${encodeURIComponent(policyId)}`, { method: 'DELETE' }),
+
+  searchPolicies: (query: string, topK = 3) =>
+    request<RetrievalResult>('/api/policies/search', jsonInit('POST', { query, top_k: topK })),
+
+  getPassage: (citationId: string) =>
+    request<PolicyPassage>(`/api/policies/passages/${encodeURIComponent(citationId)}`),
 }

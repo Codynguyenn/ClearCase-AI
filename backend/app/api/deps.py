@@ -16,6 +16,8 @@ from app.config import Settings, get_settings
 from app.db import Mongo
 from app.services.document_service import DocumentService
 from app.services.export_service import ExportService
+from app.services.policy_service import PolicyService
+from app.services.retrieval import MongoCosineRetriever, PolicyRetriever
 from app.services.review_service import ReviewService
 
 
@@ -48,7 +50,26 @@ def get_export_service(
     return ExportService(mongo, settings)
 
 
+def get_policy_service(
+    request: Request,
+    mongo: Annotated[Mongo, Depends(get_mongo)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PolicyService:
+    # `embedder_provider` is set on app.state so tests can substitute a fake embedder.
+    return PolicyService(mongo, settings, getattr(request.app.state, "embedder_provider", None))
+
+
+def get_retriever(
+    request: Request,
+    mongo: Annotated[Mongo, Depends(get_mongo)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> PolicyRetriever:
+    return MongoCosineRetriever(mongo, settings, getattr(request.app.state, "embedder_provider", None))
+
+
 OwnerId = Annotated[str, Depends(get_owner_id)]
 DocService = Annotated[DocumentService, Depends(get_document_service)]
 ReviewSvc = Annotated[ReviewService, Depends(get_review_service)]
 ExportSvc = Annotated[ExportService, Depends(get_export_service)]
+PolicySvc = Annotated[PolicyService, Depends(get_policy_service)]
+Retriever = Annotated[PolicyRetriever, Depends(get_retriever)]

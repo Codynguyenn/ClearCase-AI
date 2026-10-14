@@ -31,6 +31,16 @@ jobs:
         run: pip install -r requirements.lock
       - name: Download spaCy English NER model
         run: python -m spacy download en_core_web_sm
+      # The embedding model (~90 MB, pinned revision) is cached between runs. The key changes whenever
+      # backend/app/config.py does, which is where the pinned revision lives.
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: .local/models
+          key: embedding-model-${{ hashFiles('backend/app/config.py') }}
+      - name: Download embedding model (pinned revision)
+        working-directory: backend
+        run: python -m app.cli download-embedding-model
       - name: Generate sample documents
         run: python sample_data/generate_samples.py
       - name: Run tests

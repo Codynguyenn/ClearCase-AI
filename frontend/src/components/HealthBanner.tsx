@@ -5,6 +5,7 @@ import type { HealthResponse } from '../api/types'
 /** Tells the user when the backend or database is unreachable, and offers a retry. */
 export function HealthBanner() {
   const [health, setHealth] = useState<HealthResponse | null | 'unreachable'>(null)
+  const [dismissedEmbeddings, setDismissedEmbeddings] = useState(false)
 
   const check = async () => {
     try {
@@ -39,6 +40,23 @@ export function HealthBanner() {
           className="rounded border border-white/60 px-2 py-0.5 text-xs hover:bg-white/10"
         >
           Retry
+        </button>
+      </div>
+    )
+  }
+  if (!health.embeddings.available && !dismissedEmbeddings) {
+    return (
+      <div role="status" className="flex items-center justify-between gap-4 bg-amber-100 px-4 py-1.5 text-xs text-amber-900">
+        <span>
+          Semantic policy search is unavailable: {health.embeddings.reason ?? 'the embedding model is not ready.'} The rest
+          of ClearCase works normally.
+        </span>
+        <button
+          type="button"
+          onClick={() => setDismissedEmbeddings(true)}
+          className="rounded border border-amber-700/40 px-2 py-0.5 hover:bg-amber-200"
+        >
+          Dismiss
         </button>
       </div>
     )

@@ -51,7 +51,8 @@ logger = logging.getLogger("clearcase.agent.mcp")
 BACKEND_DIR = Path(__file__).resolve().parents[2]  # the folder that contains the `app` package
 
 DEFAULT_TIMEOUT_SECONDS = 30.0
-TOOL_TIMEOUTS: dict[str, float] = {"export_approved_redactions": 180.0}
+# The first policy search in a fresh server process loads PyTorch and the embedding model, so it gets longer.
+TOOL_TIMEOUTS: dict[str, float] = {"export_approved_redactions": 180.0, "retrieve_policy_guidance": 90.0}
 MAX_RESULT_CHARS = 200_000
 MAX_ERROR_CHARS = 500
 MAX_SCHEMA_ERRORS = 5
@@ -76,7 +77,13 @@ class ToolCallResult(BaseModel):
 
 
 def default_server_params(settings: Settings) -> StdioServerParameters:
-    """How to start our own MCP server, passing it only what it needs."""
+    """How to start our own MCP server, passing it only what it needs.
+
+    Only non-secret settings are forwarded: where the database is, who the demo owner
+    is, and where the embedding model lives and which revision to use (so policy
+    retrieval in the child matches the stored vectors). The LLM API key is never
+    forwarded, and the child does not read the repository ``.env`` file.
+    """
     return StdioServerParameters(
         command=sys.executable,
         args=["-m", "app.mcp_server"],
@@ -85,6 +92,13 @@ def default_server_params(settings: Settings) -> StdioServerParameters:
             "CLEARCASE_MONGODB_URI": settings.mongodb_uri,
             "CLEARCASE_MONGODB_DB": settings.mongodb_db,
             "CLEARCASE_DEMO_OWNER_ID": settings.demo_owner_id,
+            "CLEARCASE_MODELS_DIR": settings.models_dir,
+            "CLEARCASE_EMBEDDINGS_ENABLED": str(settings.embeddings_enabled).lower(),
+            "CLEARCASE_EMBEDDING_MODEL": settings.embedding_model,
+            "CLEARCASE_EMBEDDING_REVISION": settings.embedding_revision,
+            "CLEARCASE_RETRIEVAL_MIN_SCORE": str(settings.retrieval_min_score),
+            "CLEARCASE_RETRIEVAL_KEYWORD_WEIGHT": str(settings.retrieval_keyword_weight),
+            "CLEARCASE_RETRIEVAL_TOP_K_MAX": str(settings.retrieval_top_k_max),
         },
     )
 

@@ -90,6 +90,20 @@ class Mongo:
         db[EXPORT_AUTHORIZATIONS].create_index("expires_at", expireAfterSeconds=0)
         db[EXPORT_AUTHORIZATIONS].create_index([("document_id", ASCENDING)])
         db[AUDIT_EVENTS].create_index([("document_id", ASCENDING), ("created_at", DESCENDING)])
+        # Policies (reference corpus). A version is unique per owner; the partial index lets the database
+        # itself guarantee that at most one version of a policy is "active" (the one retrieval searches).
+        db[POLICIES].create_index(
+            [("owner_id", ASCENDING), ("policy_id", ASCENDING), ("version", ASCENDING)], unique=True
+        )
+        db[POLICIES].create_index(
+            [("owner_id", ASCENDING), ("policy_id", ASCENDING)],
+            unique=True,
+            partialFilterExpression={"status": "active"},
+            name="one_active_version_per_policy",
+        )
+        # Retrieval fetches chunks by owner + policy version; citations resolve by owner + citation id.
+        db[POLICY_CHUNKS].create_index([("owner_id", ASCENDING), ("policy_key", ASCENDING), ("ordinal", ASCENDING)], unique=True)
+        db[POLICY_CHUNKS].create_index([("owner_id", ASCENDING), ("citation_id", ASCENDING)], unique=True)
 
     def close(self) -> None:
         self.client.close()

@@ -11,6 +11,7 @@ from app.api.deps import get_mongo
 from app.config import Settings, get_settings
 from app.db import Mongo
 from app.services.detection import ner_info
+from app.services.embeddings import EmbeddingStatus, embedding_status
 from app.services.pdf_processing import ENGINE_NAME, ENGINE_VERSION
 
 router = APIRouter(tags=["health"])
@@ -23,6 +24,7 @@ class HealthResponse(BaseModel):
     pdf_engine: str
     ner_available: bool
     ner_model: str | None
+    embeddings: EmbeddingStatus
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -39,4 +41,5 @@ def health(
         pdf_engine=f"{ENGINE_NAME} {ENGINE_VERSION}",
         ner_available=ner.available,
         ner_model=ner.id if ner.available else None,
+        embeddings=embedding_status(settings),
     )

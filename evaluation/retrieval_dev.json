@@ -1,0 +1,43 @@
+{
+  "_about": "DEVELOPMENT set for policy retrieval. Used to choose the similarity cutoff in Phase 4. Written by the same author as the two fictional policies, so it is easier than real user questions. The held-out set for the Phase 6 evaluation report must be a different file and must not be used for tuning.",
+  "policies": ["northwind-redaction-policy", "northwind-sharing-guidelines"],
+  "answerable": [
+    {"id": "a01", "q": "Do we have to hide the names of the people who signed the contract?", "relevant": [["northwind-redaction-policy", "2. Personal identifiers of individuals"]]},
+    {"id": "a02", "q": "Can job titles stay visible?", "relevant": [["northwind-redaction-policy", "2. Personal identifiers of individuals"]]},
+    {"id": "a03", "q": "Should phone numbers and email addresses be blacked out?", "relevant": [["northwind-redaction-policy", "3. Contact details"]]},
+    {"id": "a04", "q": "Is a generic legal@ mailbox sensitive?", "relevant": [["northwind-redaction-policy", "3. Contact details"]]},
+    {"id": "a05", "q": "What about a street address in the notice clause?", "relevant": [["northwind-redaction-policy", "3. Contact details"]]},
+    {"id": "a06", "q": "How should I treat a social security number?", "relevant": [["northwind-redaction-policy", "4. Government and tax identifiers"]]},
+    {"id": "a07", "q": "A nine digit number looks like a tax ID but I am not sure it is real", "relevant": [["northwind-redaction-policy", "4. Government and tax identifiers"]]},
+    {"id": "a08", "q": "Do bank account numbers need to be removed?", "relevant": [["northwind-redaction-policy", "5. Financial account information"]]},
+    {"id": "a09", "q": "Do I need to hide payment terms and fee amounts?", "relevant": [["northwind-redaction-policy", "5. Financial account information"]]},
+    {"id": "a10", "q": "Should company names be removed?", "relevant": [["northwind-redaction-policy", "6. Organisation names"]]},
+    {"id": "a11", "q": "When is it acceptable to redact an organisation name?", "relevant": [["northwind-redaction-policy", "6. Organisation names"]]},
+    {"id": "a12", "q": "Are contract dates sensitive?", "relevant": [["northwind-redaction-policy", "7. Dates and general terms"]]},
+    {"id": "a13", "q": "Is the governing law clause confidential?", "relevant": [["northwind-redaction-policy", "7. Dates and general terms"]]},
+    {"id": "a14", "q": "Can the tool redact everything automatically without a person checking?", "relevant": [["northwind-redaction-policy", "8. Review requirements"]]},
+    {"id": "a15", "q": "If a name appears many times should I redact every one or only some?", "relevant": [["northwind-redaction-policy", "8. Review requirements"]]},
+    {"id": "a16", "q": "Does this policy say anything about medical records?", "relevant": [["northwind-redaction-policy", "9. Topics this policy does not address"]]},
+    {"id": "a17", "q": "How do I handle a contract written in German?", "relevant": [["northwind-redaction-policy", "9. Topics this policy does not address"]]},
+    {"id": "a18", "q": "Who has to sign off before we send a redacted contract to a customer?", "relevant": [["northwind-sharing-guidelines", "2. Who may approve external sharing"]]},
+    {"id": "a19", "q": "What should the filename of a redacted file look like?", "relevant": [["northwind-sharing-guidelines", "3. Labelling redacted documents"]]},
+    {"id": "a20", "q": "Do we need to strip comments and author details from the PDF?", "relevant": [["northwind-sharing-guidelines", "4. Hidden content and file metadata"]]},
+    {"id": "a21", "q": "Why does hidden metadata matter when redacting?", "relevant": [["northwind-sharing-guidelines", "4. Hidden content and file metadata"]]},
+    {"id": "a22", "q": "A court sent us a request for documents, what do we do?", "relevant": [["northwind-sharing-guidelines", "5. Requests from courts, regulators and other third parties"]]},
+    {"id": "a23", "q": "How long do we keep the original and the redacted version?", "relevant": [["northwind-sharing-guidelines", "6. Keeping records"]]},
+    {"id": "a24", "q": "We accidentally emailed an unredacted file to the wrong person", "relevant": [["northwind-sharing-guidelines", "7. When an unredacted document is shared by mistake"]]},
+    {"id": "a25", "q": "Can we skip one of these rules in an urgent case?", "relevant": [["northwind-sharing-guidelines", "8. Exceptions"]]}
+  ],
+  "unanswerable": [
+    {"id": "u01", "q": "What is the capital of France?"},
+    {"id": "u02", "q": "How do I reset my email password?"},
+    {"id": "u03", "q": "What is the company's vacation policy?"},
+    {"id": "u04", "q": "Which font should we use in contracts?"},
+    {"id": "u05", "q": "What are the cafeteria opening hours?"},
+    {"id": "u06", "q": "How do I convert a PDF into a Word document?"},
+    {"id": "u07", "q": "What does the GDPR require for data subject access requests?"},
+    {"id": "u08", "q": "How much does the redaction software cost per user?"},
+    {"id": "u09", "q": "Which employees are allowed to enter the restricted legal archive building?"},
+    {"id": "u10", "q": "What is the penalty for sending documents late to the client?"}
+  ]
+}

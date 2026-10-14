@@ -61,9 +61,12 @@ from app.mcp_server.schemas import (
     UnresolvedItem,
 )
 from app.models.findings import Category, Finding, Origin, ProposalInput, ReviewLabel, ReviewStatus
+from app.models.policies import RetrievalStatus
 from app.services.detection import detect_candidates
 from app.services.errors import AppError
 from app.services.export_service import ExportService
+from app.services.policy_service import PolicyService
+from app.services.retrieval import MongoCosineRetriever
 from app.services.review_service import ReviewService
 from app.services.search import search_pages
 
@@ -87,6 +90,8 @@ class Runtime:
         self.mongo = Mongo(settings)
         self.review = ReviewService(self.mongo, settings)
         self.exports = ExportService(self.mongo, settings)
+        self.policies = PolicyService(self.mongo, settings)
+        self.retriever = MongoCosineRetriever(self.mongo, settings)
 
     def close(self) -> None:
         self.mongo.close()
@@ -270,25 +275,26 @@ def create_server(settings: Settings) -> MCPServer:
     # ------------------------------------------------------------------ policy
     @mcp.tool(
         description=(
-            "Retrieve approved redaction-policy passages relevant to a question. NOT AVAILABLE YET: the "
-            "policy library arrives in a later build phase. Until then this returns no passages; do not "
-            "assume or invent any policy rule."
+            "Retrieve passages from the reviewer's ACTIVE redaction policies that are relevant to a question, "
+            "by semantic similarity. Each passage has a citation_id you can cite and pass to propose_redactions. "
+            "If nothing is similar enough the status is 'no_relevant_policy': say the policy does not address "
+            "the question; never invent a rule. If status is 'unavailable', semantic retrieval did not run."
         ),
         annotations=READ_ONLY,
     )
     @_guarded
     def retrieve_policy_guidance(
-        query: Annotated[str, Field(min_length=1, max_length=500)],
+        query: Annotated[str, Field(min_length=1, max_length=500, description="The question, in plain words.")],
         top_k: Annotated[int, Field(ge=1, le=5)] = 3,
     ) -> PolicyGuidanceOutput:
+        result = rt.retriever.retrieve(rt.owner_id, query, top_k=top_k)
         return PolicyGuidanceOutput(
-            available=False,
-            status="not_implemented",
-            passages=[],
-            message=(
-                "Policy retrieval is not available in this build, so no policy guidance was retrieved. "
-                "Say that the policy library could not be consulted rather than guessing a rule."
-            ),
+            available=result.status != RetrievalStatus.UNAVAILABLE,
+            status=result.status.value,
+            message=result.message,
+            passages=result.passages,
+            method=result.method,
+            best_score_below_cutoff=result.top_score_below_cutoff,
         )
 
     # ----------------------------------------------------------------- propose
@@ -297,7 +303,8 @@ def create_server(settings: Settings) -> MCPServer:
             f"Save up to {MAX_PROPOSALS_PER_CALL} proposed redactions for the human reviewer. Each item "
             "needs the page and character span copied from a search/detection result plus the exact text "
             "expected there; the server verifies it against the stored document and derives the rectangles "
-            "itself. Items are saved as 'proposed' only. Repeating a call never creates duplicates."
+            "itself. Optionally cite up to 3 policy passages (policy_refs) that support an item; unknown citations "
+            "are refused. Items are saved as 'proposed' only. Repeating a call never creates duplicates."
         ),
         annotations=WRITES_PROPOSALS,
     )
@@ -306,27 +313,44 @@ def create_server(settings: Settings) -> MCPServer:
         document_id: DocumentId,
         proposals: Annotated[list[ProposalItem], Field(min_length=1, max_length=MAX_PROPOSALS_PER_CALL)],
     ) -> ProposeRedactionsOutput:
-        inputs = [
-            ProposalInput(
-                page_number=p.page_number,
-                char_start=p.char_start,
-                char_end=p.char_end,
-                category=Category(p.category),
-                source=AGENT_SOURCE,
-                sources=[AGENT_SOURCE],
-                origin=Origin.AGENT,
-                label=ReviewLabel.REVIEW_NEEDED,
-                explanation=p.explanation,
-                expected_text=p.expected_text,
+        # Cited policy passages must really exist for this owner; anything else is refused, not stored.
+        cited = sorted({ref for p in proposals for ref in p.policy_refs})
+        unknown = set(rt.policies.invalid_citations(rt.owner_id, cited)) if cited else set()
+        refused: list[str] = []
+        inputs: list[ProposalInput] = []
+        for n, p in enumerate(proposals, start=1):
+            if unknown & set(p.policy_refs):
+                refused.append(
+                    f"Item {n}: it cites a policy passage that does not exist. "
+                    "Cite only citation_ids returned by retrieve_policy_guidance."
+                )
+                continue
+            inputs.append(
+                ProposalInput(
+                    page_number=p.page_number,
+                    char_start=p.char_start,
+                    char_end=p.char_end,
+                    category=Category(p.category),
+                    source=AGENT_SOURCE,
+                    sources=[AGENT_SOURCE],
+                    origin=Origin.AGENT,
+                    label=ReviewLabel.REVIEW_NEEDED,
+                    explanation=p.explanation,
+                    expected_text=p.expected_text,
+                    policy_refs=list(dict.fromkeys(p.policy_refs)),
+                )
             )
-            for p in proposals
-        ]
+        if not inputs:
+            record = rt.review.ready_document(document_id, rt.owner_id)  # ownership + readiness still checked
+            return ProposeRedactionsOutput(
+                document_id=document_id, created=[], already_existed=[], refused=refused, review_revision=record.review_revision
+            )
         result = rt.review.propose(document_id, rt.owner_id, inputs, action="propose_agent")
         return ProposeRedactionsOutput(
             document_id=document_id,
             created=[_ref(f) for f in result.created],
             already_existed=[_ref(f) for f in result.existing],
-            refused=result.rejected_inputs,
+            refused=refused + result.rejected_inputs,
             review_revision=result.review_revision,
         )
 
