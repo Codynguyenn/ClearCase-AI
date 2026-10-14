@@ -57,6 +57,10 @@ class Settings(BaseSettings):
     # (middle of the best plateau, balanced accuracy 0.84; see evaluation/results/retrieval_dev.json).
     # It is specific to the default embedding model revision; re-run the script if you change the model.
     retrieval_min_score: float = Field(default=0.38, ge=0.0, le=1.0)
+    # Lower bound of the human-only "possibly related" tier: passages with cosine in [this, min_score) are
+    # offered to the REVIEWER (never to the assistant) when nothing reaches the cutoff. Chosen on the dev set by
+    # a rule fixed in advance (evaluation/weak_tier_dev.py). A value >= retrieval_min_score turns the tier off.
+    retrieval_weak_min_score: float = Field(default=0.30, ge=0.0, le=1.0)
     # Weight of keyword overlap when ORDERING passages that already passed the cutoff (not used for the cutoff).
     retrieval_keyword_weight: float = Field(default=0.15, ge=0.0, le=1.0)
 

@@ -122,7 +122,8 @@ upload / seed ──► policy_chunking ──► policies + policy_chunks (Mong
                                            ▲            │ vectors + model name + revision
                   local embedding model ───┘            ▼
 question ──► embed ──► filter (owner · active version · current model) ──► cosine ──► cutoff ──► cited passages
-                                                                                       └─► "policy does not address this"
+                                                                                       └─► "no matching passage" (a heuristic)
+                                                                                             └─► reviewer-only weak matches (never sent to the assistant)
 ```
 
 | Piece | File | Job |

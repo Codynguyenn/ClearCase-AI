@@ -176,6 +176,45 @@ def test_rejected_location_is_reported_as_intentionally_retained():
     assert "Delgado" not in str(retained)  # no text in the report
 
 
+def _with_comments(doc: pymupdf.Document, page: pymupdf.Page) -> None:
+    """A reviewer's margin comment and a filled-in form field: both are removed by the export on purpose."""
+    page.add_freetext_annot(pymupdf.Rect(60, 200, 360, 240), "Free text: reviewer comment here")
+    widget = pymupdf.Widget()
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.field_name = "note"
+    widget.field_value = "Filled in value"
+    widget.rect = pymupdf.Rect(60, 260, 300, 290)
+    page.add_widget(widget)
+
+
+def test_removed_annotations_and_form_fields_are_not_reported_as_lost_text():
+    """Regression: words inside annotations/form fields used to be counted as 'lost', a false alarm."""
+    original = simple_pdf(extras=_with_comments)
+    assert "reviewer comment" in page_text(original)  # the comment text really is part of the extraction
+    out, checks, _ = run(original)
+    assert_all_required_pass(checks)
+    assert checks["no_collateral_text_loss"].passed is True
+    assert "reviewer comment" not in page_text(out)  # ...and it really was removed from the output
+
+
+def test_real_loss_of_unapproved_text_is_still_reported():
+    original = simple_pdf(extras=_with_comments)
+    approved = boxes_for(original, SECRET)
+    # An output that silently lost a sentence nobody approved removing.
+    damaged_doc = pymupdf.open()
+    page = damaged_doc.new_page(width=400, height=500)
+    page.insert_text((60, 100), f"{KEEP} for [removed] only.", fontsize=12)  # "Nothing else sensitive here." is gone
+    damaged = damaged_doc.tobytes()
+    h = hashlib.sha256(original).hexdigest()
+    checks, _ = verify_redaction(
+        original=original, output=damaged, expected_original_hash=h, original_hash_now=h,
+        approved=approved, rejected={}, approved_texts=[SECRET],
+    )
+    collateral = {c.name: c for c in checks}["no_collateral_text_loss"]
+    assert collateral.passed is False and collateral.required is False
+    assert "missing" in collateral.detail
+
+
 def test_verification_catches_a_failed_redaction():
     original = simple_pdf()
     approved = boxes_for(original, SECRET)

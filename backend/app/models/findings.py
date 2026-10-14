@@ -283,5 +283,15 @@ class ExportRecord(ApiModel):
     unsupported_pages_acknowledged: list[int] = Field(default_factory=list)
     scope_statement: str = ""
     stale: bool = False
-    downloadable: bool = False
+    has_warnings: bool = Field(
+        default=False, description="verified, but at least one advisory check did not pass: read the checks"
+    )
+    requires_acknowledgement: bool = Field(
+        default=False,
+        description="copies of approved text remain in the file; the reviewer must acknowledge before download",
+    )
+    warnings_acknowledged: bool = False
+    downloadable: bool = Field(
+        default=False, description="true only if verified, current, and (when required) acknowledged"
+    )
     created_at: datetime

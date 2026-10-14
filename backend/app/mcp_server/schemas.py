@@ -21,7 +21,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.findings import Candidate, DetectorInfo, ExportStatus, ReviewStatus, ReviewSummary, VerificationCheck
-from app.models.policies import RetrievalMethod, RetrievedPassage
+from app.models.policies import RetrievedPassage
 from app.models.search import Occurrence
 
 # Hard limits (documented in docs/decisions.md). Kept here so tests can import them.
@@ -117,12 +117,25 @@ POLICY_NOTICE = (
 )
 
 
+# NOTE FOR MAINTAINERS (a comment, not a docstring: docstrings become the JSON schema description that is
+# sent to the assistant). This shape deliberately omits the reviewer-only lower-confidence tier, so that the
+# assistant is never told it exists. tests/test_mcp_protocol.py checks that nothing about it reaches the model.
+class ToolRetrievalMethod(BaseModel):
+    """How the passages were found."""
+
+    kind: str
+    model: str
+    revision: str
+    min_score: float
+    note: str
+
+
 class PolicyGuidanceOutput(BaseModel):
     available: bool = Field(description="false when semantic retrieval could not run at all")
     status: str = Field(description="ok | no_relevant_policy | no_policies | unavailable")
     message: str
     passages: list[RetrievedPassage]
-    method: RetrievalMethod
+    method: ToolRetrievalMethod
     best_score_below_cutoff: float | None = Field(
         default=None, description="when nothing passed the cutoff: the best similarity seen (for transparency)"
     )
@@ -206,7 +219,11 @@ class ExportOutput(BaseModel):
     by_category: dict[str, int]
     checks: list[VerificationCheck]
     intentionally_retained: int
-    unresolved_copies: int
+    unresolved_copies: int = Field(description="copies of approved text still readable in the file (no finding covers them)")
+    has_warnings: bool = Field(description="verified, but an advisory check did not pass: report the warnings honestly")
+    awaiting_reviewer_acknowledgement: bool = Field(
+        description="true until the human reviewer acknowledges the remaining copies; the file cannot be downloaded before"
+    )
     scope_statement: str
     next_step: str = "The reviewer downloads the file from the Export tab. The assistant cannot download or share it."
 

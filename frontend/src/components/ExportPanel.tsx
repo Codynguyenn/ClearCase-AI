@@ -8,6 +8,7 @@ interface Props {
   exports: ExportRecord[]
   busy: boolean
   onExport: (acknowledgeUnsupported: boolean) => void
+  onAcknowledge: (exportId: string) => void
 }
 
 const CHECK_TITLES: Record<string, string> = {
@@ -23,7 +24,7 @@ const CHECK_TITLES: Record<string, string> = {
   export_completed: 'Export completed',
 }
 
-export function ExportPanel({ documentId, summary, exports, busy, onExport }: Props) {
+export function ExportPanel({ documentId, summary, exports, busy, onExport, onAcknowledge }: Props) {
   const [ack, setAck] = useState(false)
   const unsupported = summary?.unsupported_pages ?? []
   const needsAck = unsupported.length > 0
@@ -76,26 +77,38 @@ export function ExportPanel({ documentId, summary, exports, busy, onExport }: Pr
       {exports.length === 0 && <p className="mt-1 text-xs text-slate-500">No exports yet.</p>}
       <ul className="mt-1 space-y-3">
         {exports.map((e) => (
-          <ExportCard key={e.id} documentId={documentId} record={e} />
+          <ExportCard key={e.id} documentId={documentId} record={e} busy={busy} onAcknowledge={onAcknowledge} />
         ))}
       </ul>
     </div>
   )
 }
 
-function ExportCard({ documentId, record: e }: { documentId: string; record: ExportRecord }) {
+function ExportCard({
+  documentId,
+  record: e,
+  busy,
+  onAcknowledge,
+}: {
+  documentId: string
+  record: ExportRecord
+  busy: boolean
+  onAcknowledge: (exportId: string) => void
+}) {
   const failedRequired = e.checks.filter((c) => c.required && !c.passed)
   const warnings = e.checks.filter((c) => !c.required && !c.passed)
+  const awaitingAck = e.requires_acknowledgement && !e.warnings_acknowledged && !e.stale
+  const remainingPages = [...new Set(e.retained.unresolved_locations.map((l) => l.page))].sort((a, b) => a - b)
+  const badge =
+    e.status !== 'verified'
+      ? { text: e.status.replace('_', ' '), style: 'bg-red-100 text-red-800' }
+      : e.has_warnings
+        ? { text: 'verified · with warnings', style: 'bg-amber-100 text-amber-900' }
+        : { text: 'verified', style: 'bg-emerald-100 text-emerald-800' }
   return (
     <li className="rounded border border-slate-200 p-2.5" data-testid="export-card" data-status={e.status}>
       <div className="flex items-center gap-2">
-        <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-            e.status === 'verified' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-          }`}
-        >
-          {e.status.replace('_', ' ')}
-        </span>
+        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${badge.style}`}>{badge.text}</span>
         <span className="text-[11px] text-slate-500">{new Date(e.created_at + 'Z').toLocaleString()}</span>
         {e.stale && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">OUT OF DATE</span>}
       </div>
@@ -126,10 +139,31 @@ function ExportCard({ documentId, record: e }: { documentId: string; record: Exp
         ))}
       </ul>
 
-      {warnings.length > 0 && (
-        <p className="mt-1 text-[11px] text-amber-800">
-          Warnings do not block download, but please read them above.
-        </p>
+      {warnings.length > 0 && !e.requires_acknowledgement && (
+        <p className="mt-1 text-[11px] text-amber-800">These warnings are informational. Please read them above.</p>
+      )}
+      {awaitingAck && (
+        <div role="alert" className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" data-testid="ack-callout">
+          <p className="font-medium">
+            {e.retained.unresolved} other copy(ies) of text you approved for redaction are still readable in this file
+            (page{remainingPages.length === 1 ? '' : 's'} {remainingPages.join(', ')}).
+          </p>
+          <p className="mt-1 text-[11px] leading-snug">
+            No finding covers them, so they were not removed. Hidden or invisible text is a common cause. You can add
+            them in the Review or Search tab and export again, or acknowledge this and download the file anyway.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAcknowledge(e.id)}
+            className="mt-1.5 rounded border border-amber-700 bg-white px-2 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-50"
+          >
+            I understand: allow download
+          </button>
+        </div>
+      )}
+      {e.requires_acknowledgement && e.warnings_acknowledged && (
+        <p className="mt-1 text-[11px] text-amber-800">You acknowledged that other copies of approved text remain in this file.</p>
       )}
       {e.retained.intentionally_retained > 0 && (
         <p className="mt-1 text-[11px] text-slate-600">

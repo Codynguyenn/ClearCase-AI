@@ -1,0 +1,90 @@
+{
+  "set": "dev",
+  "note": "Synthetic dev set; not real-world accuracy.",
+  "keyword_weight": 0.15,
+  "results": [
+    {
+      "model": "all-MiniLM-L6-v2 (current)",
+      "repo": "sentence-transformers/all-MiniLM-L6-v2",
+      "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+      "hit@1": 0.76,
+      "hit@3": 0.88,
+      "mrr": 0.8221052631578948,
+      "best_cutoff": 0.38,
+      "plateau": [
+        0.37,
+        0.38
+      ],
+      "answerable_served": 0.68,
+      "unanswerable_refused": 1.0,
+      "balanced_accuracy": 0.8400000000000001,
+      "margin": 0.016,
+      "highest_unanswerable_cosine": 0.364,
+      "answerable_best_cosine_median": 0.419,
+      "licence": "Apache-2.0"
+    },
+    {
+      "model": "all-MiniLM-L12-v2",
+      "repo": "sentence-transformers/all-MiniLM-L12-v2",
+      "revision": "a50ef00143b4d5391434df20ae11632588ac25be",
+      "hit@1": 0.8,
+      "hit@3": 0.92,
+      "mrr": 0.8583333333333333,
+      "best_cutoff": 0.4,
+      "plateau": [
+        0.39,
+        0.4
+      ],
+      "answerable_served": 0.8,
+      "unanswerable_refused": 0.9,
+      "balanced_accuracy": 0.8500000000000001,
+      "margin": -0.04,
+      "highest_unanswerable_cosine": 0.44,
+      "answerable_best_cosine_median": 0.498,
+      "licence": "Apache-2.0",
+      "meets_adoption_rule": false
+    },
+    {
+      "model": "bge-small-en-v1.5",
+      "repo": "BAAI/bge-small-en-v1.5",
+      "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "hit@1": 0.84,
+      "hit@3": 0.92,
+      "mrr": 0.892,
+      "best_cutoff": 0.67,
+      "plateau": [
+        0.67,
+        0.67
+      ],
+      "answerable_served": 0.64,
+      "unanswerable_refused": 1.0,
+      "balanced_accuracy": 0.8200000000000001,
+      "margin": 0.0024,
+      "highest_unanswerable_cosine": 0.6676,
+      "answerable_best_cosine_median": 0.681,
+      "licence": "MIT",
+      "meets_adoption_rule": false
+    },
+    {
+      "model": "gte-small",
+      "repo": "thenlper/gte-small",
+      "revision": "17e1f347d17fe144873b1201da91788898c639cd",
+      "hit@1": 0.84,
+      "hit@3": 0.92,
+      "mrr": 0.8928571428571429,
+      "best_cutoff": 0.82,
+      "plateau": [
+        0.82,
+        0.82
+      ],
+      "answerable_served": 0.88,
+      "unanswerable_refused": 0.6,
+      "balanced_accuracy": 0.74,
+      "margin": -0.0355,
+      "highest_unanswerable_cosine": 0.8555,
+      "answerable_best_cosine_median": 0.854,
+      "licence": "MIT",
+      "meets_adoption_rule": false
+    }
+  ]
+}

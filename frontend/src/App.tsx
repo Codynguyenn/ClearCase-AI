@@ -228,7 +228,17 @@ export default function App() {
               void review.run(async () => {
                 const auth = await api.authorizeExport(selected.id)
                 const record = await api.createExport(selected.id, auth.token, ack)
-                setNotice(`Export ${record.status.replace('_', ' ')}.`)
+                setNotice(
+                  record.status === 'verified' && record.has_warnings
+                    ? 'Export verified, with warnings. Read them in the Export tab.'
+                    : `Export ${record.status.replace('_', ' ')}.`,
+                )
+              })
+            }
+            onAcknowledge={(exportId) =>
+              void review.run(async () => {
+                await api.acknowledgeExportWarnings(selected.id, exportId)
+                setNotice('Acknowledged. The file can now be downloaded.')
               })
             }
           />

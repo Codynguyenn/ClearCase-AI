@@ -85,6 +85,7 @@ class RetrievalMethod(BaseModel):
     model: str
     revision: str
     min_score: float
+    weak_min_score: float | None = None
     note: str = "Cosine similarity over local embeddings; the cutoff is a heuristic tuned on a small synthetic dev set."
 
 
@@ -96,6 +97,13 @@ class RetrievalResult(BaseModel):
     method: RetrievalMethod
     chunks_considered: int = 0
     chunks_stale_ignored: int = 0
+    weak_passages: list[RetrievedPassage] = Field(
+        default_factory=list,
+        description=(
+            "FOR THE HUMAN REVIEWER ONLY. Passages scoring a little below the cutoff, offered when nothing reached it. "
+            "They are weak matches, are never given to the assistant, and must not be cited as policy."
+        ),
+    )
     top_score_below_cutoff: float | None = Field(
         default=None, description="best score seen when nothing passed the cutoff (for transparency)"
     )

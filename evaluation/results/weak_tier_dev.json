@@ -1,0 +1,38 @@
+{
+  "set": "dev",
+  "strict_cutoff": 0.38,
+  "grid": [
+    {
+      "lower_bound": 0.25,
+      "recovered": 3,
+      "of_refused": 6,
+      "recovered_rate": 0.5,
+      "unanswerable_with_weak_passages": 5,
+      "of_unanswerable": 10,
+      "noise_rate": 0.5,
+      "meets_rule": true
+    },
+    {
+      "lower_bound": 0.3,
+      "recovered": 2,
+      "of_refused": 6,
+      "recovered_rate": 0.333,
+      "unanswerable_with_weak_passages": 4,
+      "of_unanswerable": 10,
+      "noise_rate": 0.4,
+      "meets_rule": true
+    },
+    {
+      "lower_bound": 0.35,
+      "recovered": 1,
+      "of_refused": 6,
+      "recovered_rate": 0.167,
+      "unanswerable_with_weak_passages": 2,
+      "of_unanswerable": 10,
+      "noise_rate": 0.2,
+      "meets_rule": false
+    }
+  ],
+  "decision_lower_bound": 0.3,
+  "note": "Synthetic dev set."
+}

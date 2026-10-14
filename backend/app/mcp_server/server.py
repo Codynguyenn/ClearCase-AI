@@ -57,6 +57,7 @@ from app.mcp_server.schemas import (
     ProposableCategory,
     ProposeRedactionsOutput,
     ReviewSummaryOutput,
+    ToolRetrievalMethod,
     SearchDocumentOutput,
     UnresolvedItem,
 )
@@ -293,7 +294,8 @@ def create_server(settings: Settings) -> MCPServer:
             status=result.status.value,
             message=result.message,
             passages=result.passages,
-            method=result.method,
+            # Only what the assistant may know. result.weak_passages (reviewer-only) is intentionally not passed on.
+            method=ToolRetrievalMethod(**result.method.model_dump(exclude={"weak_min_score"})),
             best_score_below_cutoff=result.top_score_below_cutoff,
         )
 
@@ -415,7 +417,20 @@ def create_server(settings: Settings) -> MCPServer:
             checks=record.checks,
             intentionally_retained=record.retained.intentionally_retained,
             unresolved_copies=record.retained.unresolved,
+            has_warnings=record.has_warnings,
+            awaiting_reviewer_acknowledgement=record.requires_acknowledgement and not record.warnings_acknowledged,
             scope_statement=record.scope_statement,
+            **(
+                {
+                    "next_step": (
+                        f"{record.retained.unresolved} other copy(ies) of approved text remain readable in the file. Tell the "
+                        "user. Only the human reviewer can acknowledge this in the Export tab, and only then can the file be "
+                        "downloaded. The assistant cannot do either."
+                    )
+                }
+                if record.requires_acknowledgement and not record.warnings_acknowledged
+                else {}
+            ),
         )
 
     return mcp

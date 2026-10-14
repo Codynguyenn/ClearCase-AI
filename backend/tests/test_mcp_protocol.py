@@ -361,6 +361,24 @@ def test_policy_tool_says_the_policy_does_not_address_an_unrelated_question(clie
     assert "do not assume a rule" in result.data["message"].lower()
 
 
+@requires_embedding_model
+def test_weak_matches_are_for_the_reviewer_and_never_reach_the_assistant(client: TestClient, test_settings: Settings):
+    client.post("/api/policies/seed-samples", json={})
+    question = "What is the company's vacation policy?"  # scores ~0.33: under the 0.38 cutoff, over the 0.30 weak bound
+
+    reviewer_view = client.post("/api/policies/search", json={"query": question}).json()
+    assert reviewer_view["status"] == "no_relevant_policy" and reviewer_view["passages"] == []
+    assert reviewer_view["weak_passages"], "the human reviewer is offered weak matches"
+
+    specs = run(test_settings, lambda tools: _async_value(tools.tools))
+    spec = next(s for s in specs if s.name == "retrieve_policy_guidance")
+    assert "weak" not in json.dumps(spec.output_schema).lower() + spec.description.lower()  # not even described
+
+    result = call_once(test_settings, "retrieve_policy_guidance", {"query": question})
+    assert result.ok and result.data["status"] == "no_relevant_policy" and result.data["passages"] == []
+    assert "weak" not in json.dumps(result.data).lower()  # nothing the assistant could read or cite
+
+
 def propose_item(doc_search: dict, **extra) -> dict:
     return {
         "page_number": doc_search["page_number"],
@@ -593,6 +611,34 @@ def test_export_succeeds_with_a_pending_reviewer_authorization_and_retries_are_i
     assert len(client.get(f"/api/documents/{doc_id}/exports").json()) == 1
     blob = json.dumps(first.data)
     assert "alice@example.com" not in blob  # no sensitive text, no filenames, no token
+
+
+def test_the_assistant_is_told_when_the_reviewer_must_acknowledge_remaining_copies(
+    client: TestClient, test_settings: Settings
+):
+    doc_id = new_doc(client)
+    occ = client.get(f"/api/documents/{doc_id}/search", params={"q": "Alice Smith"}).json()["occurrences"]
+    created = client.post(
+        f"/api/documents/{doc_id}/findings/propose-search",
+        json={"q": "Alice Smith", "occurrence_ids": [occ[0]["occurrence_id"]]},
+    ).json()["created"]
+    client.post(f"/api/documents/{doc_id}/findings/{created[0]['id']}/decision", json={"action": "approve"})
+    authorize(client, doc_id)
+
+    first = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
+    assert first.ok, first.error
+    assert first.data["status"] == "verified" and first.data["has_warnings"] is True
+    assert first.data["unresolved_copies"] == 1 and first.data["awaiting_reviewer_acknowledgement"] is True
+    assert first.data["downloadable"] is False
+    assert "human reviewer can acknowledge" in first.data["next_step"] and "assistant cannot" in first.data["next_step"]
+    assert "Alice" not in json.dumps(first.data)
+
+    # The reviewer acknowledges through the app; asking again returns the same export, now unlocked.
+    export_id = first.data["export_id"]
+    assert client.post(f"/api/documents/{doc_id}/exports/{export_id}/acknowledge-warnings").status_code == 200
+    again = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
+    assert again.ok and again.data["export_id"] == export_id
+    assert again.data["awaiting_reviewer_acknowledgement"] is False and again.data["downloadable"] is True
 
 
 def test_export_is_refused_when_the_review_changed_after_authorization(client: TestClient, test_settings: Settings):

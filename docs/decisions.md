@@ -132,6 +132,11 @@ text-in-box, rendered blackness, metadata, single `%%EOF`, and remaining copies
 of approved text (rejected findings count as "kept on purpose"). Required
 checks must pass before a file is stored or downloadable.
 
+*Updated after an audit* (see #40): the exported file is named from its own hash,
+never from the uploaded name, and an export that still contains readable copies of
+approved text is "verified with warnings" and needs the reviewer's explicit
+acknowledgement before it can be downloaded.
+
 ## 16. spaCy is optional at runtime, pinned as a dependency
 
 `spacy==3.8.16` is in the lockfile. The `en_core_web_sm` *model* is a separate
@@ -330,29 +335,23 @@ citation still resolves) and can be re-activated to roll back. Uploading the sam
 version with different content is refused (`policy_version_exists`): "bump the
 version" keeps citations trustworthy.
 
-## 30. The similarity cutoff comes from measurement, and it is conservative
+## 30. The similarity cutoff is a heuristic, and measurement showed it is weaker than it first looked
 
 A passage is shown only if its cosine similarity reaches **0.38**. That number is a
-**similarity heuristic, not a probability**, chosen by `evaluation/tune_retrieval.py`
-on a small *development* set (25 answerable and 10 unanswerable questions, written by
-the same author as the policies, so easier than real questions):
+**similarity heuristic, not a probability**. It was chosen by `evaluation/tune_retrieval.py`
+on a small *development* set (25 answerable, 10 unanswerable questions, written by the same
+author as the policies).
 
-| Measured on the dev set | Result |
-| --- | --- |
-| Right passage first (hit@1), semantic only | 17/25 = 0.68 |
-| Right passage first, semantic + keyword reorder (used) | 19/25 = 0.76 |
-| Right passage in top 3 (hit@3), same two | 20/25 = 0.80 / 22/25 = 0.88 |
-| Mean reciprocal rank (MRR) | 0.759 / 0.822 |
-| Cutoff 0.38: unanswerable questions correctly refused | 10/10 |
-| Cutoff 0.38: answerable questions wrongly told "policy does not address this" | **8/25** |
-| Margin between the cutoff and the best unanswerable score | 0.016 (thin) |
+**On that dev set it looked good** (right passage first for 19/25; all 10 unanswerable questions
+refused; balanced accuracy 0.84). **It did not hold up on a frozen held-out set** (see #36):
+balanced accuracy 0.56, and a third of the unanswerable questions were still shown a passage.
+Treat the dev numbers as optimistic, tuned-on-the-test-set numbers. (An earlier version of this
+entry said the cutoff "wrongly turned away" 8 of 25 dev questions; more precisely 6 were refused
+and 2 were shown only wrong passages.)
 
-How to read this: the cutoff errs toward **"I don't see a rule for that"** over
-inventing one, which is what the spec asks for. The price is real: about a third of
-correct dev questions fall below it. Keyword overlap only *reorders* passages that
-already passed the cutoff (its 0.15 weight was fixed before looking at results), so
-the cutoff stays an interpretable cosine value. This is synthetic, small-sample
-evidence; the held-out evaluation in Phase 6 must use a different question set.
+Keyword overlap only *reorders* passages that already passed the cutoff (its 0.15 weight was fixed
+before looking at results; it raised dev MRR from 0.759 to 0.822), so the cutoff stays an
+interpretable cosine value.
 
 ## 31. Citations are validated, resolvable and honest
 
@@ -398,3 +397,116 @@ you re-index.
 - **Quality tests** use the real model and skip (with the reason printed) if it is not
   downloaded; CI downloads and caches it. They assert clear-cut cases only, not
   borderline scores, so they do not break from tiny floating-point differences.
+
+## 35. Frontend component tests: happy-dom, and what they cannot prove
+
+Component tests render the real React components in a simulated browser and fake only
+the network: `src/test/mockApi.ts` replaces `fetch` with a router, so the real API client
+code runs. `src/test/factories.ts` builds sample data.
+
+**Why `happy-dom` and not the more common `jsdom`.** The citation reader uses the native
+`<dialog>` element. We tested both: jsdom 30 has *no* `showModal()` or `close()` at all,
+while happy-dom implements them and fires the `close` event, so the dialog's real logic is
+tested instead of a hand-written stub. happy-dom is also MIT-licensed, needs only Node 20+
+(jsdom 30 needs 22.22+, stricter than this project's 22.12), and `npm audit` reports 0
+vulnerabilities. Libraries: `@testing-library/react` 16, `@testing-library/dom` 10,
+`@testing-library/user-event` 14, `@testing-library/jest-dom` 7 (all MIT, React 19 compatible).
+
+**What is covered (47 tests):** the Policy tab (empty state and sample loading, unavailable
+and partly-indexed policies, activate/re-index/delete with confirmation, upload errors, the
+ask flow: results with citations, "does not address this" with the best score, unavailable,
+server errors, empty question, the slow-first-search hint); the passage dialog (loading,
+success, 404, other errors, archived and non-fictional labels, text shown as plain text
+rather than HTML, no stale text while the next citation loads, Close); citation chips and
+the assistant badge on findings; the health banner; the sidebar tabs.
+
+**Checked by mutation:** six deliberate breakages (dropping the best-score line, showing the
+previous citation's text, rendering passage text as HTML, a dead citation chip, an
+always-on banner, a hidden "Make active" button) were each caught by exactly one test.
+
+**What they cannot prove** (left for the Phase 6 Playwright test in a real browser): that
+Escape closes the dialog, that keyboard focus is trapped inside it and returned afterwards,
+real layout and the PDF highlights, and anything that depends on a real server. A simulated
+browser is a good check of logic, not a substitute for a real one.
+
+## 36. A frozen held-out set, and what it showed
+
+Tuning a threshold on the same questions you then report is a classic way to fool yourself. So:
+a held-out set (28 answerable, 16 unanswerable, written in a different voice, with near-miss
+traps) was written and **frozen by SHA-256**; the evaluation script refuses to run if it changed
+and refuses a second run under the same label; every run is appended to a results file with its
+configuration and a code fingerprint; and the rules for adopting any change were written *before*
+measuring (`evaluation/README.md`). The script runs the real `MongoCosineRetriever`, and checks
+that the app's answer equals "full ranking, cut at the cutoff" for every question.
+
+**Result (details and table in `evaluation/README.md`):** hit@1 0.64 (dev 0.76), relevant passage
+shown 0.43 (dev 0.68), unanswerable wrongly shown a passage 0.31 (dev 0.00), balanced accuracy
+0.56 (dev 0.84). The cutoff overfitted the dev set. All numbers are synthetic, same-author and
+have wide confidence intervals; they are not real-world accuracy.
+
+**Lesson worth saying out loud in an interview:** similarity is not answerability. Questions
+about nearby topics the policy does not cover ("what training do reviewers need?", "does it cover
+audio recordings?") score as high as real questions, and many real questions score low because they
+share few words with the passage. A threshold cannot tell those apart; reading comprehension can.
+
+## 37. Better embedding models ranked better but did not decide better
+
+Three small, permissively licensed models (all about 33M parameters) were compared on the dev set
+with the app's own pipeline, against pre-registered adoption rules. `bge-small-en-v1.5` and
+`gte-small` improved MRR (0.892 and 0.893 vs 0.822) but their balanced accuracy was lower and their
+margins thinner, so **none was adopted**. `multi-qa-MiniLM-L6-cos-v1` was excluded because its model
+card states no licence. Swapping the model would also have meant a new cutoff, a re-index of every
+policy, and new Docker/CI caches, for a ranking gain that does not fix the real problem.
+
+## 38. A reviewer-only "possibly related" tier, and a leak I introduced and caught
+
+When nothing reaches the cutoff, the human reviewer is offered up to three weaker matches
+(cosine between 0.30 and 0.38), collapsed, labelled as weak and not to be cited as policy. They
+are **never** given to the assistant: the MCP tool builds its output without them, has its own
+method description with no mention of the tier, and a test checks that the word "weak" appears
+nowhere in what the assistant receives (schema, description or result).
+
+That test caught a real mistake of mine: I had explained the rule in a *docstring* on the tool's
+output class, and Pydantic turns docstrings into the JSON-schema description that is sent to the
+model, so my comment was telling the assistant about the tier. It is now a code comment. The rule
+was chosen on the dev set (2 of 6 wrongly refused questions recovered, 4 of 10 unanswerable ones
+showing weak passages: a thin pass); on the held-out set it recovered 5 of 13 and showed weak
+passages for 4 of 16 unanswerable ones.
+
+## 39. What this means for the assistant (Phase 5)
+
+- Do not let "no relevant policy" be the only signal. Pass the assistant the top candidate passages
+  with their scores and require it to **quote the supporting sentence or say the policy does not
+  address the question**; a reading step is what a threshold cannot do.
+- The retrieval message now says the result is a heuristic ("no passage was similar enough"), not
+  "the policy does not address this", and tells the assistant not to assume a rule either way.
+- A cross-encoder re-ranker, or an LLM relevance check, are the next things to evaluate, on a new
+  held-out set (the current one has now been used for its two allowed runs).
+
+## 40. Three fixes from the Phase 1-4 audit
+
+An audit that attacked the export with a PDF hiding one name in 11 places (annotation, form
+field, attachment, metadata, XMP, bookmark, invisible text, white text, a page deleted by an
+incremental save...) found the redaction itself solid (zero hits for the name in the output
+bytes, apart from the two hidden-text copies the app had been *asked* not to touch, which it
+reported). It also found three real problems, now fixed:
+
+1. **The export's file name leaked the upload's name.** `Jane Doe NDA.pdf` produced
+   `Jane Doe NDA_redacted.pdf`, which can be exactly the text that was redacted (the spec forbids
+   it, and these docs wrongly claimed it never happened). The name is now `redacted_<first 10 hex
+   of the output's SHA-256>.pdf`, in the download header, the API record and the stored file. It is
+   computed when the record is read, so exports made before the fix are served under the neutral
+   name too (their stored GridFS file name is not rewritten).
+2. **A green "verified" badge hid a real warning.** The warning "other copies of approved text
+   remain" was there, but small and amber under a green badge, with the download one click away.
+   Now: `verified` + any failed advisory check shows **"verified · with warnings"**; if readable
+   copies of approved text remain (`requires_acknowledgement`), the download is refused with HTTP
+   409 `warnings_unacknowledged` until the reviewer presses "I understand: allow download"
+   (`POST .../acknowledge-warnings`). The acknowledgement is idempotent, audited with counts and
+   page numbers only, refused for a failed or out-of-date export, and **REST-only**: the assistant
+   has no tool for it (its export tool just reports that a human acknowledgement is pending). Other
+   advisory warnings are shown as information and do not block.
+3. **A false alarm in "nothing outside the boxes was lost".** It counted the words inside
+   annotations and form fields as lost, though the export removes those on purpose, so any PDF
+   with a margin comment tripped it and trained reviewers to ignore the check. It now compares page
+   content only; a test confirms a real loss of unapproved text is still caught.
