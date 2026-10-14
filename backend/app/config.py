@@ -40,6 +40,26 @@ class Settings(BaseSettings):
     max_upload_mb: int = Field(default=20, ge=1, le=500)
     max_pages: int = Field(default=200, ge=1, le=5000)
 
+    # --- Retrieval / embeddings (Phase 4) ---
+    # Models are downloaded once into `models_dir` (scripts/download_models.sh) and are only ever
+    # loaded from there at runtime: the app never downloads anything while serving a request.
+    models_dir: str = str(_REPO_ROOT / ".local" / "models")
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # Exact commit of the model repository (its "version"). Recorded on every stored embedding.
+    embedding_revision: str = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+    embeddings_enabled: bool = True
+    max_policy_kb: int = Field(default=200, ge=1, le=2048)
+    # Where the fictional example policies live (in Docker this folder is mounted read-only).
+    sample_data_dir: str = str(_REPO_ROOT / "sample_data")
+    retrieval_top_k_max: int = Field(default=5, ge=1, le=20)
+    # Similarity cutoff: a passage is shown only if its plain cosine similarity to the question reaches
+    # this value. It is a HEURISTIC chosen by evaluation/tune_retrieval.py on a small synthetic dev set
+    # (middle of the best plateau, balanced accuracy 0.84; see evaluation/results/retrieval_dev.json).
+    # It is specific to the default embedding model revision; re-run the script if you change the model.
+    retrieval_min_score: float = Field(default=0.38, ge=0.0, le=1.0)
+    # Weight of keyword overlap when ORDERING passages that already passed the cutoff (not used for the cutoff).
+    retrieval_keyword_weight: float = Field(default=0.15, ge=0.0, le=1.0)
+
     # --- Assistant (Phase 5) ---
     assistant_mode: str = "demo"
     llm_provider: str = ""

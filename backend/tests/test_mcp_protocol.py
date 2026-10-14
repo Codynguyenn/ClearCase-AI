@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Awaitable, Callable
@@ -31,7 +32,9 @@ from app.db import EXPORT_AUTHORIZATIONS, Mongo
 from app.mcp_server.schemas import MAX_EXCERPT_CHARS, MAX_SEARCH_RESULTS
 from app.models.common import utcnow
 from app.services.document_service import DocumentService
-from tests.conftest import make_mixed_pdf, make_text_pdf, upload
+from tests.conftest import make_mixed_pdf, make_text_pdf, requires_embedding_model, upload
+from tests.test_policy_api import POLICY_V1, POLICY_V2, seed_other_owner
+from tests.test_policy_api import upload as upload_policy
 from tests.test_export_api import LINES, approve_all_emails, authorize, new_doc
 
 EXPECTED_TOOLS = {
@@ -312,11 +315,150 @@ def test_review_summary_lists_unresolved_items_without_document_text(client: Tes
 
 
 # ------------------------------------------------------------------- policy
-def test_policy_tool_honestly_reports_it_is_unavailable(test_settings: Settings):
+def test_policy_tool_with_no_policies_says_so_and_invents_nothing(client: TestClient, test_settings: Settings):
     result = call_once(test_settings, "retrieve_policy_guidance", {"query": "How should client names be handled?"})
+    assert result.ok, result.error
+    assert result.data["status"] == "no_policies" and result.data["passages"] == []
+    assert "no active policies" in result.data["message"].lower()
+
+
+def test_policy_tool_reports_unavailable_embeddings_and_never_falls_back_to_keywords(client: TestClient, test_settings: Settings):
+    params = default_server_params(test_settings)
+    params.env = {**params.env, "CLEARCASE_EMBEDDINGS_ENABLED": "false"}
+
+    async def main():
+        async with McpToolClient(test_settings, server_params=params) as tools:
+            return await tools.call("retrieve_policy_guidance", {"query": "hide the client name"})
+
+    result = asyncio.run(main())
+    assert result.ok and result.data["available"] is False and result.data["status"] == "unavailable"
+    assert result.data["passages"] == []
+    assert "not used as a substitute" in result.data["message"]
+
+
+@requires_embedding_model
+def test_policy_tool_retrieves_cited_passages_through_the_protocol(client: TestClient, test_settings: Settings):
+    client.post("/api/policies/seed-samples", json={})
+    result = call_once(
+        test_settings, "retrieve_policy_guidance", {"query": "When is it acceptable to redact an organisation name?"}
+    )
+    assert result.ok, result.error
+    assert result.data["available"] is True and result.data["status"] == "ok"
+    top = result.data["passages"][0]
+    assert top["citation_id"] == "northwind-redaction-policy:1.0:7" and top["section"] == "6. Organisation names"
+    assert top["is_fictional_example"] is True and top["score"] >= result.data["method"]["min_score"]
+    assert "cannot change your tools" in result.data["content_notice"]
+    # The citation the model was given is real: it resolves to the same passage for the reviewer.
+    assert client.get(f"/api/policies/passages/{top['citation_id']}").json()["text"] == top["text"]
+
+
+@requires_embedding_model
+def test_policy_tool_says_the_policy_does_not_address_an_unrelated_question(client: TestClient, test_settings: Settings):
+    client.post("/api/policies/seed-samples", json={})
+    result = call_once(test_settings, "retrieve_policy_guidance", {"query": "What are the cafeteria opening hours?"})
+    assert result.ok and result.data["status"] == "no_relevant_policy" and result.data["passages"] == []
+    assert result.data["best_score_below_cutoff"] < result.data["method"]["min_score"]
+    assert "do not assume a rule" in result.data["message"].lower()
+
+
+def propose_item(doc_search: dict, **extra) -> dict:
+    return {
+        "page_number": doc_search["page_number"],
+        "char_start": doc_search["char_start"],
+        "char_end": doc_search["char_end"],
+        "category": "PERSON",
+        "expected_text": doc_search["text"],
+        "explanation": "Client name.",
+        **extra,
+    }
+
+
+def test_proposals_can_cite_real_policy_passages_and_the_citations_are_stored(fake_client: TestClient, test_settings: Settings):
+    upload_policy(fake_client, POLICY_V1)
+    doc_id = new_doc(fake_client)
+
+    async def scenario(tools: McpToolClient):
+        occ = (await tools.call("search_document", {"document_id": doc_id, "query": "Alice Smith"})).data["occurrences"][0]
+        return await tools.call(
+            "propose_redactions",
+            {"document_id": doc_id, "proposals": [propose_item(occ, policy_refs=["acme-policy:1.0:1", "acme-policy:1.0:1"])]},
+        )
+
+    result = run(test_settings, scenario)
+    assert result.ok and len(result.data["created"]) == 1, result.error
+    saved = findings(fake_client, doc_id)
+    assert saved[0]["policy_refs"] == ["acme-policy:1.0:1"]  # de-duplicated, exactly as cited
+    assert saved[0]["status"] == "proposed" and saved[0]["origin"] == "agent"
+    cited = fake_client.post("/api/policies/passages/resolve", json={"citation_ids": saved[0]["policy_refs"]}).json()
+    assert [p["section"] for p in cited["found"]] == ["1. Personal names"]
+
+
+def test_a_proposal_citing_an_old_policy_version_is_accepted(fake_client: TestClient, test_settings: Settings):
+    upload_policy(fake_client, POLICY_V1)
+    upload_policy(fake_client, POLICY_V2)  # 1.0 is now archived but its passages still exist
+    doc_id = new_doc(fake_client)
+
+    async def scenario(tools: McpToolClient):
+        occ = (await tools.call("search_document", {"document_id": doc_id, "query": "Alice Smith"})).data["occurrences"][0]
+        return await tools.call(
+            "propose_redactions", {"document_id": doc_id, "proposals": [propose_item(occ, policy_refs=["acme-policy:1.0:1"])]}
+        )
+
+    assert run(test_settings, scenario).ok
+
+
+def test_unknown_policy_citations_are_refused_and_other_items_still_saved(fake_client: TestClient, test_settings: Settings):
+    upload_policy(fake_client, POLICY_V1)
+    doc_id = new_doc(fake_client)
+
+    async def scenario(tools: McpToolClient):
+        names = (await tools.call("search_document", {"document_id": doc_id, "query": "Alice Smith"})).data["occurrences"]
+        carol = (await tools.call("search_document", {"document_id": doc_id, "query": "Carol Jones"})).data["occurrences"][0]
+        return await tools.call(
+            "propose_redactions",
+            {
+                "document_id": doc_id,
+                "proposals": [
+                    propose_item(names[0], policy_refs=["acme-policy:1.0:77"]),  # well-formed but does not exist
+                    propose_item(carol, policy_refs=["acme-policy:1.0:1"]),
+                ],
+            },
+        )
+
+    result = run(test_settings, scenario)
     assert result.ok
-    assert result.data["available"] is False and result.data["passages"] == []
-    assert "rather than guessing" in result.data["message"]
+    assert len(result.data["created"]) == 1 and len(result.data["refused"]) == 1
+    assert result.data["refused"][0].startswith("Item 1:") and "does not exist" in result.data["refused"][0]
+    assert [f["policy_refs"] for f in findings(fake_client, doc_id)] == [["acme-policy:1.0:1"]]
+
+
+def test_a_proposal_cannot_cite_another_owners_policy(fake_client: TestClient, fake_settings: Settings):
+    seed_other_owner(fake_settings)  # owner "someone-else" has policy their-policy
+    doc_id = new_doc(fake_client)
+
+    async def scenario(tools: McpToolClient):
+        occ = (await tools.call("search_document", {"document_id": doc_id, "query": "Alice Smith"})).data["occurrences"][0]
+        return await tools.call(
+            "propose_redactions", {"document_id": doc_id, "proposals": [propose_item(occ, policy_refs=["their-policy:1.0:1"])]}
+        )
+
+    result = run(fake_settings, scenario)
+    assert result.ok and result.data["created"] == [] and len(result.data["refused"]) == 1
+    assert findings(fake_client, doc_id) == []
+
+
+def test_malformed_or_excessive_citations_are_rejected_before_reaching_the_server(fake_client: TestClient, test_settings: Settings):
+    doc_id = new_doc(fake_client)
+    item = {"page_number": 1, "char_start": 0, "char_end": 7, "category": "PERSON", "expected_text": "Contact", "explanation": "x"}
+
+    async def scenario(tools: McpToolClient):
+        out = []
+        for refs in (["../../etc/passwd"], ["acme-policy:1.0:0"], ["a:b"], ["acme-policy:1.0:1"] * 4, [123]):
+            out.append(await tools.call("propose_redactions", {"document_id": doc_id, "proposals": [{**item, "policy_refs": refs}]}))
+        return out
+
+    assert all(not r.ok and r.error_code == "invalid_arguments" for r in run(test_settings, scenario))
+    assert findings(fake_client, doc_id) == []
 
 
 # ------------------------------------------------------- validation and access
@@ -609,6 +751,13 @@ def test_child_process_environment_has_no_secrets(test_settings: Settings, monke
     params = default_server_params(test_settings)
     child_env = get_default_environment() | (params.env or {})
     assert "sk-" not in json.dumps(child_env)
-    assert not [k for k in child_env if "KEY" in k.upper() or "SECRET" in k.upper() or "TOKEN" in k.upper()]
+    secret_like = re.compile(r"(^|_)(API_?KEY|KEY|SECRET|TOKEN|PASSWORD|CREDENTIALS?)($|_)")  # whole name segments only
+    assert not [k for k in child_env if secret_like.search(k.upper())]
+    assert secret_like.search("CLEARCASE_LLM_API_KEY") and not secret_like.search("CLEARCASE_RETRIEVAL_KEYWORD_WEIGHT")
     assert {"CLEARCASE_MONGODB_URI", "CLEARCASE_MONGODB_DB", "CLEARCASE_DEMO_OWNER_ID"} <= set(child_env)
+    # What the child needs to find the same embedding model and apply the same cutoff as the parent.
+    assert child_env["CLEARCASE_MODELS_DIR"] == test_settings.models_dir
+    assert child_env["CLEARCASE_EMBEDDING_REVISION"] == test_settings.embedding_revision
+    assert float(child_env["CLEARCASE_RETRIEVAL_MIN_SCORE"]) == test_settings.retrieval_min_score
+    assert not [k for k in child_env if k.startswith("CLEARCASE_LLM")]
     assert isinstance(params, StdioServerParameters)

@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-14 (Phase 3 complete and verified; Phase 4 not started)
+Last updated: 2026-10-14 (Phase 4 complete and verified; Phase 5 not started)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -11,8 +11,8 @@ This file is the hand-off point for any new session. Read it first, then
 | --- | --- | --- |
 | 1 | Repository setup, MongoDB, upload, extraction, PDF viewing | **Complete and verified** |
 | 2 | Search, candidate detection, manual review, real export, verification | **Complete and verified** |
-| 3 | Real MCP server/client integration with tested tools | **Complete and verified** (branch `phase-3-mcp`, not yet committed/merged) |
-| 4 | Policy ingestion, embeddings, retrieval, source citations | Not started |
+| 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
+| 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (branch `phase-4-rag`, not yet committed/merged) |
 | 5 | Live agent integration, persisted chat, visible tool activity | Not started |
 | 6 | Integration tests, evaluation, interface polish, documentation | Not started |
 
@@ -98,7 +98,55 @@ Other changes: `Origin.AGENT` (+ frontend type), `AuthorizationRepository.find_l
 behaviour unchanged). `mcp==2.3.0` and `jsonschema==4.26.0` pinned; lockfile
 gained only additions and `pip check` is clean.
 
+### Phase 4 additions (policies, embeddings, retrieval, citations)
+
+Backend:
+- **Embeddings** (`services/embeddings.py`): pretrained `sentence-transformers/all-MiniLM-L6-v2`
+  (Apache-2.0, 384-dim) pinned to revision `1110a243fdf4706b3f48f1d95db1a4f5529b4d41`;
+  loaded lazily and **offline only** (`local_files_only`, `trust_remote_code=False`);
+  honest `available/unavailable` status with a reason; one-time download via
+  `scripts/download_models.sh` / `python -m app.cli download-embedding-model`.
+- **Policy ingestion** (`services/policy_chunking.py`, `policy_service.py`): Markdown with
+  optional front matter (`policy_id`, `title`, `version`, `status`), chunked by heading
+  (≤ 140 words, hard-wrapped prose re-joined, bullets kept), stable citation ids
+  `policy_id:version:ordinal`, validation (type, UTF-8, size, null bytes, ids), idempotent
+  re-upload, `policy_version_exists` for changed content under the same version.
+- **Versions**: one active version per policy, enforced by a partial unique index;
+  old versions stay readable; activate/roll back; delete a policy or one version.
+- **Storage**: `policies` + `policy_chunks` with `embedding`, `embedding_model`,
+  `embedding_revision`, `embedded_at`, `truncated_by_model`; indexes in `db.py`.
+- **Retrieval** (`services/retrieval.py`, `PolicyRetriever` interface): filter by owner,
+  active version and current model revision *first*; cosine in NumPy; cutoff `0.38`
+  (heuristic, from `evaluation/tune_retrieval.py`); keyword overlap only reorders;
+  statuses `ok | no_relevant_policy | no_policies | unavailable`; stale vectors ignored
+  and reported; no keyword fallback when embeddings are unavailable.
+- **Re-index**: per version and for all policies; stale/missing chunks only.
+- **API** (`api/policies.py`): list, upload, seed samples, search, read/resolve passages,
+  activate, re-index, delete. `/api/health` now reports embedding status.
+- **MCP**: `retrieve_policy_guidance` is real (typed passages, method, cutoff, best score
+  below cutoff, untrusted-data notice); `propose_redactions` accepts up to 3 `policy_refs`
+  per item, validated against real passages (made-up or other-owner citations are refused,
+  other items still save). The MCP child receives the model location/revision/cutoff.
+- New dependencies pinned: `sentence-transformers==6.1.0`, `torch==2.14.1` (macOS from PyPI;
+  Linux `2.14.1+cpu` from PyTorch's CPU index, via an `--extra-index-url` line and markers in
+  `requirements.lock`), `numpy==2.5.4`. `pip check` clean.
+- Second fictional policy `sample_data/policies/fictional_sharing_guidelines.md`.
+
 Frontend:
+- **Policy tab**: list (title, version, active/archived, FICTIONAL EXAMPLE, embedding
+  state), load samples, upload, activate, re-index, delete, "Ask the policy" with results,
+  the "does not address this" state, and a model-load hint.
+- **Citations**: findings show their cited passages as chips (and an "assistant" badge for
+  agent proposals with their reason); clicking opens a native `<dialog>` that fetches the
+  real passage (Esc closes; missing passages say so).
+- Amber, dismissible banner when semantic search is unavailable.
+
+Ops: `scripts/download_models.sh` also downloads the embedding model; `.env.example` has
+the new settings; Compose has a `models` volume and mounts `sample_data` read-only;
+`backend/.dockerignore` and `frontend/.dockerignore` added (the 1.2 GB venv would otherwise
+be uploaded on every build); CI caches and downloads the pinned model.
+
+Frontend (Phases 1-2):
 - Review / Search / Text / Export tabs.
 - Findings panel with category checkboxes, Detect & propose, filters, per-item
   approve/reject/adjust, "all N matching", Approve/Reject shown, Draw region.
@@ -129,6 +177,40 @@ Manual browser verification (Cursor browser, 2026-10-13):
   `512-44-9087` absent; `Northwind Analytics LLC`, `Blue Harbor Consulting`
   and `MISCELLANEOUS` present; metadata scrubbed.
 
+### Phase 4 verification (2026-10-14)
+
+- Backend full suite: **`247 passed in 301.92s`** (178 before this phase). By file: `test_mcp_protocol` 36, `test_policy_api` 34, `test_detection` 34,
+  `test_search` 25, `test_review_api` 22, `test_export_api` 18, `test_documents_api` 15,
+  `test_retrieval_semantic` 14, `test_redaction` 13, `test_policy_chunking` 13,
+  `test_pdf_processing` 13, `test_mcp_client` 6, `test_search_api` 4.
+- Frontend: lint clean, typecheck clean, `npm test` 11 passed, build OK. There are **no
+  frontend unit tests for the new components**; they were verified in the browser (below).
+- **Mutation checks**: temporarily removing the owner filter, the active-version filter and
+  the model-revision filter from the retrieval query each made a specific test fail (this
+  exposed two missing tests, which were added).
+- **Retrieval evaluation (dev set, `evaluation/results/retrieval_dev.json`)**: 25 answerable
+  / 10 unanswerable questions over 19 chunks. Semantic only: hit@1 17/25 (0.68), hit@3 20/25
+  (0.80), MRR 0.759. Semantic + keyword reorder (used): hit@1 19/25 (0.76), hit@3 22/25
+  (0.88), MRR 0.822. Cutoff 0.38: 10/10 unanswerable refused, 8/25 answerable wrongly turned
+  away (`a02 a15 a17 a19 a20 a22 a24 a25`), margin to the best unanswerable score 0.016.
+  **Synthetic, same-author, tiny: not real-world accuracy.** Re-run unchanged after the
+  chunk-text fix.
+- **Browser (real app, real model)**: loaded both sample policies (ready); asked "When is it
+  acceptable to redact an organisation name?" → correct passage first (0.70) with citation;
+  clicked the citation → dialog showed the real text, labelled FICTIONAL EXAMPLE; Esc closed
+  it; "What are the cafeteria opening hours?" → "do not appear to address this" with best
+  similarity 0.01 vs cutoff 0.38; cited findings created through the real MCP client show
+  the assistant badge, reason and clickable citation; with embeddings disabled the amber
+  banner appears and search reports unavailable. A display bug found this way (hard line
+  breaks mid-sentence in passages) was fixed in the chunker and has a test.
+- **Docker (aarch64 Linux, Python 3.12)**: image builds (8.5 min); backend 2.31 GB, **0** CUDA
+  packages, `torch 2.14.1+cpu`; health says "not downloaded" on an empty volume; policies
+  uploaded then are saved as "unavailable"; after the in-container download, health flips to
+  available with no restart and **Re-index** makes both policies ready; the MCP child finds
+  the model in `/models`; retrieval, refusal and a cited proposal work; probe scores matched
+  the macOS run (0.500 and 0.0106).
+- GitHub Actions has **not** yet run for this phase (CI now also downloads the model).
+
 ### Self-review after Phase 3 (2026-10-14)
 
 Checked, not assumed:
@@ -157,7 +239,8 @@ Caveats that remain (design limits, not bugs):
   "allow the assistant to export" button that issues an assistant-only
   authorization.
 - The client does not reconnect if the server process dies mid-session; calls
-  return `transport_error`. Phase 5 should start one server per agent run.
+  return `transport_error`. Phase 5 should reuse one server per conversation (a fresh server pays a
+  ~20 s model load on its first policy question) and restart it if a call returns `transport_error`.
 - The test suite is slower (~2 min) because most MCP tests start a server process.
 
 ### Phase 3 verification (2026-10-14)
@@ -233,26 +316,21 @@ because of the port conflicts above.
   Resolved with `.local/` downloads (git-ignored). Docker Desktop is now
   installed, but its CLI is not on PATH in every shell: use
   `/Applications/Docker.app/Contents/Resources/bin/docker` (or open a new terminal).
-- `requirements.lock` was generated on Python 3.14 but the backend image uses
-  Python 3.12; the image built and the app ran, but keep an eye on it when
-  Phase 3–5 add dependencies (e.g. sentence-transformers / torch wheels).
+- `requirements.lock` is generated on Python 3.14 (macOS) with two hand-edited `torch`
+  lines (markers) and an `--extra-index-url` header; `pip freeze` will not reproduce them,
+  so re-add them if you regenerate the lock. Python 3.12 (Docker, CI) installs from it fine.
+- The Phase 4 install adds ~1 GB to `backend/.venv` and ~0.9 GB to the backend image.
 - Ports 8000 and 8001 are used by other projects; run ClearCase with
   `CLEARCASE_PORT=8010` and `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`.
 - spaCy NER is pretrained and imperfect: it tagged "MISCELLANEOUS NOTE" as a
   person on the sample. That is expected and is why review is required.
-- Starlette warns that `httpx` with `TestClient` is deprecated in favour of
-  `httpx2`; tests pass today. Evaluate switching in Phase 6.
+- `httpx2` arrived as a dependency of `mcp`, so Starlette's `TestClient` now uses it (the
+  old deprecation warning is gone).
 
 ## Remaining work (by phase)
 
-**Phase 4 — RAG**: policy ingestion (Markdown chunking with policy id, title,
-version, section, source, chunk id), sentence-transformers embeddings (model +
-version tracked, rebuild on change), cosine retrieval in Python filtered by policy
-version/owner, citation-id validation, "policy does not address this" handling,
-clickable passages in the UI. Then replace the `retrieve_policy_guidance` stub and
-let `propose_redactions` accept `policy_refs` **only** if they are real chunk ids.
-
-**Phase 5 — Agent**: bounded tool loop using `McpToolClient`, one hosted provider
+**Phase 5 — Agent**: bounded tool loop using `McpToolClient` (reuse ONE MCP server per
+conversation: each fresh server pays a ~20 s model-load on its first policy question), one hosted provider
 via its official SDK (verify model ids against current docs first), demo mode with
 scripted commands, persisted conversations/messages/agent_runs/tool_events,
 prompt-injection resistance in the system prompt (the structural part is done),
@@ -263,26 +341,41 @@ notice, and a reviewer-visible **Authorize export** hand-off message.
 approve → export → reopen conversation), synthetic evaluation, demo script,
 interview guide, evaluation report, polish, full Compose re-run.
 
-**Known gaps in Phase 3 (deliberate or deferred)**:
+**Known gaps (deliberate or deferred)**:
 - No server-side per-tool timeout (tools are threads; the client enforces it).
 - The UI does not call MCP yet (Phase 5).
-- Tool results include document text snippets by design (the model needs them);
-  Phase 5 must show the user when text goes to a hosted provider.
+- Tool results include document text snippets by design; Phase 5 must show the user when
+  text goes to a hosted provider.
+- Retrieval cutoff (0.38) is conservative: 8/25 answerable dev questions are wrongly turned
+  away. Held-out evaluation (Phase 6) must use a *different* question set than
+  `evaluation/retrieval_dev.json`.
+- Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
+- No frontend unit tests for the new components (verified manually in the browser). A
+  Playwright test in Phase 6 should cover the Policy tab and the citation dialog.
+- Policies cited by findings can be deleted; the UI then says the passage is unavailable
+  (it does not block deletion).
+- Chunker changes do not re-chunk existing policy versions (their content hash is
+  unchanged); use `seed-samples` with `reset`, or upload a new version.
+- GitHub Actions has not run on Phase 4 yet; the first run also downloads the model.
 
 ## Next implementation step
 
-Start **Phase 4** (policy ingestion and retrieval):
+Start **Phase 5** (live agent, persisted chat, visible tool activity):
 
-1. Check `sentence-transformers` / PyTorch compatibility for Python 3.14 (host)
-   *and* 3.12 (Docker image); pick a small maintained embedding model and verify
-   its identifier and licence against its model card before pinning. Keep model
-   downloads out of the image build (cache in a volume).
-2. `policies` + `policy_chunks` collections, Markdown section chunker, seed
-   `sample_data/policies/fictional_redaction_policy.md` (labelled fictional).
-3. Retrieval interface (so a vector index can replace cosine-in-Python later),
-   owner + policy-version filter before ranking, embeddings-unavailable state
-   that never relabels keyword search as semantic.
-4. Citation validation + `GET` endpoint to read a chunk; wire `retrieve_policy_guidance`.
+1. Verify the chosen hosted provider's current **official SDK**, tool-calling API and a
+   valid **model id** against its documentation before writing any code (do not guess
+   ids). Keep the provider adapter separate; read key/model from env.
+2. Collections: `conversations`, `messages` (one record per message, paginated),
+   `agent_runs`, `tool_events` (tool, status, duration, sanitized summary; never raw
+   document text, chain-of-thought or keys). Persist across restarts.
+3. Bounded loop (rounds, time, context size) over `McpToolClient`; handle rate limits,
+   provider errors, cancellation, malformed arguments; retries must not duplicate
+   proposals/exports (proposals are already idempotent).
+4. Demo mode: clearly labelled scripted commands with deterministic tool results; live mode
+   shows clear setup errors and never silently falls back to simulated output.
+5. Chat tab; show tool activity; show a notice when excerpts go to a hosted provider; cite
+   real pages and policy citation ids; reviewer-visible "Authorize export" hand-off.
+6. Prompt-injection tests at the agent level (the structural protections already exist).
 
 ## How to resume quickly
 

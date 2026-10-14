@@ -16,6 +16,7 @@ flowchart LR
         REPO[repositories<br/>ownership-checked queries]
         AGENT[agent loop<br/>Phase 5]
         MCPC[MCP client<br/>app/agent/mcp_client.py]
+        RET[retrieval + policy service<br/>local embeddings · Phase 4]
     end
 
     MCPS[MCP server process<br/>stdio · 7 tools]
@@ -25,7 +26,7 @@ flowchart LR
         DOCS[(documents · pages)]
         REV[(findings · exports · audit<br/>Phase 2)]
         CHAT[(conversations · messages<br/>agent_runs · tool_events · Phase 5)]
-        POL[(policies · policy_chunks<br/>+ embeddings · Phase 4)]
+        POL[(policies · policy_chunks<br/>+ embeddings)]
         GFS[(GridFS: original + exported PDFs)]
     end
 
@@ -33,6 +34,7 @@ flowchart LR
     API --> SVC --> REPO --> Mongo
     API --> AGENT --> MCPC -- "JSON-RPC over stdio" --> MCPS
     MCPS --> SVC
+    SVC --> RET
     AGENT -. "only in live mode" .-> LLM
 ```
 
@@ -112,3 +114,40 @@ python -m app.mcp_server  (owner_id from its own environment)
    ▼
 MongoDB / GridFS
 ```
+
+## Policy retrieval (Phase 4)
+
+```text
+upload / seed ──► policy_chunking ──► policies + policy_chunks (MongoDB)
+                                           ▲            │ vectors + model name + revision
+                  local embedding model ───┘            ▼
+question ──► embed ──► filter (owner · active version · current model) ──► cosine ──► cutoff ──► cited passages
+                                                                                       └─► "policy does not address this"
+```
+
+| Piece | File | Job |
+| --- | --- | --- |
+| Chunker | `services/policy_chunking.py` | Markdown → sections → chunks ≤ 140 words (pure function) |
+| Embedder | `services/embeddings.py` | Local pretrained model, offline-only, honest `available/unavailable` status |
+| Policy service | `services/policy_service.py` | Ingest, versions, embed/re-index, citations |
+| Retriever | `services/retrieval.py` | `PolicyRetriever` interface + brute-force cosine implementation |
+| API | `api/policies.py` | Upload, list, search, passages, activate, re-index, delete |
+| MCP tool | `mcp_server/server.py` | `retrieve_policy_guidance`; `propose_redactions` accepts validated `policy_refs` |
+
+### Data model (Phase 4)
+
+```text
+policies                                   policy_chunks
+--------                                   -------------
+owner_id, policy_id, version  (unique)     owner_id, policy_key = "policy_id:version"
+title, source, content_hash                citation_id = "policy_id:version:ordinal"  (unique per owner)
+is_fictional_example                       ordinal, section, text, text_hash, word_count
+status: active | archived                  embedding: [384 floats] | null
+  (one active per policy: partial          embedding_model, embedding_revision, embedded_at
+   unique index)                           truncated_by_model
+chunk_count, word_count, embedding_note
+```
+
+Indexes: `policies(owner_id, policy_id, version)` unique; `policies(owner_id, policy_id)`
+unique where `status = active`; `policy_chunks(owner_id, policy_key, ordinal)` unique;
+`policy_chunks(owner_id, citation_id)` unique.

@@ -6,7 +6,9 @@ import { ExportPanel } from './components/ExportPanel'
 import { FindingsPanel } from './components/FindingsPanel'
 import { HealthBanner } from './components/HealthBanner'
 import { PageTextPanel } from './components/PageTextPanel'
+import { PassageDialog } from './components/PassageDialog'
 import { PdfViewer, type Highlight } from './components/PdfViewer'
+import { PoliciesPanel } from './components/PoliciesPanel'
 import { ReviewSidebar, type TabId } from './components/ReviewSidebar'
 import { SearchPanel } from './components/SearchPanel'
 import { Sidebar } from './components/Sidebar'
@@ -25,6 +27,7 @@ export default function App() {
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
   const [draw, setDraw] = useState<DrawMode>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [citation, setCitation] = useState<string | null>(null)
 
   // Derived, not stored: if the selected document is deleted it simply stops
   // matching and the workspace falls back to the empty state.
@@ -196,8 +199,11 @@ export default function App() {
             onBulk={(ids, a) => void bulk(ids, a)}
             onStartManual={() => setDraw({ kind: 'manual' })}
             onStartAdjust={startAdjust}
+            onOpenCitation={setCitation}
           />
         )
+      case 'policy':
+        return <PoliciesPanel onOpenCitation={setCitation} />
       case 'search':
         return (
           <SearchPanel
@@ -233,6 +239,7 @@ export default function App() {
   return (
     <div className="flex h-full flex-col">
       <HealthBanner />
+      <PassageDialog citationId={citation} onClose={() => setCitation(null)} />
       <div className="flex min-h-0 flex-1">
         <Sidebar
           documents={docs.documents}

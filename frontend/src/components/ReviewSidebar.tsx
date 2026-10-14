@@ -1,10 +1,11 @@
 import { useState } from 'react'
 
-export type TabId = 'review' | 'search' | 'text' | 'export'
+export type TabId = 'review' | 'search' | 'policy' | 'text' | 'export'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'review', label: 'Review' },
   { id: 'search', label: 'Search' },
+  { id: 'policy', label: 'Policy' },
   { id: 'text', label: 'Text' },
   { id: 'export', label: 'Export' },
 ]

@@ -21,6 +21,8 @@ from pymongo.errors import PyMongoError
 
 from app.config import Settings
 from app.main import create_app
+from app.services.embeddings import embedding_status
+from tests.support.fake_embedder import FakeEmbedder
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SAMPLE_CONTRACT = REPO_ROOT / "sample_data" / "sample_contract.pdf"
@@ -56,6 +58,31 @@ def client(test_settings: Settings, mongo_client: MongoClient) -> Iterator[TestC
     app = create_app(test_settings)
     with TestClient(app) as c:
         yield c
+
+
+# ------------------------------------------------------------ policy / embedding fixtures
+@pytest.fixture(scope="session")
+def fake_settings(test_settings: Settings) -> Settings:
+    """Settings for logic tests that use the fake embedder (its own model name/revision, lower cutoff)."""
+    return test_settings.model_copy(
+        update={"embedding_model": "fake/bow", "embedding_revision": "fake-rev-1", "retrieval_min_score": 0.2}
+    )
+
+
+@pytest.fixture
+def fake_client(fake_settings: Settings, mongo_client: MongoClient) -> Iterator[TestClient]:
+    """App wired to the fake embedder, on an empty database."""
+    mongo_client.drop_database(fake_settings.mongodb_db)
+    app = create_app(fake_settings)
+    app.state.embedder_provider = lambda: FakeEmbedder(model_id="fake/bow", revision="fake-rev-1")
+    with TestClient(app) as c:
+        yield c
+
+
+requires_embedding_model = pytest.mark.skipif(
+    not embedding_status(Settings(_env_file=None)).available,
+    reason="the real embedding model is not downloaded (run scripts/download_models.sh); CI downloads it",
+)
 
 
 # --------------------------------------------------------------------- fixtures

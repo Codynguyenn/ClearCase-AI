@@ -89,6 +89,16 @@ export interface HealthResponse {
   pdf_engine: string
   ner_available: boolean
   ner_model: string | null
+  embeddings: EmbeddingStatus
+}
+
+export interface EmbeddingStatus {
+  available: boolean
+  enabled: boolean
+  model: string
+  revision: string
+  dimension: number | null
+  reason: string | null
 }
 
 export interface ApiErrorBody {
@@ -160,6 +170,7 @@ export interface Finding {
   origin: 'detector' | 'search' | 'manual' | 'agent'
   label: 'format_valid' | 'review_needed' | 'user_specified' | 'manual_region'
   explanation: string
+  policy_refs: string[]
   status: ReviewStatus
   mappable: boolean
   partial_word: boolean
@@ -229,4 +240,70 @@ export interface ExportRecord {
   stale: boolean
   downloadable: boolean
   created_at: string
+}
+
+// ---------------------------------------------------------------- policies (Phase 4)
+export type PolicyStatus = 'active' | 'archived'
+export type EmbeddingState = 'ready' | 'partial' | 'stale' | 'unavailable' | 'pending'
+
+export interface EmbeddingSummary {
+  state: EmbeddingState
+  model: string
+  revision: string
+  chunks_current: number
+  chunks_stale: number
+  chunks_missing: number
+  detail: string | null
+}
+
+export interface PolicyRecord {
+  id: string
+  policy_id: string
+  version: string
+  title: string
+  source: string
+  is_fictional_example: boolean
+  status: PolicyStatus
+  chunk_count: number
+  word_count: number
+  truncated_chunks: number
+  embedding: EmbeddingSummary
+  created_at: string
+  updated_at: string
+}
+
+export interface PolicyPassage {
+  citation_id: string
+  policy_id: string
+  policy_title: string
+  policy_version: string
+  policy_status: PolicyStatus
+  section: string
+  source: string
+  ordinal: number
+  text: string
+  is_fictional_example: boolean
+}
+
+export interface RetrievedPassage extends PolicyPassage {
+  score: number
+  rank: number
+}
+
+export type RetrievalStatus = 'ok' | 'no_relevant_policy' | 'no_policies' | 'unavailable'
+
+export interface RetrievalResult {
+  status: RetrievalStatus
+  message: string
+  query: string
+  passages: RetrievedPassage[]
+  method: { kind: string; model: string; revision: string; min_score: number; note: string }
+  chunks_considered: number
+  chunks_stale_ignored: number
+  top_score_below_cutoff: number | null
+}
+
+export interface ResolveResult {
+  found: PolicyPassage[]
+  missing: string[]
 }
