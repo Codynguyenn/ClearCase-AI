@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-13 (end of Phase 2)
+Last updated: 2026-10-14 (Phases 1–2 re-verified; Phase 3 not started)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -91,20 +91,56 @@ Manual browser verification (Cursor browser, 2026-10-13):
   `512-44-9087` absent; `Northwind Analytics LLC`, `Blue Harbor Consulting`
   and `MISCELLANEOUS` present; metadata scrubbed.
 
-Not yet tested: Playwright E2E (Phase 6), Docker Compose build, GitHub Actions
-run (repo has no remote yet).
+### Re-verification of Phases 1–2 (2026-10-14, new session)
+
+Run again from scratch before starting Phase 3:
+
+- Backend: `144 passed in 34.40s` (6 deprecation warnings: SWIG types from a
+  dependency and Starlette's `httpx` → `httpx2` notice).
+- Frontend: `npm run lint`, `typecheck`, `build` clean; `npm test` **11 passed**.
+  Build warns that the JS chunk is > 500 kB (pdf.js); not an error.
+- **Docker Compose (first time ever tested)**: Docker Desktop 29.8.2 on arm64,
+  Compose v5.6.0. `docker compose build` succeeded for backend (Python 3.12-slim
+  + `requirements.lock` + `en_core_web_sm`) and frontend (node:22-alpine). All
+  three containers came up; Mongo healthcheck passed; `/api/health` reported
+  `mongodb: true`, `ner_available: true`, demo mode.
+- End-to-end workflow against the containerised stack (HTTP script, 31/31
+  checks): upload → ready (3 text pages) → fake PDF rejected (422) → export
+  refused with nothing approved (409) → detect/propose 18 findings, all
+  `proposed`, no ORGANIZATION → reject NER false positive → approve 17 →
+  authorize → export with all 8 built-in verification checks passing → retry
+  with same authorization is idempotent → independent re-open of the downloaded
+  PDF: approved text gone, both company names and the rejected item still
+  present, metadata empty, stored original unchanged.
+- Restarted the Mongo and backend containers: document, 18 findings (17
+  approved / 1 rejected) and the verified export all persisted.
+- UI served from the container (`:5173`) restored the saved review state and
+  drew the highlights over the PDF; no console errors.
+
+Compose test was done with a temporary port-remap override (backend 8010, Mongo
+27018) because the host's 8000/8001 and the native Mongo's 27017 were taken.
+The repo's `docker-compose.yml` was **not** changed; on a machine where those
+ports are free it publishes 8000 / 27017 / 5173 as written.
+
+Not yet tested: Playwright E2E (Phase 6), GitHub Actions run (repo has no remote
+yet). A bare `docker compose up --build` with the default ports was not run here
+because of the port conflicts above.
 
 ## Known issues / notes
 
-- Dev machine: Python 3.14.7, Node 22.11.0 (below Vite 8's ≥22.12), no Docker,
-  no Homebrew. Resolved with `.local/` downloads (git-ignored).
+- Dev machine: Python 3.14.7, Node 22.11.0 (below Vite 8's ≥22.12), no Homebrew.
+  Resolved with `.local/` downloads (git-ignored). Docker Desktop is now
+  installed, but its CLI is not on PATH in every shell: use
+  `/Applications/Docker.app/Contents/Resources/bin/docker` (or open a new terminal).
+- `requirements.lock` was generated on Python 3.14 but the backend image uses
+  Python 3.12; the image built and the app ran, but keep an eye on it when
+  Phase 3–5 add dependencies (e.g. sentence-transformers / torch wheels).
 - Ports 8000 and 8001 are used by other projects; run ClearCase with
   `CLEARCASE_PORT=8010` and `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`.
 - spaCy NER is pretrained and imperfect: it tagged "MISCELLANEOUS NOTE" as a
   person on the sample. That is expected and is why review is required.
 - Starlette warns that `httpx` with `TestClient` is deprecated in favour of
   `httpx2`; tests pass today. Evaluate switching in Phase 6.
-- Docker Desktop is still the recommended install after Phase 2 (now).
 
 ## Remaining work (by phase)
 
@@ -154,6 +190,3 @@ CLEARCASE_PORT=8010 scripts/dev_backend.sh          # terminal 1
 VITE_API_PROXY_TARGET=http://127.0.0.1:8010 scripts/dev_frontend.sh   # terminal 2
 cd backend && .venv/bin/python -m pytest -q
 ```
-
-**Now is a good time to install Docker Desktop** if you want
-`docker compose up --build` tested before Phase 3 adds more dependencies.
