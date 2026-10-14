@@ -147,6 +147,17 @@ class AuthorizationRepository:
     def get(self, token_hash: str, *, document_id: str, owner_id: str) -> dict[str, Any] | None:
         return self._col.find_one({"_id": token_hash, "document_id": document_id, "owner_id": owner_id})
 
+    def find_latest(self, document_id: str, owner_id: str, *, created_after: datetime) -> dict[str, Any] | None:
+        """The newest authorization the reviewer issued for this document within the window.
+
+        Used by the MCP export tool, which never receives a token: the human issues
+        one in the UI and the server finds it here.
+        """
+        return self._col.find_one(
+            {"document_id": document_id, "owner_id": owner_id, "created_at": {"$gte": created_after}},
+            sort=[("created_at", -1)],
+        )
+
     def consume(self, token_hash: str, now: datetime) -> bool:
         """Atomically mark as used. Exactly one caller can win."""
         result = self._col.update_one({"_id": token_hash, "consumed_at": None}, {"$set": {"consumed_at": now}})

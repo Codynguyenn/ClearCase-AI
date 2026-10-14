@@ -1,8 +1,8 @@
 # ClearCase architecture
 
 ClearCase is a local, single-user MVP with four processes: a React frontend, a
-FastAPI backend, MongoDB, and (from Phase 3) an MCP server the backend talks to
-over stdio.
+FastAPI backend, MongoDB, and an MCP server (Phase 3, built) that the backend's
+agent talks to over stdio.
 
 ```mermaid
 flowchart LR
@@ -15,10 +15,10 @@ flowchart LR
         SVC[services<br/>pdf_processing · document_service]
         REPO[repositories<br/>ownership-checked queries]
         AGENT[agent loop<br/>Phase 5]
-        MCPC[MCP client<br/>Phase 3]
+        MCPC[MCP client<br/>app/agent/mcp_client.py]
     end
 
-    MCPS[MCP server process<br/>stdio · Phase 3]
+    MCPS[MCP server process<br/>stdio · 7 tools]
     LLM[(Hosted LLM provider<br/>live mode only · Phase 5)]
 
     subgraph Mongo[MongoDB]
@@ -44,7 +44,8 @@ flowchart LR
 | Services | `backend/app/services` | Business rules: validation, extraction, lifecycle, deletion cascade | Repositories, PyMuPDF |
 | Repositories | `backend/app/repositories` | The only code that runs MongoDB queries; every query filters by `owner_id` | pymongo, GridFS |
 | Models | `backend/app/models` | Pydantic schemas shared by API, services and (later) MCP tools | nothing else |
-| Agent / MCP | `backend/app/agent`, `backend/app/mcp_server` | Tool-calling loop and the tool server (Phases 3 and 5) | Services |
+| MCP server | `backend/app/mcp_server` | The seven tools, their schemas and safety rules; runs as its own process | Services |
+| MCP client / agent | `backend/app/agent` | `mcp_client.py` (Phase 3): discovery, argument validation, timeouts, size cap. The tool-calling loop arrives in Phase 5 | MCP SDK |
 
 Keeping PDF processing, persistence and HTTP in different modules means each can
 be tested on its own: `test_pdf_processing.py` never touches the database, and
@@ -79,3 +80,35 @@ created_at, updated_at
 
 Indexes: `documents(owner_id, created_at desc)`, `documents(owner_id, content_hash)`,
 `pages(document_id, page_number) unique`.
+
+## MCP tools (Phase 3)
+
+The agent never imports tool code. It starts `python -m app.mcp_server`, performs
+the MCP handshake, lists the tools and their JSON Schemas, and calls them over
+stdio. The tools are thin wrappers over the same services the REST API uses.
+
+| Tool | Reads / writes | Notes |
+| --- | --- | --- |
+| `search_document` | read | literal search, occurrence ids, pages, spans, boxes; lists unsupported pages |
+| `get_document_excerpt` | read | ≤ 4,000 characters, resumable with `start` / `has_more` |
+| `detect_sensitive_entities` | read | candidates + detector provenance; saves nothing |
+| `retrieve_policy_guidance` | read | honest "not available" until Phase 4 |
+| `propose_redactions` | writes `proposed` only | span + exact expected text, verified server-side; idempotent |
+| `get_review_summary` | read | counts, blockers, unresolved ids; no document text |
+| `export_approved_redactions` | creates an export | works only after the *reviewer* issued an authorization |
+
+What is deliberately **not** a tool: approve, reject, adjust, delete, issue an
+export authorization. See `docs/decisions.md` 17–23.
+
+```text
+agent loop (Phase 5)
+   │  call("search_document", {...})
+   ▼
+McpToolClient ── validate args vs discovered schema ── timeout ── size cap
+   │  JSON-RPC over the child's stdin/stdout
+   ▼
+python -m app.mcp_server  (owner_id from its own environment)
+   │  ownership-checked services
+   ▼
+MongoDB / GridFS
+```

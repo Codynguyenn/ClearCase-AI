@@ -4,8 +4,8 @@ AI-assisted legal document redaction — a local portfolio MVP demonstrating rea
 MCP tool use, retrieval-augmented generation over redaction policies, PDF
 processing with true content removal, and MongoDB as the system of record.
 
-> **Status: Phase 2 of 6 complete** (upload, extraction, search, detection,
-> review, real export and verification). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
+> **Status: Phase 3 of 6 complete** (upload, extraction, search, detection,
+> review, real export and verification, and a real MCP server/client). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
 > for what works, test results and the next step. The full specification lives in
 > [`docs/ClearCase_Cursor_Prompt.md`](docs/ClearCase_Cursor_Prompt.md).
 
@@ -48,7 +48,8 @@ item. Sample documents and the seeded policy are synthetic and fictional.
 | Backend | Python 3.11+, FastAPI, Pydantic v2, `pymongo` (official), PyMuPDF, spaCy | `backend/requirements.lock` |
 | Database | MongoDB 8.0 Community + GridFS | — |
 | Tests | pytest (backend), vitest (frontend geometry), Playwright (Phase 6) | — |
-| Later phases | official `mcp` SDK, sentence-transformers, hosted LLM | — |
+| MCP | official `mcp` SDK 2.3.0 (stdio server + client), `jsonschema` | `backend/requirements.lock` |
+| Later phases | sentence-transformers, hosted LLM | — |
 
 ### Licensing note (important)
 
@@ -159,7 +160,22 @@ for the reasoning behind each major choice.
 - NER is a pretrained model we did not train; it produces false positives
   (for example "MISCELLANEOUS NOTE" tagged as a person). That is why every
   finding needs a human decision and why we never invent a confidence score.
-- MCP, RAG, the assistant and the Playwright end-to-end test are later phases.
+- RAG, the assistant (the tool-calling loop and chat) and the Playwright end-to-end test are later phases.
+- The MCP server and client exist and are tested, but nothing in the UI calls them yet; that is Phase 5.
+
+## MCP server (Phase 3)
+
+A real Model Context Protocol server runs as its own process over stdio:
+
+```bash
+cd backend && .venv/bin/python -m app.mcp_server   # speaks JSON-RPC on stdin/stdout; logs to stderr
+```
+
+You normally never start it by hand: the backend's `McpToolClient`
+(`backend/app/agent/mcp_client.py`) launches it, lists the tools and calls them.
+Tests that do exactly that: `backend/tests/test_mcp_protocol.py` and
+`test_mcp_client.py`. The tool list, safety rules and reasoning are in
+[`docs/architecture.md`](docs/architecture.md) and `docs/decisions.md` (17–23).
 
 ## Troubleshooting
 
@@ -173,6 +189,7 @@ for the reasoning behind each major choice.
 | Document stuck in "Processing" after a crash | On the next backend start it is marked `error`; click **Retry processing**. |
 | Tests fail with "MongoDB is required" | Start MongoDB first; tests intentionally do not fall back to a mock. |
 | NER tests skipped / people not detected | Run `scripts/download_models.sh` and restart the backend. Pattern detection still works. |
+| MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Authorize export** in the Export tab (valid 5 minutes), then ask again. |
 | Export button disabled | Every proposal must be approved or rejected. Check the Review tab badge. |
 
 ## Repository layout
@@ -182,8 +199,8 @@ backend/app/api            HTTP routes
 backend/app/services       validation, extraction, document lifecycle
 backend/app/repositories   MongoDB + GridFS access (ownership-checked)
 backend/app/models         Pydantic schemas
-backend/app/agent          (Phase 5) tool-calling loop
-backend/app/mcp_server     (Phase 3) MCP server over stdio
+backend/app/agent          mcp_client.py (Phase 3); tool-calling loop (Phase 5)
+backend/app/mcp_server     MCP server over stdio: seven tools (Phase 3)
 backend/tests              pytest suite
 frontend/src               React app (api/, hooks/, components/, lib/)
 sample_data/               synthetic contract generator + fictional policy
