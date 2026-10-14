@@ -136,8 +136,50 @@ class ExportService:
 
     # ------------------------------------------------------------------- export
     def export(self, document_id: str, owner_id: str, req: ExportRequest) -> ExportRecord:
+        """Reviewer path (REST): the caller presents the token the reviewer was given."""
+        return self._export_authorized(
+            document_id,
+            owner_id,
+            hash_token(req.authorization),
+            acknowledge_unsupported_pages=req.acknowledge_unsupported_pages,
+        )
+
+    def export_with_reviewer_authorization(self, document_id: str, owner_id: str) -> ExportRecord:
+        """Assistant path (MCP): the model never sees or supplies a token.
+
+        The reviewer issues an authorization in the UI. This finds the newest one for
+        this document (issued within the last few minutes) and runs the exact same
+        checks as the REST path: unexpired, unconsumed, and still matching the
+        document hash, review revision and approved rectangles. Retrying after a
+        success returns the same export, never a second one.
+
+        The assistant can never acknowledge unsupported pages; that stays a human
+        decision made in the UI.
+        """
+        self.documents.get(document_id, owner_id=owner_id)  # ownership first: unknown id -> not found
+        auth = self.authorizations.find_latest(
+            document_id, owner_id, created_after=utcnow() - AUTHORIZATION_TTL
+        )
+        if auth is None:
+            raise AuthorizationError(
+                "No export authorization from the reviewer is pending. Ask the reviewer to click "
+                "'Authorize export' in the Export tab, then try again.",
+                code="authorization_required",
+            )
+        return self._export_authorized(
+            document_id, owner_id, auth["_id"], acknowledge_unsupported_pages=False, actor="assistant"
+        )
+
+    def _export_authorized(
+        self,
+        document_id: str,
+        owner_id: str,
+        token_hash: str,
+        *,
+        acknowledge_unsupported_pages: bool,
+        actor: str = "reviewer",
+    ) -> ExportRecord:
         record = self.documents.get(document_id, owner_id=owner_id)
-        token_hash = hash_token(req.authorization)
         auth = self.authorizations.get(token_hash, document_id=document_id, owner_id=owner_id)
         if auth is None:
             raise AuthorizationError("Unknown export authorization. Request a new one.")
@@ -164,7 +206,7 @@ class ExportService:
         if not summary.can_export:
             raise ConflictError("Export is not allowed: " + " ".join(summary.export_blockers), code="export_blocked")
         unsupported = list(summary.unsupported_pages)
-        if unsupported and not req.acknowledge_unsupported_pages:
+        if unsupported and not acknowledge_unsupported_pages:
             raise ConflictError(
                 f"Pages {', '.join(map(str, unsupported))} could not be analysed (scanned or mixed). "
                 "Acknowledge this to export anyway.",
@@ -189,6 +231,7 @@ class ExportService:
             "export_completed",
             {
                 "export_id": export_id,
+                "actor": actor,  # who pressed the button: the reviewer (REST) or the assistant (MCP)
                 "status": export_doc["status"],
                 "approved_count": export_doc["approved_count"],
                 "failed_checks": [c["name"] for c in export_doc["checks"] if not c["passed"]],

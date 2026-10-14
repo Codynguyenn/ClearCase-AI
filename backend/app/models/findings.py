@@ -45,6 +45,7 @@ class Origin(StrEnum):
     DETECTOR = "detector"
     SEARCH = "search"
     MANUAL = "manual"
+    AGENT = "agent"  # proposed by the assistant through an MCP tool; never auto-approved
 
 
 class ReviewLabel(StrEnum):

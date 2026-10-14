@@ -157,7 +157,7 @@ export interface Finding {
   category: Category
   source: string
   sources: string[]
-  origin: 'detector' | 'search' | 'manual'
+  origin: 'detector' | 'search' | 'manual' | 'agent'
   label: 'format_valid' | 'review_needed' | 'user_specified' | 'manual_region'
   explanation: string
   status: ReviewStatus

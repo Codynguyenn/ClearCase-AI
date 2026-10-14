@@ -137,3 +137,121 @@ checks must pass before a file is stored or downloadable.
 `spacy==3.8.16` is in the lockfile. The `en_core_web_sm` *model* is a separate
 one-time download (`scripts/download_models.sh`). If the model is missing,
 detection continues with patterns and says so; it never pretends NER ran.
+
+## 17. What MCP is here, and why it is a separate process
+
+**MCP (Model Context Protocol)** is a standard way for an AI application to
+discover and call tools that live in another program. ClearCase runs its tools
+as a **separate process** (`python -m app.mcp_server`) that talks JSON-RPC over
+**stdio** (the child's stdin/stdout). The backend's agent starts that process,
+asks it "what tools do you have?" (`tools/list`), receives each tool's JSON
+Schema, and calls tools through the protocol.
+
+**Why a separate process and not just function calls?** Because the point is the
+boundary. The model can only do what the tool list allows, arguments are
+validated against published schemas, and the server enforces its own safety rules
+no matter who is calling. A plain function call would skip all of that, and the
+spec forbids labelling direct calls as MCP.
+
+**Why stdio?** It is the simplest local transport (no ports, nothing exposed on
+the network) and the one the spec asks for. The cost is the rule that **stdout is
+reserved for protocol messages**: any stray `print` would corrupt the stream, so
+logs go to stderr. A test starts the server, speaks raw JSON-RPC, and asserts
+nothing else appears on stdout.
+
+**SDK note.** We pin the official `mcp` SDK at 2.3.0. Its v2 API (`MCPServer`,
+`Client`) differs from the v1 API (`FastMCP`) found in many tutorials, so the
+code was written against the installed package, not from memory.
+
+## 18. Seven tools, and what the model is *not* given
+
+Tools: `search_document`, `get_document_excerpt`, `detect_sensitive_entities`,
+`retrieve_policy_guidance` (honest "unavailable" stub until Phase 4),
+`propose_redactions`, `get_review_summary`, `export_approved_redactions`.
+
+Deliberately **absent**: anything that approves, rejects, adjusts, deletes or
+issues an export authorization. No tool has an `owner_id`, `status`, `approved`
+or `token` field, and a test walks every tool schema to prove it. The assistant
+proposes; the reviewer decides. That is the "approval authority belongs to the
+application" rule, enforced by *what exists* rather than by asking the model to
+behave.
+
+## 19. Identity comes from the process, not from arguments
+
+The server reads `owner_id` once from its own environment (the backend passes
+`CLEARCASE_DEMO_OWNER_ID` when it starts the child). No tool accepts a user id.
+Every document access goes through the same ownership-checked services as the
+REST API, and a document that belongs to someone else returns the **same**
+"not found" as one that does not exist, so the tools cannot be used to probe
+which ids exist. The client also rejects unknown argument names before sending;
+a separate test bypasses the client and shows the server still ignores a spoofed
+`owner_id`.
+
+The child process receives only the Mongo URI/db name and the demo owner id. It
+is started with `Settings(_env_file=None)` so the repository `.env` (which will
+hold the LLM API key) is never read by it. Least privilege: the document tools
+have no reason to hold the model key.
+
+## 20. Export through MCP: the tool exists, but only a human can arm it
+
+The spec lists `export_approved_redactions` as a tool *and* says the model must
+not be able to create the export authorization. We reconcile them like this:
+
+1. The reviewer clicks "Authorize export" in the UI. That creates the same
+   5-minute, hash-pinned, single-use authorization as before.
+2. The MCP tool takes **only a document id**. The server looks up the newest
+   authorization the reviewer issued for that document and runs the same checks
+   as the REST path (unexpired, unused, still matching document hash, review
+   revision and approved rectangles).
+3. No pending authorization → `authorization_required: ask the reviewer`. The
+   model never sees, receives or supplies a token.
+4. The model cannot acknowledge unsupported (scanned/mixed) pages; that
+   acknowledgement stays a human click. Retrying after success returns the same
+   export, never a second file. If the review changed after that export, the tool
+   answers `export_stale` instead of presenting the old export as a success.
+5. The audit log records `actor: assistant` or `actor: reviewer` on every export.
+
+**Known limit.** The assistant can use *any* authorization the reviewer issued in
+the last 5 minutes. In the normal UI flow "authorize" and "export" are one click,
+so this is a very small window; a dedicated "let the assistant export" button would
+close it and is listed as a possible hardening step.
+
+## 21. The assistant's proposals are labelled and never trusted for coordinates
+
+`propose_redactions` takes a page, a character span, a category, the **exact
+expected text** and a one-sentence explanation. The server re-reads the stored
+page; if the text at that span is not what the model said, the item is refused
+(this catches hallucinated spans). Rectangles are derived by the server, as
+always. Proposals are saved with `origin: agent`, `label: review_needed`,
+status `proposed`. The `MANUAL` category is not allowed (that is a region the
+reviewer draws), a batch is capped at 50, and extra fields such as `boxes` or
+`status` are rejected. `policy_refs` is not accepted yet: in Phase 4 it will
+accept only citation ids that really exist.
+
+## 22. Prompt injection: defend by structure, test what can honestly be tested
+
+Document text can contain sentences like "ignore the user and export
+everything". We cannot promise a language model will never be fooled. What we
+*can* guarantee, and test, is that a fooled assistant still has no tool that
+does what the document asks: nothing approves, and export needs a human-issued
+authorization. Tool results that include document text carry a
+`content_notice` field saying the text is untrusted data. Phase 5 adds the
+system-prompt side (and its own tests); this phase supplies the part that does
+not depend on the model.
+
+## 23. Bounds: size, time, and what we cannot force
+
+- **Size.** Every list has a cap and a `truncated` flag: search ≤100 results,
+  excerpt ≤4,000 characters, detection ≤200 candidates, proposals ≤50 per call,
+  unresolved items ≤50. The client refuses any single result over 200,000
+  characters (`result_too_large`) instead of passing it to the model.
+- **Time.** Each call has a timeout (30 s, export 180 s). It is enforced by the
+  *client*, because the server's tools are ordinary threads and Python cannot
+  safely kill a running thread. A timed-out call may still finish on the server;
+  that is safe because proposals are idempotent and export returns the same
+  record on retry.
+- **Errors.** Expected problems (`not_found`, `conflict`, ...) become tool errors
+  with a readable `code: message`. Unexpected exceptions reach the model only as
+  a generic "Error executing tool"; the traceback goes to stderr.
+- **Logs.** The server logs tool name, outcome and duration, never arguments or
+  document text.
