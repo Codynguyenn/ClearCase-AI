@@ -58,7 +58,7 @@ def main() -> None:
 
     results = []
     for low in GRID:
-        def weak(r: dict) -> list:
+        def weak(r: dict, low: float = low) -> list:  # bound as a default so each iteration keeps its own value
             return [p for p in r["ranking"] if low <= p.score < cutoff][:3]
 
         recovered = sum(

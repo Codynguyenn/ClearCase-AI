@@ -12,7 +12,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -26,6 +28,7 @@ from assistant_eval.metrics import (  # noqa: E402
     Item,
     Proposal,
     bootstrap,
+    f1,
     paired_difference,
     score_document,
     summarise,
@@ -80,27 +83,79 @@ def company_address_indexes(truth: Sequence[Item]) -> set[int]:
     return found
 
 
-def without_company_addresses(truth: Sequence[Item], proposals: Sequence[Proposal]) -> tuple[list[Item], list[Proposal]]:
-    """Drop the company-address items, and the proposals that the scoring rule would have attributed to them (they become neutral)."""
-    drop = company_address_indexes(truth)
+def attributed_index(truth: Sequence[Item], p: Proposal) -> int | None:
+    """Index of the ground-truth item the scoring rule attributes a proposal to (largest overlap, at least half the proposal inside it)."""
+    best, best_overlap = None, 0
+    for i, item in enumerate(truth):
+        overlap = max(0, min(p.end, item.end) - max(p.start, item.start)) if item.page == p.page else 0
+        if overlap > best_overlap:
+            best, best_overlap = i, overlap
+    return best if best is not None and best_overlap >= ATTRIBUTION_MIN * max(p.end - p.start, 1) else None
+
+
+def without_indexes(truth: Sequence[Item], proposals: Sequence[Proposal], drop: set[int]) -> tuple[list[Item], list[Proposal]]:
+    """Drop the given ground-truth items, and the proposals that the scoring rule would have attributed to them (they become neutral)."""
     kept_truth = [item for i, item in enumerate(truth) if i not in drop]
-    kept: list[Proposal] = []
-    for p in proposals:
-        best, best_overlap = None, 0
-        for i, item in enumerate(truth):
-            overlap = max(0, min(p.end, item.end) - max(p.start, item.start)) if item.page == p.page else 0
-            if overlap > best_overlap:
-                best, best_overlap = i, overlap
-        if best in drop and best_overlap >= ATTRIBUTION_MIN * max(p.end - p.start, 1):
-            continue
-        kept.append(p)
+    kept = [p for p in proposals if attributed_index(truth, p) not in drop]
     return kept_truth, kept
 
 
-def posthoc_scores(docs: Sequence[dict], proposals_by_doc: dict[str, list[Proposal]]) -> list[DocScore]:
+def without_company_addresses(truth: Sequence[Item], proposals: Sequence[Proposal]) -> tuple[list[Item], list[Proposal]]:
+    return without_indexes(truth, proposals, company_address_indexes(truth))
+
+
+# ------------------------------------------------------------------------------------------------ post-hoc: malformed phone numbers
+# NOT pre-registered. A second flaw in the synthetic data, seen after the run in the per-category table: the generator wrote every phone
+# number with a 3-digit last group ("555-044"), so each has 9 digits once the country code is dropped. That is not a US phone number, and the
+# pattern detectors (which validate) cannot match any of them, so their PHONE recall of 0 is an artefact of the data, not a detector result.
+def valid_us_phone(text: str) -> bool:
+    """A US number has 10 digits after an optional country code (+1, or a leading 1 on 11 digits)."""
+    stripped = text.strip()
+    digits = re.sub(r"\D", "", stripped)
+    if stripped.startswith("+1") or (len(digits) == 11 and digits.startswith("1")):
+        digits = digits[1:]
+    return len(digits) == 10
+
+
+def malformed_phone_indexes(doc: dict) -> set[int]:
+    """Indexes (in ``truth_items`` order) of PHONE items whose text is not a valid US phone number."""
+    return {i for i, g in enumerate(doc["ground_truth"]) if g["kind"] == "PHONE" and not valid_us_phone(g["text"])}
+
+
+def strict_by_category(docs: Sequence[dict], proposals_by_doc: dict[str, list[Proposal]], recall_by_category: dict) -> dict[str, dict]:
+    """Precision, recall and F1 per entity category (the spec's table).
+
+    A proposal counts for its category only if it lands on a personal item (the usual location rule) AND the label the proposer
+    gave is that item's category: a correct span labelled with the wrong category is a miss for the label it used. Recall is the
+    usual 80%-coverage recall per ground-truth category; F1 is their harmonic mean. Pooled over documents."""
+    proposed, agree = Counter(), Counter()
+    for d in docs:
+        truth = truth_items(d)
+        for p in proposals_by_doc.get(d["id"], []):
+            proposed[p.label] += 1
+            i = attributed_index(truth, p)
+            if i is not None and not truth[i].keep and truth[i].kind == p.label:
+                agree[p.label] += 1
+    out = {}
+    for c in SENSITIVE:
+        precision = agree[c] / proposed[c] if proposed[c] else None
+        recall = recall_by_category[c]["recall"]
+        out[c] = {"proposed": proposed[c], "label_and_place_correct": agree[c], "precision": precision, "recall": recall, "f1": f1(precision, recall)}
+    return out
+
+
+def drop_company_addresses(doc: dict) -> set[int]:
+    return company_address_indexes(truth_items(doc))
+
+
+def drop_both(doc: dict) -> set[int]:
+    return drop_company_addresses(doc) | malformed_phone_indexes(doc)
+
+
+def posthoc_scores(docs: Sequence[dict], proposals_by_doc: dict[str, list[Proposal]], dropper=drop_company_addresses) -> list[DocScore]:
     out = []
     for d in docs:
-        truth, proposals = without_company_addresses(truth_items(d), proposals_by_doc.get(d["id"], []))
+        truth, proposals = without_indexes(truth_items(d), proposals_by_doc.get(d["id"], []), dropper(d))
         out.append(score_document(truth, proposals))
     return out
 
@@ -206,28 +261,37 @@ def build(split: str) -> dict:
     systems: dict[str, dict] = {}
     score_lists: dict[str, list[DocScore]] = {}
     posthoc_lists: dict[str, list[DocScore]] = {}
+    proposals_by_system: dict[str, dict[str, list[Proposal]]] = {}
     for name, body in baselines_raw["systems"].items():
         by_doc = {p["id"]: [Proposal(*x) for x in p["proposals"]] for p in body["per_document"]}
         score_lists[name] = per_doc_scores(docs, by_doc)
         posthoc_lists[name] = posthoc_scores(docs, by_doc)
+        proposals_by_system[name] = by_doc
         systems[name] = system_summary(docs, score_lists[name], None)
+        systems[name]["by_category"] = strict_by_category(docs, by_doc, systems[name]["recall_by_category"])
     for model in models:
         runs = [finals[(d["id"], model)] for d in docs if (d["id"], model) in finals]
         by_doc = {r["doc_id"]: [Proposal(*x) for x in r["proposals"]] for r in runs}
         score_lists[model] = per_doc_scores(docs, by_doc)
         posthoc_lists[model] = posthoc_scores(docs, by_doc)
+        proposals_by_system[model] = by_doc
         systems[model] = system_summary(docs, score_lists[model], runs)
+        systems[model]["by_category"] = strict_by_category(docs, by_doc, systems[model]["recall_by_category"])
         systems[model]["documents_run"] = len(runs)
 
-    excluded = {d["id"]: len(company_address_indexes(truth_items(d))) for d in docs}
-    posthoc = {
-        "excluded_items": sum(excluded.values()),
-        "excluded_by_document": {k: v for k, v in excluded.items() if v},
-        "systems": {n: {**summarise(posthoc_lists[n]), "f1_ci": bootstrap(posthoc_lists[n], lambda s: micro(s, "f1"))} for n in posthoc_lists},
-        "paired_vs_detectors": {
-            m: paired_difference(posthoc_lists[m], posthoc_lists[BASELINE_PRIMARY], lambda s: micro(s, "f1")) for m in models
-        },
-    }
+    def posthoc_block(dropper) -> dict:
+        lists = {n: posthoc_scores(docs, proposals_by_system[n], dropper) for n in proposals_by_system}
+        excluded = {d["id"]: len(dropper(d)) for d in docs}
+        return {
+            "excluded_items": sum(excluded.values()),
+            "excluded_by_document": {k: v for k, v in excluded.items() if v},
+            "systems": {n: {**summarise(lists[n]), "f1_ci": bootstrap(lists[n], lambda s: micro(s, "f1"))} for n in lists},
+            "paired_vs_detectors": {m: paired_difference(lists[m], lists[BASELINE_PRIMARY], lambda s: micro(s, "f1")) for m in models},
+        }
+
+    posthoc = posthoc_block(drop_company_addresses)
+    posthoc_phones = posthoc_block(lambda d: malformed_phone_indexes(d))
+    posthoc_both = posthoc_block(drop_both)
 
     paired = {}
     for model in models:
@@ -243,7 +307,7 @@ def build(split: str) -> dict:
         "split": split, "documents": len(docs), "systems": systems, "paired_f1_differences": paired,
         "recommendation": recommend(model_summaries, len(docs)) if model_summaries else None,
         "predictions": check_predictions(model_summaries, baseline_summaries) if model_summaries else [],
-        "posthoc_company_addresses": posthoc,
+        "posthoc_company_addresses": posthoc, "posthoc_malformed_phones": posthoc_phones, "posthoc_both": posthoc_both,
         "per_document_f1": per_doc_f1, "prompt_sha256": sorted({r["prompt_sha256"] for r in records}), "git": sorted({r["git"]["commit"] for r in records}),
         "total_cost_usd": sum(r["cost_usd"] for r in records),
     }  # fmt: skip
@@ -273,6 +337,18 @@ def render(data: dict) -> str:
     out += ["", "## Recall by category (found / sensitive items)", "", "| System | " + " | ".join(SENSITIVE) + " |", "| --- | " + " | ".join("---" for _ in SENSITIVE) + " |"]
     for n in names:
         out.append(f"| {n} | " + " | ".join(f"{s[n]['recall_by_category'][c]['found']}/{s[n]['recall_by_category'][c]['of']}" for c in SENSITIVE) + " |")
+
+    out += ["", "## Precision / recall / F1 by category", "",
+            "Each cell is precision / recall / F1. Precision: of the proposals that carried this category label, the share that landed on a personal item **and** whose item has this category "
+            "(a correct span with the wrong label counts against the label it used). Recall: found items of this category over all of them (80% coverage). F1 is their harmonic mean. "
+            "`-` means no proposal carried the label.", "",
+            "| System | " + " | ".join(SENSITIVE) + " |", "| --- | " + " | ".join("---" for _ in SENSITIVE) + " |"]  # fmt: skip
+    for n in names:
+        cells = []
+        for c in SENSITIVE:
+            x = s[n]["by_category"][c]
+            cells.append(f"{pct(x['precision'], 2)} / {pct(x['recall'], 2)} / {pct(x['f1'], 2)}".replace("n/a", "-"))
+        out.append(f"| {n} | " + " | ".join(cells) + " |")
 
     out += ["", "## Cost, time and behaviour (models only)", "", "| Model | Cost total | Cost / document | Seconds / document | Model calls / doc | Tool calls / doc | Normal runs | Limits hit | Failed or crashed | Retries | Unverified citations |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for m in models:
@@ -306,6 +382,23 @@ def render(data: dict) -> str:
         out.append(f"| {n} | {pct(x['precision'])} | {pct(x['recall'])} | {pct(x['f1'])}{ci(x['f1_ci'])} | {x['sensitive_items']} | {x['found']} |")
     out += ["", "Paired F1 difference against `" + BASELINE_PRIMARY + "` with those items left out: " + "; ".join(
         f"{m} {v['difference']:+.3f} ({v['low']:+.3f} to {v['high']:+.3f})" for m, v in ph["paired_vs_detectors"].items() if v) + "."]  # fmt: skip
+
+    pp, pb = data["posthoc_malformed_phones"], data["posthoc_both"]
+    out += ["", "## Post-hoc, not pre-registered: the malformed phone numbers", "",
+            f"A second flaw in the synthetic data, seen only after the run in the per-category table above: the generator wrote every phone number with a 3-digit last group "
+            f"(for example `555-044`), so each has 9 digits once the country code is dropped and is **not a valid US phone number**. The pattern detectors validate numbers, so they "
+            f"cannot match any of the {pp['excluded_items']} phone numbers in this set; their PHONE recall of 0 is an artefact of the data, not a detector result (the models found the numbers and "
+            "called them truncated). The headline keeps the frozen data. Here those items are neither required nor penalised, alone and together with the company addresses. "
+            "Decided after seeing the results: an explanation of the headline numbers, not a replacement for them.", "",
+            "| System | F1 as frozen | F1 without the malformed phones (95% interval) | F1 without both flaws (95% interval) | Recall without both |", "| --- | --- | --- | --- | --- |"]  # fmt: skip
+    for n in names:
+        a, b = pp["systems"][n], pb["systems"][n]
+        out.append(f"| {n} | {pct(s[n]['f1'])} | {pct(a['f1'])}{ci(a['f1_ci'])} | {pct(b['f1'])}{ci(b['f1_ci'])} | {pct(b['recall'])} |")
+    out += ["", "Paired F1 difference against `" + BASELINE_PRIMARY + "`: " + "; ".join(
+        f"{m}: as frozen {data['paired_f1_differences'][f'{m} - {BASELINE_PRIMARY}']['difference']:+.3f}, "
+        f"without malformed phones {pp['paired_vs_detectors'][m]['difference']:+.3f} ({pp['paired_vs_detectors'][m]['low']:+.3f} to {pp['paired_vs_detectors'][m]['high']:+.3f}), "
+        f"without both {pb['paired_vs_detectors'][m]['difference']:+.3f} ({pb['paired_vs_detectors'][m]['low']:+.3f} to {pb['paired_vs_detectors'][m]['high']:+.3f})"
+        for m in models if pp["paired_vs_detectors"][m] and pb["paired_vs_detectors"][m]) + "."]  # fmt: skip
 
     out += ["", "## Per-document F1", "", "| Document | " + " | ".join(names) + " |", "| --- | " + " | ".join("---" for _ in names) + " |"]
     for doc_id, row in data["per_document_f1"].items():

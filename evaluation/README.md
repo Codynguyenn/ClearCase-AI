@@ -16,6 +16,7 @@ report described in `docs/ClearCase_Cursor_Prompt.md`, section 11.
 | `weak_tier_dev.py` | Dev only. Measures the reviewer-only "possibly related" tier. |
 | `results/*.json` | Outputs, including `retrieval_heldout_runs.json` (every held-out run, with configuration, git state and a code fingerprint). |
 | `assistant_eval/` | The **assistant** comparison (Haiku vs Sonnet vs Opus vs the app's detectors): `PROTOCOL.md` (rules and predictions, written first), `dataset.py` (seeded synthetic documents with ground truth), `metrics.py` (scoring), `run.py` (baselines and the live runner with a budget cap), `report.py` (every number in the report), `REPORT_heldout.md` (the result), `data/` (frozen held-out set + hash). |
+| `pipeline_eval/` | The **pipeline** measurement: processing latency and export-verification outcomes on the 18 synthetic PDFs, with an independent re-read of every downloaded file. `PROTOCOL.md` (written first), `run.py`, `REPORT.md`. Free and deterministic (no model); `python evaluation/pipeline_eval/run.py`. |
 | `results/assistant_*` | `assistant_runs_heldout.jsonl` (one record per run: tokens, cost, proposals, tools used, answer), `assistant_baselines_heldout.json`, `assistant_comparison_heldout.json`. The `_dev` files are harness debugging, not results. |
 
 ## Results (synthetic, same-author; not real-world accuracy)
@@ -125,7 +126,8 @@ everything" sentence. One run per document and model, 36 runs, $2.78 in total. F
 | Claude Opus 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.152 |
 
 What the numbers support:
-- Every model beat the detectors; the paired F1 difference is about +0.16 and its interval excludes zero.
+- Every model beat the detectors; the paired F1 difference is about +0.16 as frozen (about +0.10 once the malformed phone numbers
+  described below are set aside) and its interval excludes zero either way.
 - The three models cannot be told apart on accuracy (Haiku minus Opus: -0.006, interval -0.022 to +0.000), but Opus cost
   about 27 times as much per document as Haiku. Under the pre-registered rule the recommended default is Haiku.
 - No model proposed a company name; none tried to export on the injected documents; every run finished normally.
@@ -135,6 +137,10 @@ What they do not support:
 - **All 16 misses were company addresses** (a letterhead, a "Remit to" block). The labels called every address sensitive
   while the request asks for individuals' information, so the recall above is understated; with those 8 address lines left
   out (a post-hoc table, marked as such) all three models score 1.000. Detail in `PROTOCOL.md` (incident log) and decision 51.
+- **A second data flaw, found later:** every synthetic phone number has a 3-digit last group, so none is a valid US number and
+  the validating pattern detectors cannot match any of the 18 (their PHONE recall of 0 is an artefact, shown in the
+  per-category table). Without those items the detectors' F1 is 0.876 rather than 0.823, and the model advantage about
+  +0.10 (interval +0.04 to +0.18) rather than +0.16. Details: the report's second post-hoc section and the protocol's incident log.
 - The task is easy, so it cannot separate strong models. 12 documents, one author, one run each, no run-to-run variance.
   Nothing here predicts accuracy on real documents.
 
@@ -146,12 +152,40 @@ backend/.venv/bin/python evaluation/assistant_eval/run.py live --split heldout -
 backend/.venv/bin/python evaluation/assistant_eval/report.py --split heldout
 ```
 
+## Pipeline measurement: latency and export-verification outcomes (synthetic; run 2026-10-15)
+
+The real app (in-process) on the 18 synthetic PDFs (22 pages): upload, detect, a simulated careful reviewer approves exactly the correct
+detector proposals, export with verification, download, and an **independent re-read of the downloaded file**. Protocol and four
+predictions written first (`pipeline_eval/PROTOCOL.md`); full tables in `pipeline_eval/REPORT.md`. Free, no model; a warm-up and 3 passes.
+
+| Measure | Result |
+| --- | --- |
+| Upload to "ready" (median, 90th percentile) | 47 ms (61 ms), about 45 ms per page |
+| Detection: pattern detectors only / plus NER | 8 ms / 189 ms |
+| Export: authorize, redact, verify, store | 186 ms (253 ms) |
+| Exports verified with no warning | 9 of 18 |
+| Exports verified but needing an acknowledgement | 9 of 18 |
+| Failed or blocked exports; failed required checks | 0; 0 |
+| Leftover copies of approved text in the downloaded files (independent check) | 9, and the verifier reported the same 9 |
+| Kept company names preserved | 54 of 54 occurrences |
+
+What it supports:
+- **The verifier did its job.** Where the NER model proposed some occurrences of a name but missed one, the approved name stayed readable
+  once in the file; the verifier flagged every such copy (9 of 9, none missed, none false) and held the download until acknowledged.
+  Company names were never damaged. Nothing was redacted that should have stayed.
+- Processing is fast on small documents (tens of milliseconds to extract, under 0.3 s to export and verify).
+- Two predictions failed: I expected at least 15 clean exports and no leftover text; half the exports had a leftover copy, because
+  detection missed some occurrences (PERSON coverage 75 of 108; EMAIL, SSN, ADDRESS fully covered).
+
+What it does not support: real-document accuracy or speed. One author's synthetic one- and two-page documents; a simulated reviewer who
+never errs; in-process timing on one machine (no network, no large files); the verifier checks only what was approved, so a person mention
+nobody proposed (33 of 108 here) stays readable and unflagged unless a copy of the same text was approved. PHONE coverage is 0 of 27
+only because the synthetic phone numbers are malformed (see the assistant comparison above).
+
 ## What does NOT exist yet (Phase 6)
 
 - A retrieval question set **written by people** (the second set above is model-written and model-labelled, which is
   more independent than same-author but not human), and a **third** set before any new retrieval method is tuned or tested.
-- Export-verification outcomes and processing latency. (Detection precision/recall/F1 by category for the pattern
-  detectors, the detectors with NER and three models now exists: see the assistant comparison above.)
 - A repeat of the assistant comparison on harder, longer, messier documents with labels that separate personal from
   business addresses, written before running anything. Until then nothing here should be quoted as real-world accuracy.
   All data in this project is synthetic.

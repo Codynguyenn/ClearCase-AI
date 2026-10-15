@@ -64,8 +64,8 @@ PyMuPDF reports word rectangles in PDF points with the origin at the top-left of
 the **unrotated** page. The viewer renders the page with its `/Rotate` value (and
 any user rotation) applied. `frontend/src/lib/geometry.ts` converts between the
 two using the stored `PageGeometry {width, height, rotation}`. The same function
-will place redaction highlights in Phase 2, so getting it right (and verifying
-it with the "Show word boxes" toggle) was a Phase 1 goal.
+places the redaction highlights (proposed, approved and rejected boxes), so getting it
+right (and verifying it with the "Show word boxes" toggle) was a Phase 1 goal.
 
 ## Data model (Phase 1)
 
@@ -99,7 +99,7 @@ stdio. The tools are thin wrappers over the same services the REST API uses.
 | `search_document` | read | literal search, occurrence ids, pages, spans, boxes; lists unsupported pages |
 | `get_document_excerpt` | read | ≤ 4,000 characters, resumable with `start` / `has_more` |
 | `detect_sensitive_entities` | read | candidates + detector provenance; saves nothing |
-| `retrieve_policy_guidance` | read | honest "not available" until Phase 4 |
+| `retrieve_policy_guidance` | read | the same retrieval as the Policy tab: passages above the cutoff with citation ids, or an honest "not addressed" / "unavailable" |
 | `propose_redactions` | writes `proposed` only | span + exact expected text, verified server-side; idempotent |
 | `get_review_summary` | read | counts, blockers, unresolved ids; no document text |
 | `export_approved_redactions` | creates an export | works only after the *reviewer* issued an authorization |

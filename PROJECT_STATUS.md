@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-15 (Phases 1-5 merged to `main`; Phase 6 under way: the assistant model comparison and the browser end-to-end test are merged, PR #7; demo script and interview guide are in the follow-up docs PR)
+Last updated: 2026-10-15 (**all six phases complete.** Merged to `main` through PR #11; the polish PR and the pipeline-measurement PR are the last two open)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide, the second retrieval question set. Not done: polish |
+| 6 | Integration tests, evaluation, interface polish, documentation | **Complete and verified.** Assistant model comparison, browser end-to-end test, second retrieval question set, pipeline latency and export-verification measurement, bulk-button fix, demo script, interview guide, Compose re-run, README screenshots. Optional follow-ups are listed under "Remaining work" |
 
 ## Working features (verified)
 
@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full backend run (2026-10-15, `phase-6-retrieval-set2`, with the evaluation and second-set tests):** **`585 passed in 551.82s`**, `ruff check app tests` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (The 563 earlier on 2026-10-15 predates the 22 second-set tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-pipeline-eval`, with the evaluation, second-set and pipeline tests):** **`607 passed in 579.36s`**, `ruff check app tests` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (563 earlier on 2026-10-15 predates the 22 second-set tests; 585 predates the 22 pipeline and report tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -316,6 +316,23 @@ Four of five pre-registered predictions held; prediction 1 (worse ranking) was w
 logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
 
 Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
+
+### Phase 6: pipeline latency and export-verification outcomes (2026-10-15, branch `phase-6-pipeline-eval`)
+
+`evaluation/pipeline_eval/` (protocol and four predictions first; `run.py`; `REPORT.md`; decision 55): the real app in-process on the 18 synthetic
+PDFs, a simulated careful reviewer, export, and an independent re-read of every downloaded file; warm-up plus 3 passes; free, no model.
+Upload to "ready" 47 ms median (61 ms p90), export with verification 186 ms; **0 failed or blocked exports and 0 failed required checks;
+9 of 18 exports verified cleanly and 9 needed an acknowledgement** because the NER model missed one occurrence of an approved name (PERSON
+coverage 75 of 108). **The verifier reported all 9 leftover copies that an independent check found (none missed, none false)**, and all 54 kept
+company-name occurrences survived. Two of my four predictions failed (I expected at least 15 clean exports and no leftover text). The
+measurement was run twice (a per-category breakdown was added in between); outcomes were identical. Tests: `backend/tests/test_pipeline_eval.py`
+(19, each rule broken on purpose to confirm a test fails).
+
+**Also found, and disclosed, while doing this:** adding the specification's precision/recall/F1-by-category table to the assistant report
+exposed a second flaw in my synthetic data: every phone number has a 3-digit last group, so none is a valid US number and the validating
+detectors score PHONE recall 0. The detectors' F1 is 0.823 as frozen and 0.876 without those items; the model advantage shrinks from about
++0.16 to about +0.10 (still clear). Headline numbers keep the frozen data; a marked post-hoc section and the protocol's incident log carry the
+correction (decision 51, addendum).
 
 ### Phase 6: README polish (2026-10-15, branch `phase-6-polish`)
 
@@ -557,8 +574,11 @@ tests were checked by reverting the fix: they fail.
 
 ## Remaining work (by phase)
 
-**Phase 6 — QA & docs**: a retrieval question set **written by people** (the second set is model-written), export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** the second retrieval set (decision 53), `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
-detectors and three hosted models, cost, time, tool use, injected-document behaviour).
+**Phase 6 is complete** (the specification's deliverables and evaluation requirements are all met, with their limits stated; the Compose
+re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: a retrieval question set **written by people**
+(both held-out sets are model-written or same-author); a harder, longer, messier assistant evaluation with corrected labels and valid
+phone numbers, written first; a button that proposes the unresolved copies straight from the export warning (the pipeline measurement
+shows half of the NER-based exports hit it); a responsive layout; real authentication and a worker process.
 
 **Known gaps (deliberate or deferred)**:
 - Live assistant quality is measured **only on 12 easy synthetic one-page documents** (see Phase 6 above): it separates the
@@ -584,11 +604,11 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
 
 ## Next implementation step
 
-1. Merge the polish PR (README screenshots, the Authorize-export wording fix, stale README text, and the doc updates after the
-   bulk-button fix). Then tag a release and tidy the merged remote branches (the owner decides).
-2. Continue **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
-   user's key in `.env` and spends real credit (about $0.03-$0.17 per request observed; the account is prepaid with
-   auto-reload off). `scripts/live_check.py` is the manual way to look at it.
+1. Merge the two open PRs (the polish PR and the pipeline-measurement PR), then tag a release and tidy the merged remote branches (the
+   owner decides).
+2. Optional follow-ups: see "Remaining work". Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
+   user's key in `.env` and spends real credit (about $0.006 per document-sized request with `claude-haiku-5-5`, the recommended model; the
+   account is prepaid with auto-reload off). `scripts/live_check.py` is the manual way to look at it. The API key expires around mid-November.
 3. Before any public or multi-user use: real authentication (the demo identity is not authentication), a worker process
    for extraction and runs, and a decision on retention of conversation text.
 

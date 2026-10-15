@@ -722,6 +722,15 @@ frozen labels (changing them after seeing results would defeat the point of free
 table leaves those 8 address lines out: all three models then score 1.000 on the remaining 156 items, the detectors 0.81.
 That also means prediction 5 ("weakest spot is addresses") held on paper for the wrong reason. Logged in the protocol.
 
+**A second flaw, found afterwards (while adding the per-category precision/recall/F1 table the specification asks for):** the data
+generator wrote every phone number with a 3-digit last group (`555-044`), so none of the 18 held-out phone numbers is a valid US
+number (9 digits once the country code is dropped). The pattern detectors validate, so they matched none and scored PHONE recall 0,
+which dragged their recall and F1 down; the models found the numbers and called them truncated. Frozen data and headline are
+unchanged; a marked post-hoc table sets those items aside. The detectors' F1 is then **0.876** instead of 0.823 and the model
+advantage about **+0.10** (interval +0.04 to +0.18) instead of +0.16: smaller, still clear. The first version of my check was itself
+wrong (it called `+1 (206) 555-044` valid and counted 10 phone numbers instead of 18); the report printed the count, which exposed
+it, and a test now pins "every phone number in both datasets is malformed" to the data.
+
 **What this does not show.** The task is easy (one-page documents with clean text), so it cannot separate strong models;
 the whole F1 gap between Haiku and the other two comes from one skipped company address (an invoice's "Remit to" block). 12 documents by one author, one run each (run-to-run
 variance unmeasured), three injected documents is a demonstration and not a rate. Nothing here predicts accuracy on real
@@ -833,3 +842,45 @@ sent. The other filters (category, this page) still narrow the list first. The s
 the reviewer's intent is only known on the screen. The component tests cover the reject-then-approve case, the reverse, the count, and the
 filtered-set case; reverting the fix makes them fail.
 
+
+## 55. Measuring the pipeline: latency and export-verification outcomes (run 2026-10-15)
+
+**Why.** The specification asks for "supported export-verification outcomes" and "processing latency" with defined matching rules and
+denominators. The earlier evaluations covered detection, retrieval and the assistant, not these two.
+
+**What was run** (`evaluation/pipeline_eval/`, protocol and four predictions written first): the real FastAPI app in-process against
+a real MongoDB scratch database, the real PyMuPDF and spaCy, on the 18 synthetic PDFs (22 pages). Per document: upload to "ready",
+detection, a simulated careful reviewer (approve every detector proposal that lands on a personal item, reject the rest), export with
+verification, download, and an **independent re-read of the downloaded file**. A warm-up, then 3 passes. Free, deterministic, no model.
+Full tables: `evaluation/pipeline_eval/REPORT.md`.
+
+**Results** (synthetic; one machine; one- and two-page documents):
+
+| | |
+| --- | --- |
+| Upload to "ready" (median, p90, max) | 47 ms (61, 135), about 45 ms per page |
+| Detection, pattern only / with NER | 8 ms / 189 ms |
+| Export: authorize, redact, verify, store | 186 ms (253, 298) |
+| Exports `verified` with no warning | 9 of 18 |
+| Exports `verified` but needing an acknowledgement | 9 of 18 (`no_unresolved_copies`, an advisory check) |
+| Exports failed or blocked; required checks failed | 0; 0 |
+| Leftover copies of approved text in the downloaded files (independent check) | 9 |
+| Leftover copies the verifier itself reported | 9 (it agreed with the independent check in every document) |
+| Kept company names preserved | 54 of 54 occurrences |
+
+**The two predictions that failed.** I predicted at least 15 clean exports and no leftover approved text. In half the documents the NER
+model proposed some occurrences of a name but missed one (PERSON coverage 75 of 108; EMAIL, SSN and ADDRESS were fully covered), so the
+text that was approved elsewhere remained once in the file. That is the case the verifier is built for: **it reported every one of the
+9 leftover copies, none was missed, none falsely flagged, and the download stayed blocked until acknowledged**. The failure is in
+detection recall, not in verification. A real reviewer closes it by searching the name and proposing the remaining copies. (A possible
+product improvement, not built: a button that proposes the unresolved copies directly from the warning.)
+
+**A data flaw seen here too.** PHONE coverage is 0 of 27 because the synthetic phone numbers are malformed (decision 51): without
+them, coverage is 186 of 219. Latency and verification outcomes do not depend on it. The measurement was run twice (the second time
+after adding a per-category breakdown); outcomes were identical and timings within 10%, both logged in the protocol.
+
+**What it does not show.** One author's synthetic documents, one and two pages; a simulated reviewer who never errs (a real one makes
+mistakes the verifier cannot see); in-process timing on one machine (no network, no large files); the verifier checks what was
+approved and cannot find sensitive text nobody proposed (33 of the 108 person mentions here, 31 percent, were never approved; where no
+copy of the same text was approved anywhere, they remain readable with no warning at all); scanned, mixed and encrypted
+PDFs are covered by the test suite, not measured here.

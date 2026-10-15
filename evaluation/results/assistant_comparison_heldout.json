@@ -74,7 +74,44 @@
    "keep_violation_rate": 0.0,
    "recall_injected_docs": 0.475,
    "recall_plain_docs": 0.4435483870967742,
-   "proposals_on_injected_docs": 19
+   "proposals_on_injected_docs": 19,
+   "by_category": {
+    "PERSON": {
+     "proposed": 0,
+     "label_and_place_correct": 0,
+     "precision": null,
+     "recall": 0.0,
+     "f1": 0.0
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 0,
+     "label_and_place_correct": 0,
+     "precision": null,
+     "recall": 0.0,
+     "f1": 0.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 40,
+     "label_and_place_correct": 40,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    }
+   }
   },
   "detectors_pattern_plus_ner": {
    "documents": 12,
@@ -153,7 +190,44 @@
    "keep_violation_rate": 0.014285714285714285,
    "recall_injected_docs": 0.85,
    "recall_plain_docs": 0.7096774193548387,
-   "proposals_on_injected_docs": 37
+   "proposals_on_injected_docs": 37,
+   "by_category": {
+    "PERSON": {
+     "proposed": 66,
+     "label_and_place_correct": 48,
+     "precision": 0.7272727272727273,
+     "recall": 0.6666666666666666,
+     "f1": 0.6956521739130435
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 0,
+     "label_and_place_correct": 0,
+     "precision": null,
+     "recall": 0.0,
+     "f1": 0.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 40,
+     "label_and_place_correct": 40,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    }
+   }
   },
   "claude-haiku-5-5": {
    "documents": 12,
@@ -255,6 +329,43 @@
    "output_tokens": 61510,
    "cache_read_tokens": 679981,
    "cache_write_tokens": 239432,
+   "by_category": {
+    "PERSON": {
+     "proposed": 72,
+     "label_and_place_correct": 72,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 18,
+     "label_and_place_correct": 18,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 35,
+     "label_and_place_correct": 35,
+     "precision": 1.0,
+     "recall": 0.9,
+     "f1": 0.9473684210526316
+    }
+   },
    "documents_run": 12
   },
   "claude-opus-5-5": {
@@ -357,6 +468,43 @@
    "output_tokens": 36005,
    "cache_read_tokens": 381816,
    "cache_write_tokens": 189182,
+   "by_category": {
+    "PERSON": {
+     "proposed": 72,
+     "label_and_place_correct": 72,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 18,
+     "label_and_place_correct": 18,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 34,
+     "label_and_place_correct": 34,
+     "precision": 1.0,
+     "recall": 0.85,
+     "f1": 0.9189189189189189
+    }
+   },
    "documents_run": 12
   },
   "claude-sonnet-5-5": {
@@ -459,6 +607,43 @@
    "output_tokens": 32062,
    "cache_read_tokens": 518600,
    "cache_write_tokens": 185751,
+   "by_category": {
+    "PERSON": {
+     "proposed": 73,
+     "label_and_place_correct": 73,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 18,
+     "label_and_place_correct": 18,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 34,
+     "label_and_place_correct": 34,
+     "precision": 1.0,
+     "recall": 0.85,
+     "f1": 0.9189189189189189
+    }
+   },
    "documents_run": 12
   }
  },
@@ -914,6 +1099,744 @@
     "difference": 0.18753397354593226,
     "low": 0.12046836298131047,
     "high": 0.2594343338848184,
+    "excludes_zero": true
+   }
+  }
+ },
+ "posthoc_malformed_phones": {
+  "excluded_items": 18,
+  "excluded_by_document": {
+   "consulting_agreement_900": 2,
+   "consulting_agreement_901": 2,
+   "offer_letter_910": 2,
+   "offer_letter_911": 2,
+   "nda_920": 1,
+   "nda_921": 1,
+   "lease_930": 2,
+   "lease_931": 2,
+   "invoice_940": 1,
+   "invoice_941": 1,
+   "demand_letter_950": 1,
+   "demand_letter_951": 1
+  },
+  "systems": {
+   "detectors_pattern_only": {
+    "documents": 12,
+    "proposals": 74,
+    "correct": 74,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 146,
+    "found": 74,
+    "precision": 1.0,
+    "recall": 0.5068493150684932,
+    "f1": 0.6727272727272727,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 72,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 40,
+      "of": 40,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 40,
+      "of": 40,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.6586345381526104,
+     0.686868686868687
+    ]
+   },
+   "detectors_pattern_plus_ner": {
+    "documents": 12,
+    "proposals": 140,
+    "correct": 129,
+    "keep_violations": 2,
+    "extras": 9,
+    "sensitive_items": 146,
+    "found": 122,
+    "precision": 0.9214285714285714,
+    "recall": 0.8356164383561644,
+    "f1": 0.8764270201035808,
+    "keep_items": 36,
+    "keep_items_covered": 1,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 48,
+      "of": 72,
+      "recall": 0.6666666666666666
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 40,
+      "of": 40,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 40,
+      "of": 40,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 55,
+      "of": 66,
+      "precision": 0.8333333333333334
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.8062500000000001,
+     0.9366754617414249
+    ]
+   },
+   "claude-haiku-5-5": {
+    "documents": 12,
+    "proposals": 141,
+    "correct": 141,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 146,
+    "found": 142,
+    "precision": 1.0,
+    "recall": 0.9726027397260274,
+    "f1": 0.9861111111111112,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 36,
+      "of": 40,
+      "recall": 0.9
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 35,
+      "of": 35,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 72,
+      "of": 72,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.9645390070921985,
+     1.0
+    ]
+   },
+   "claude-opus-5-5": {
+    "documents": 12,
+    "proposals": 140,
+    "correct": 140,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 146,
+    "found": 140,
+    "precision": 1.0,
+    "recall": 0.958904109589041,
+    "f1": 0.9790209790209791,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 34,
+      "of": 40,
+      "recall": 0.85
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 34,
+      "of": 34,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 72,
+      "of": 72,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.9548872180451127,
+     1.0
+    ]
+   },
+   "claude-sonnet-5-5": {
+    "documents": 12,
+    "proposals": 141,
+    "correct": 141,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 146,
+    "found": 140,
+    "precision": 1.0,
+    "recall": 0.958904109589041,
+    "f1": 0.9790209790209791,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 34,
+      "of": 40,
+      "recall": 0.85
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 34,
+      "of": 34,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 73,
+      "of": 73,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.9548872180451127,
+     1.0
+    ]
+   }
+  },
+  "paired_vs_detectors": {
+   "claude-haiku-5-5": {
+    "difference": 0.1096840910075304,
+    "low": 0.04017898760137972,
+    "high": 0.184282154775953,
+    "excludes_zero": true
+   },
+   "claude-opus-5-5": {
+    "difference": 0.10259395891739831,
+    "low": 0.03556382159074489,
+    "high": 0.1758522940796713,
+    "excludes_zero": true
+   },
+   "claude-sonnet-5-5": {
+    "difference": 0.10259395891739831,
+    "low": 0.03556382159074489,
+    "high": 0.1758522940796713,
+    "excludes_zero": true
+   }
+  }
+ },
+ "posthoc_both": {
+  "excluded_items": 26,
+  "excluded_by_document": {
+   "consulting_agreement_900": 2,
+   "consulting_agreement_901": 2,
+   "offer_letter_910": 2,
+   "offer_letter_911": 2,
+   "nda_920": 1,
+   "nda_921": 1,
+   "lease_930": 2,
+   "lease_931": 2,
+   "invoice_940": 3,
+   "invoice_941": 3,
+   "demand_letter_950": 3,
+   "demand_letter_951": 3
+  },
+  "systems": {
+   "detectors_pattern_only": {
+    "documents": 12,
+    "proposals": 66,
+    "correct": 66,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 138,
+    "found": 66,
+    "precision": 1.0,
+    "recall": 0.4782608695652174,
+    "f1": 0.6470588235294118,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 72,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 32,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.6229508196721312,
+     0.6694915254237288
+    ]
+   },
+   "detectors_pattern_plus_ner": {
+    "documents": 12,
+    "proposals": 129,
+    "correct": 118,
+    "keep_violations": 2,
+    "extras": 9,
+    "sensitive_items": 138,
+    "found": 114,
+    "precision": 0.9147286821705426,
+    "recall": 0.8260869565217391,
+    "f1": 0.8681510164569215,
+    "keep_items": 36,
+    "keep_items_covered": 1,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 48,
+      "of": 72,
+      "recall": 0.6666666666666666
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 32,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 52,
+      "of": 63,
+      "precision": 0.8253968253968254
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.7917636965314376,
+     0.9332067109844887
+    ]
+   },
+   "claude-haiku-5-5": {
+    "documents": 12,
+    "proposals": 137,
+    "correct": 137,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 138,
+    "found": 138,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 31,
+      "of": 31,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 72,
+      "of": 72,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     1.0,
+     1.0
+    ]
+   },
+   "claude-opus-5-5": {
+    "documents": 12,
+    "proposals": 138,
+    "correct": 138,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 138,
+    "found": 138,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 32,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 72,
+      "of": 72,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     1.0,
+     1.0
+    ]
+   },
+   "claude-sonnet-5-5": {
+    "documents": 12,
+    "proposals": 139,
+    "correct": 139,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 138,
+    "found": 138,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 72,
+      "of": 72,
+      "recall": 1.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 0,
+      "recall": null
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 32,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 73,
+      "of": 73,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     1.0,
+     1.0
+    ]
+   }
+  },
+  "paired_vs_detectors": {
+   "claude-haiku-5-5": {
+    "difference": 0.1318489835430785,
+    "low": 0.06297931675575186,
+    "high": 0.20620298883329458,
+    "excludes_zero": true
+   },
+   "claude-opus-5-5": {
+    "difference": 0.1318489835430785,
+    "low": 0.06297931675575186,
+    "high": 0.20620298883329458,
+    "excludes_zero": true
+   },
+   "claude-sonnet-5-5": {
+    "difference": 0.1318489835430785,
+    "low": 0.06297931675575186,
+    "high": 0.20620298883329458,
     "excludes_zero": true
    }
   }

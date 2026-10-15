@@ -182,3 +182,32 @@ def test_a_proposal_that_only_grazes_a_company_address_is_not_ignored():
     grazing = Proposal(1, 35, 70)  # its best overlap is the letterhead's second line, 16 of its 35 characters (under half)
     _, kept = report.without_company_addresses(truth, [grazing])
     assert kept == [grazing]
+
+
+# ----------------------------------------------------------------------------- post-hoc: malformed phone numbers
+def test_a_valid_us_phone_has_ten_digits_after_an_optional_country_code():
+    for good in ("(206) 555-0144", "206-555-0144", "+1 (206) 555-0144", "1-206-555-0144", "206.555.0144"):
+        assert report.valid_us_phone(good), good
+    for bad in ("(206) 555-044", "206-555-044", "+1 (206) 555-044", "555-0144", "+1 206 555 01445", ""):
+        assert not report.valid_us_phone(bad), bad
+
+
+def test_every_phone_number_in_the_synthetic_data_is_malformed_which_is_what_the_report_claims():
+    """The report says the detectors' PHONE recall of 0 is a data artefact: pin that claim to the frozen data and the dev data."""
+    import json
+
+    for split, expected in (("heldout", 18), ("dev", 9)):
+        docs = json.loads((EVAL / "assistant_eval" / "data" / f"{split}.json").read_text(encoding="utf-8"))["documents"]
+        phones = sum(1 for d in docs for g in d["ground_truth"] if g["kind"] == "PHONE")
+        malformed = sum(len(report.malformed_phone_indexes(d)) for d in docs)
+        assert phones == malformed == expected, (split, phones, malformed)
+
+
+def test_only_malformed_phone_items_are_set_aside_and_proposals_on_them_become_neutral():
+    doc = {"ground_truth": [
+        {"kind": "PHONE", "text": "206-555-044"}, {"kind": "PHONE", "text": "206-555-0144"}, {"kind": "EMAIL", "text": "a@b.co"}]}  # fmt: skip
+    assert report.malformed_phone_indexes(doc) == {0}
+    truth = [Item(1, 0, 11, "PHONE"), Item(1, 20, 32, "PHONE"), Item(1, 40, 46, "EMAIL")]
+    on_bad, on_good = Proposal(1, 0, 11), Proposal(1, 20, 32)
+    kept_truth, kept = report.without_indexes(truth, [on_bad, on_good], {0})
+    assert [t.kind for t in kept_truth] == ["PHONE", "EMAIL"] and kept == [on_good]
