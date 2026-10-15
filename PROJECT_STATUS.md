@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide. Not done: a second retrieval question set, polish, final Compose re-run |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide. Not done: a second retrieval question set, polish |
 
 ## Working features (verified)
 
@@ -296,6 +296,11 @@ kept); the conversation after a reload. Checked by breaking the product on purpo
 make the tests fail. Frontend lint, typecheck (now includes the specs via `tsconfig.e2e.json`), 94 unit tests and build still pass.
 A new CI job `e2e` runs it with Playwright's own Chromium; it had not run on GitHub when this was written (see the PR).
 
+**Compose re-run (2026-10-15):** `docker compose build` and `up` with the current tree: mongo, backend and frontend all came up healthy,
+the backend runs as uid 10001 (non-root), and the same five browser tests **passed against the containers** (backend and database in
+Docker, a fresh database inside the stack, the scripted assistant; the pinned embedding model was copied from the local cache into the
+`models` volume, so nothing was downloaded). The temporary port override and scratch database were removed afterwards.
+
 Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
 task; the test filters to undecided findings). Details and limits: decision 52.
 
@@ -519,7 +524,7 @@ because of the port conflicts above.
 ## Remaining work (by phase)
 
 **Phase 6 — QA & docs**: a **new** held-out retrieval question set (the current one has used its two allowed runs),
-export-verification outcomes and latency, polish, and a full Docker Compose re-run. **Done in Phase 6 so far:** `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
+export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
 detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:
