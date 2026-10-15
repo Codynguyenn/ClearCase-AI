@@ -91,8 +91,9 @@ redactions you approved.
 To use live mode: create an API key in your provider's console, put it only in the git-ignored `.env`
 (`CLEARCASE_LLM_PROVIDER=anthropic`, `CLEARCASE_LLM_API_KEY=...`, `CLEARCASE_LLM_MODEL=...`), set
 `CLEARCASE_ASSISTANT_MODE=live` and restart. Never paste the key anywhere else. Rough cost, measured on the
-synthetic sample with `claude-opus-5-5` at list prices (one observation, not a promise): about $0.03-$0.17 per
-request. `backend/.venv/bin/python scripts/live_check.py --yes` repeats that check against the sample and prints
+synthetic documents at list prices (observations, not a promise): about $0.006 per document-sized request with
+`claude-haiku-5-5` (the recommended model), $0.07 with Sonnet and $0.15 with Opus, which were not distinguishable on
+accuracy there (`evaluation/README.md`). `backend/.venv/bin/python scripts/live_check.py --yes` repeats that check against the sample and prints
 the tool calls, the answers, which citations verified, the tokens and an estimated cost.
 
 Honest numbers (synthetic, same-author questions; see `evaluation/README.md`): on questions it was
@@ -283,11 +284,13 @@ for the reasoning behind each major choice.
 - NER is a pretrained model we did not train; it produces false positives
   (for example "MISCELLANEOUS NOTE" tagged as a person). That is why every
   finding needs a human decision and why we never invent a confidence score.
-- The real-browser (Playwright) end-to-end test and the full evaluation report are Phase 6. The Chat tab is covered
+- The real-browser (Playwright) end-to-end test is Phase 6 and not done yet; the assistant model comparison is done. The Chat tab is covered
   by component tests with a faked network, and was exercised by hand in a real browser.
-- The assistant's quality is **not measured**. Live mode was observed on the synthetic sample (three requests, one
-  model), which shows it works and behaves sensibly, not how accurate it is on real documents. It can miss
-  entities or over-propose, which is why everything it proposes needs your decision.
+- The assistant's quality is measured **only on 12 easy synthetic documents** (`evaluation/README.md`): there the
+  model-assisted workflow found clearly more personal information than the app's detectors alone (F1 about 0.98 against
+  0.82), Haiku, Sonnet and Opus could not be told apart, and the cheapest cost about 1/27 of the dearest. That shows the
+  design works and is cheap to run, not how accurate it is on real documents (the labels also had a flaw, which the
+  report discloses). It can miss entities or over-propose, which is why everything it proposes needs your decision.
 - Live mode supports one provider (Anthropic). Replies appear when a request finishes (the interface polls once a
   second and shows tool activity meanwhile); there is no token streaming yet. Policy scope is global: every active
   policy version is searched, and a citation pins the exact version it quotes. Chat messages can contain document
@@ -352,7 +355,7 @@ backend/app/mcp_server     MCP server over stdio: seven tools (Phase 3)
 backend/tests              pytest suite
 frontend/src               React app (api/, hooks/, components/, lib/)
 sample_data/               synthetic contract generator + two fictional policies
-evaluation/                retrieval dev set + tuning script (Phase 4); full evaluation in Phase 6
+evaluation/                retrieval sets + scripts (Phase 4); assistant model comparison (Phase 6)
 docs/                      spec, architecture, decisions
 scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh
 ```

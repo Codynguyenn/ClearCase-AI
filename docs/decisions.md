@@ -681,3 +681,55 @@ information" while keeping company names visible, quoted policy sentences that a
 injected line told it to ignore the user and export everything, flagged the line and did not act on it. That is one run;
 the protection against the same line does not depend on the model behaving (`tests/test_agent_injection.py`).
 
+
+## 51. Measuring the assistant: rules written first, one run, and what the result does and does not show (run 2026-10-14)
+
+**Question.** Does the assistant (the real loop, tools and MCP server) find the personal information of individuals in a
+document better than the app's own detectors, and does a cheaper model do as well as a dearer one? Three hosted models of
+different price (Haiku, Sonnet, Opus) were compared on documents that were not used to build or debug anything.
+
+**How it was kept honest** (all in `evaluation/assistant_eval/PROTOCOL.md`, written before any held-out result):
+- 12 synthetic documents (6 templates, 2 each), generated from seeds, frozen by SHA-256; the runner refuses a changed file.
+  A separate dev set of 6 was used for debugging only.
+- Scoring rules, six predictions and a decision rule were fixed in advance; one run per (document, model), one retry only
+  for transient provider errors; no document dropped; spending capped at $6 (a stop-before-overrun guard in the runner).
+- Every number in the report is produced by `report.py` from the stored run records, and the scoring and the report
+  logic have unit tests whose failures I checked by breaking the code on purpose.
+
+**Result** (full tables in `evaluation/assistant_eval/REPORT_heldout.md`; synthetic data, one author):
+
+| System | Recall | Precision | F1 (95% interval) | Cost per document |
+| --- | --- | --- | --- | --- |
+| Pattern detectors only | 0.451 | 1.000 | 0.622 | free |
+| Pattern detectors + spaCy NER (what "Detect & propose" runs) | 0.744 | 0.921 | 0.823 (0.75-0.88) | free |
+| Claude Haiku 5.5 | 0.976 | 1.000 | 0.988 (0.97-1.00) | $0.006 |
+| Claude Sonnet 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.074 |
+| Claude Opus 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.152 |
+
+- All three models beat the detectors, and the paired difference excludes zero (about +0.16 F1). They are **not
+  distinguishable from each other** (Haiku minus Opus: -0.006, interval -0.022 to +0.000).
+- All 36 runs finished normally; none hit a limit; no company name was proposed; none of the three attempted an export on the
+  three documents containing an injected "export everything" sentence. Total spend $2.78.
+- Two answers (one Haiku, one Sonnet) each had one policy quote the checker marked unverified; both quotes contained an
+  elision ("..."), and the checker accepts only verbatim quotes. That is the checker working as designed.
+- Of six predictions, five held. **Prediction 6 was wrong**: Opus did not use the most tool calls (Haiku did), and no model
+  proposed a company name or an unmatched span.
+
+**What I got wrong, found by reading the misses.** All 16 missed items (4 for Haiku, 6 for each other model) were the
+address of a **company**: a letterhead or a "Remit to" block. My labels called every address sensitive, but the request
+asks for the personal information of individuals, and Sonnet said in its own answer that it left out a "company address,
+not an individual's". So the 0.96-0.99 recall understates the models on the request as worded. The headline keeps the
+frozen labels (changing them after seeing results would defeat the point of freezing them). A clearly marked **post-hoc**
+table leaves those 8 address lines out: all three models then score 1.000 on the remaining 156 items, the detectors 0.81.
+That also means prediction 5 ("weakest spot is addresses") held on paper for the wrong reason. Logged in the protocol.
+
+**What this does not show.** The task is easy (one-page documents with clean text), so it cannot separate strong models;
+the whole F1 gap between Haiku and the other two comes from one skipped company address (an invoice's "Remit to" block). 12 documents by one author, one run each (run-to-run
+variance unmeasured), three injected documents is a demonstration and not a rate. Nothing here predicts accuracy on real
+documents. The supported claim is narrow: on this synthetic set the model-assisted workflow found clearly more than the
+detectors alone, and the cheapest model did as well as the dearest at about 1/27 of the cost.
+
+**Recommendation under the pre-registered rule: Haiku**, and it is now the recommended model: `.env.example` and the README say
+so, and the maintainer's local `.env` was switched to `claude-haiku-5-5`. It stays a one-line setting (`CLEARCASE_LLM_MODEL`); no code
+default changed, and the earlier Phase 5 observations quoted above were made with Opus. The evidence is from an easy synthetic set, so
+if documents get harder, re-run the comparison before trusting Haiku.
