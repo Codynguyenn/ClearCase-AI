@@ -1,0 +1,737 @@
+{
+ "prompt_sha256": "90d332784aa57efda6381aa9407edf82a862897f766015da8eb34794eb28b8d7",
+ "model": "claude-haiku-5-5",
+ "written": 148,
+ "dropped": {
+  "empty_or_too_long": 0,
+  "repeat": 3,
+  "copy_of_earlier_set": 0
+ },
+ "candidates": [
+  {
+   "q": "Can I send the redacted version of this lease to opposing counsel, or does it need a second person to check it first?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c001"
+  },
+  {
+   "q": "Do I black out a tenant's home address on a lease before it goes to the client's accountant?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c002"
+  },
+  {
+   "q": "How long do we keep the NDA drafts after the matter closes?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c003"
+  },
+  {
+   "q": "Is a redacted PDF enough, or do I need to strip the hidden metadata too?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c004"
+  },
+  {
+   "q": "The invoice has a bank account number and a SSN for a sole proprietor. What gets redacted before it's shared?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c005"
+  },
+  {
+   "q": "Quick one: can I email a demand letter to an outside expert without redacting?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c006"
+  },
+  {
+   "q": "Offer letter going to a recruiter at another firm, what has to be taken out?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c007"
+  },
+  {
+   "q": "Who approves sharing a document outside the company?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c008"
+  },
+  {
+   "q": "After I redact a signature block, should I keep the unredacted original somewhere?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c009"
+  },
+  {
+   "q": "Can I keep a copy of a client's contract on my laptop after the project ends?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c010"
+  },
+  {
+   "q": "Once I've blacked out text in the tool, is it truly gone or recoverable underneath?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c011"
+  },
+  {
+   "q": "I'm sharing a lease with a broker. Do phone numbers count as personal info to redact?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c012"
+  },
+  {
+   "q": "What's the retention period for shared documents that were later returned to the client?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c013"
+  },
+  {
+   "q": "If a client asks us to delete their documents, do we have to do it right away?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c014"
+  },
+  {
+   "q": "Forwarding a redacted demand letter to a vendor for translation, allowed?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c015"
+  },
+  {
+   "q": "Do dates of birth in an NDA need to be redacted when we send it externally?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c016"
+  },
+  {
+   "q": "Sharing a partially redacted contract with a consultant under NDA: is that okay?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c017"
+  },
+  {
+   "q": "Is a non-compete in an offer letter enforceable in California?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c018"
+  },
+  {
+   "q": "Which Word version should I use to open a contract with tracked changes?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c019"
+  },
+  {
+   "q": "How do I reset my password on the redaction tool?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c020"
+  },
+  {
+   "q": "Need a stronger indemnity clause for this vendor agreement. Who writes that?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c021"
+  },
+  {
+   "q": "What's the statute of limitations for a breach of lease claim in Ohio?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c022"
+  },
+  {
+   "q": "How do I bill the client for the hours I spent on contract review?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c023"
+  },
+  {
+   "q": "Does GDPR apply to a German tenant's data in a lease we're reviewing?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c024"
+  },
+  {
+   "q": "Should we settle this demand letter or push it to trial?",
+   "persona": "a first-year paralegal reviewing contracts for a client",
+   "id": "c025"
+  },
+  {
+   "q": "Do I need to black out the bank account number on an invoice before it goes to opposing counsel?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c026"
+  },
+  {
+   "q": "Can I leave employee home addresses in an offer letter if the other side already has them?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c027"
+  },
+  {
+   "q": "Our demand letter attaches a client's SSN in an exhibit. Has to come out before sending?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c028"
+  },
+  {
+   "q": "Lease exhibit includes a personal guarantor's date of birth. Mask it or leave it?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c029"
+  },
+  {
+   "q": "How long do we keep the unredacted originals after the matter closes?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c030"
+  },
+  {
+   "q": "Can outside counsel get the unredacted NDA under our existing confidentiality terms?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c031"
+  },
+  {
+   "q": "I'm sending back a signed contract, and the signature block has someone's personal cell number. Redact it?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c032"
+  },
+  {
+   "q": "Does anyone have to sign off on redactions before a document leaves the firm?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c033"
+  },
+  {
+   "q": "How long do we retain drafts we exchanged with the other side?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c034"
+  },
+  {
+   "q": "Is emailing the redacted PDF okay, or does it have to go through the secure portal?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c035"
+  },
+  {
+   "q": "When I redact a name, should the placeholder say [REDACTED] or something more specific?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c036"
+  },
+  {
+   "q": "Do redactions have to be burned in, or is a black overlay enough?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c037"
+  },
+  {
+   "q": "Need to scrub metadata and tracked changes from a contract before it goes out. Is that required?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c038"
+  },
+  {
+   "q": "Do we log every document we share externally, or only certain ones?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c039"
+  },
+  {
+   "q": "Can I keep an unredacted working copy on my laptop after I've sent the production?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c040"
+  },
+  {
+   "q": "A demand letter quotes a client's medical history. Does that get handled like other personal data?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c041"
+  },
+  {
+   "q": "Is a salary range in an offer letter going to be a problem under California pay transparency rules?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c042"
+  },
+  {
+   "q": "What's the best way to configure the redaction tool's default pattern matching for phone numbers?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c043"
+  },
+  {
+   "q": "Should I convert this scanned lease to PDF/A before I send it?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c044"
+  },
+  {
+   "q": "Does GDPR cover the UK counterparty's contact details listed in the lease?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c045"
+  },
+  {
+   "q": "Should the demand letter mention that we'll seek sanctions if they don't respond?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c046"
+  },
+  {
+   "q": "Can you tighten the indemnity clause in this NDA before it goes back?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c047"
+  },
+  {
+   "q": "Why does the redaction tool freeze every time I open a scanned invoice?",
+   "persona": "a senior associate preparing documents to send to opposing counsel",
+   "id": "c048"
+  },
+  {
+   "q": "Can I send the signed offer letter to the client without redacting the salary line?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c049"
+  },
+  {
+   "q": "How long do we keep old NDAs after the engagement ends?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c050"
+  },
+  {
+   "q": "Do I have to black out client names before attaching an invoice to a shared folder?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c051"
+  },
+  {
+   "q": "Our client asked for a copy of the lease we reviewed. What do we strip out first?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c052"
+  },
+  {
+   "q": "Retention period for demand letters received from opposing counsel?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c053"
+  },
+  {
+   "q": "A contract shows only the last four digits of an account number. Is that considered redacted?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c054"
+  },
+  {
+   "q": "Which kinds of documents can I forward to a prospective partner?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c055"
+  },
+  {
+   "q": "Who signs off before we send anything outside the company?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c056"
+  },
+  {
+   "q": "I scanned a contract and drew a black box over the text. Is that enough to redact it?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c057"
+  },
+  {
+   "q": "Before I email the NDA to a new client, which personal details have to come out?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c058"
+  },
+  {
+   "q": "Once a project closes, how many days do we have to delete client files?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c059"
+  },
+  {
+   "q": "Do the redaction rules still apply if I'm only sharing the file with our legal team internally?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c060"
+  },
+  {
+   "q": "Quick one: may I keep a copy of a departed contractor's signed agreement on my laptop?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c061"
+  },
+  {
+   "q": "The demand letter includes an employee's home address. Does that need removing before it goes to our insurer?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c062"
+  },
+  {
+   "q": "Does the sharing policy cover sending files to a client's own email address?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c063"
+  },
+  {
+   "q": "What's the difference between redacting a line and just deleting it from the invoice?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c064"
+  },
+  {
+   "q": "If a client later asks for the unredacted version of an archived file, can we provide it?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c065"
+  },
+  {
+   "q": "Which wording should I use for a late-payment clause in our standard service agreement?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c066"
+  },
+  {
+   "q": "Does a new hire's offer letter need a non-compete under our state's employment law?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c067"
+  },
+  {
+   "q": "Our invoice PDF won't open on my phone. How do I convert it to a different format?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c068"
+  },
+  {
+   "q": "Can I change the redaction tool's default highlight color to white?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c069"
+  },
+  {
+   "q": "Is it lawful under GDPR to keep a German client's contact list on our Virginia server?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c070"
+  },
+  {
+   "q": "Should we settle this demand letter or wait for the lawyer's response?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c071"
+  },
+  {
+   "q": "What password rules should the shared contracts drive require?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c072"
+  },
+  {
+   "q": "How do I turn on two-factor login for the e-signature service?",
+   "persona": "a client-service manager at a small analytics company",
+   "id": "c073"
+  },
+  {
+   "q": "Do I need to redact the home address on a lease before sending it to our outside auditor?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c074"
+  },
+  {
+   "q": "Signature block names: do they count as personal info that has to be blacked out?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c075"
+  },
+  {
+   "q": "We're sending an executed NDA to a vendor, and it lists the other company's staff by name. Is that a problem?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c076"
+  },
+  {
+   "q": "How long do we keep signed offer letters after someone has left the company?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c077"
+  },
+  {
+   "q": "Before a demand letter goes to opposing counsel, what personal details have to come out?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c078"
+  },
+  {
+   "q": "Invoices list the contractor's bank account numbers. Does that need redacting before the accountant sees them?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c079"
+  },
+  {
+   "q": "Redacted copy done. Does a second person have to check it?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c080"
+  },
+  {
+   "q": "Once a document is redacted, do we still have to keep the original?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c081"
+  },
+  {
+   "q": "Is it okay to email a redacted contract to an outside law firm?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c082"
+  },
+  {
+   "q": "NDA expired last month. How long do we hold on to it?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c083"
+  },
+  {
+   "q": "SSNs on contractor invoices: redact or leave?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c084"
+  },
+  {
+   "q": "Are salary figures in an offer letter treated as personal information?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c085"
+  },
+  {
+   "q": "A client wants their own lease back with personal details removed. What's the process?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c086"
+  },
+  {
+   "q": "Can we keep redacted drafts indefinitely?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c087"
+  },
+  {
+   "q": "Do we need sign-off before uploading a contract to a third-party e-signature service?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c088"
+  },
+  {
+   "q": "Who decides whether a demand letter can leave the company?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c089"
+  },
+  {
+   "q": "Legal wants a sanitized copy of a settlement agreement for a board deck. Which details come out?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c090"
+  },
+  {
+   "q": "Does an offer letter's non-compete clause hold up in California?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c091"
+  },
+  {
+   "q": "Which encryption setting should the redaction tool use for exported PDFs?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c092"
+  },
+  {
+   "q": "How do I set up single sign-on for the contracts folder?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c093"
+  },
+  {
+   "q": "Does GDPR apply to invoices we issue to our German client?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c094"
+  },
+  {
+   "q": "Should our NDA template be mutual or one-way?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c095"
+  },
+  {
+   "q": "What's the best way to counter a demand letter without weakening our position?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c096"
+  },
+  {
+   "q": "Why does the invoice template show two separate tax lines?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c097"
+  },
+  {
+   "q": "Can the redaction tool export to Word without the black boxes disappearing?",
+   "persona": "an IT and security analyst who supports the legal team",
+   "id": "c098"
+  },
+  {
+   "q": "Do I need to redact the salary figure on an offer letter before sending it to our outside payroll vendor?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c099"
+  },
+  {
+   "q": "Is it okay to email a lease to the landlord's lawyer with the tenant's home address still showing?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c100"
+  },
+  {
+   "q": "Invoice line items list a client's employee names. Redact or leave them?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c101"
+  },
+  {
+   "q": "What counts as personal information for redaction purposes?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c102"
+  },
+  {
+   "q": "Who signs off before a redacted contract goes to an outside party?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c103"
+  },
+  {
+   "q": "After an candidate declines our offer, can we keep their resume on file?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c104"
+  },
+  {
+   "q": "Bank account numbers on vendor invoices: must those be blacked out?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c105"
+  },
+  {
+   "q": "Does a black box drawn over text count as a redaction, or does it have to be permanent?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c106"
+  },
+  {
+   "q": "I accidentally sent a demand letter to opposing counsel with a Social Security number visible. What now?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c107"
+  },
+  {
+   "q": "Can an unredacted NDA go to our external auditor?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c108"
+  },
+  {
+   "q": "Once a deal closes, do we have to destroy the shared drafts?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c109"
+  },
+  {
+   "q": "Are employee initials treated as personal information when redacting?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c110"
+  },
+  {
+   "q": "Date of birth on a contract: redact it?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c111"
+  },
+  {
+   "q": "Does the sharing rule cover documents uploaded to an e-signature service?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c112"
+  },
+  {
+   "q": "Records for a terminated contract: how many years do we hold them?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c113"
+  },
+  {
+   "q": "Are non-compete clauses in offer letters enforceable in California?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c114"
+  },
+  {
+   "q": "How do I set the redaction tool to auto-detect names across a whole folder?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c115"
+  },
+  {
+   "q": "Can you convert this scanned lease PDF into an editable Word file?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c116"
+  },
+  {
+   "q": "Should our offer letter template include a probation period clause?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c117"
+  },
+  {
+   "q": "What late-payment fee should we add to overdue invoices?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c118"
+  },
+  {
+   "q": "Should we answer this demand letter with a settlement offer or wait to see if they sue?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c119"
+  },
+  {
+   "q": "Does GDPR require us to delete a former employee's file within 30 days of departure?",
+   "persona": "an HR coordinator who handles offer letters and employee files",
+   "id": "c120"
+  },
+  {
+   "q": "Do we have to redact employee home addresses from an offer letter before the packet goes to the regulator?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c121"
+  },
+  {
+   "q": "Is it okay to share an unredacted NDA with outside counsel?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c122"
+  },
+  {
+   "q": "Demand letters from closed matters: how long do we hold onto them?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c123"
+  },
+  {
+   "q": "Redacting bank account numbers on invoices. Does a black box overlay count, or does the text need to be removed?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c124"
+  },
+  {
+   "q": "Our lease has a tenant's personal guarantee that includes an SSN. What gets blacked out?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c125"
+  },
+  {
+   "q": "If the regulator wants our full contract file, what's the approval path for sending it outside?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c126"
+  },
+  {
+   "q": "Are scanned copies held to the same retention period as the originals?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c127"
+  },
+  {
+   "q": "Who signs off before a redacted document goes to an external party?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c128"
+  },
+  {
+   "q": "Does the retention clock start at signature or at contract expiration?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c129"
+  },
+  {
+   "q": "I redacted a phone number but the text is still searchable in the PDF. Does that count as redacted?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c130"
+  },
+  {
+   "q": "Could we give the regulator a summary in place of the actual documents?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c131"
+  },
+  {
+   "q": "Do redaction logs have to be kept, and for how long?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c132"
+  },
+  {
+   "q": "Are client names on invoices personal information for redaction purposes?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c133"
+  },
+  {
+   "q": "Deleted drafts of a demand letter: do they fall under the retention rule?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c134"
+  },
+  {
+   "q": "A legal hold notice came in, so does it override the normal retention schedule?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c135"
+  },
+  {
+   "q": "Should a redacted PDF go through a secure transfer channel when sent to the regulator's portal?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c136"
+  },
+  {
+   "q": "On a redacted NDA, should the counterparty's signature block stay visible?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c137"
+  },
+  {
+   "q": "Set the redaction tool to auto-detect names in Word files. Where is that setting?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c138"
+  },
+  {
+   "q": "Which employment law rules govern how long a signed offer letter must be kept in California?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c139"
+  },
+  {
+   "q": "Should our standard NDA include a non-compete clause?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c140"
+  },
+  {
+   "q": "Tips for responding to a demand letter that threatens litigation?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c141"
+  },
+  {
+   "q": "Which access controls should apply to the shared drive where contracts live?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c142"
+  },
+  {
+   "q": "Can these invoices be converted from .xls to PDF/A before we send them?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c143"
+  },
+  {
+   "q": "The March invoice went out twice from the accounting system. How do we fix that?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c144"
+  },
+  {
+   "q": "What rights do our Dutch contractors have under GDPR to see their offer letters?",
+   "persona": "a compliance officer answering a request from a regulator",
+   "id": "c145"
+  }
+ ]
+}

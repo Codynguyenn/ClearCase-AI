@@ -36,9 +36,9 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
   (`all-MiniLM-L6-v2`, pinned revision), stored in MongoDB, and searched by cosine similarity (brute force; fine for thousands).
 - **Say:** "I did not let the model free-write citations. A quoted sentence is verified by code: the passage must have been retrieved
   in that request and the quote must appear in it word for word. That proves the quote is real, not that the model understood it."
-- **Honest numbers (decision 36):** on a frozen held-out set of 44 questions, the right passage was ranked first for 18/28 answerable
+- **Honest numbers (decisions 36 and 53):** on a frozen held-out set of 44 questions, the right passage was ranked first for 18/28 answerable
   questions (0.64) and in the top 3 for 21/28 (0.75). The similarity cutoff (0.38) was tuned on a dev set and **did not hold up**:
-  balanced accuracy 0.56 on held-out. So the assistant is built not to rely on it: it must quote or say the policies do not address it.
+  balanced accuracy 0.56 on held-out. A second held-out set (95 questions written by a model that had not seen the policies, labelled by two other models, measured once) gave 0.61; pooled 0.60. So the assistant is built not to rely on it: it must quote or say the policies do not address it.
 - **Pushed on "why is that cutoff weak?"** A cosine score is a similarity heuristic, not a probability. A better embedding model ranked
   better but did not decide better (decision 37).
 - **A mistake worth telling (decision 38):** I explained a rule in a Python docstring, and Pydantic turned it into the JSON schema sent
@@ -97,7 +97,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Question | Answer |
 | --- | --- |
 | Did you train a model? | No. Pretrained spaCy and a pretrained embedding model; the language model is a hosted API. |
-| How do you know it works? | Backend tests against a real MongoDB (563), component tests (94), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
+| How do you know it works? | Backend tests against a real MongoDB (585), component tests (94), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
 | How do you test the tests? | I break the code on purpose and check the tests fail. Several tests passed for the wrong reason until I did (see decisions 50-52). |
 | What if the model follows an injected instruction in the PDF? | It still cannot approve, cannot export without the reviewer's authorization, and cannot read other documents. Injection is defended by structure, not by trusting the model (decision 22). |
 | Is it secure? | It is a local demo: the identity is not authentication, and live mode sends excerpts to a provider (the UI says so and asks first). Keys live only in the git-ignored `.env`; the SDK exception is not chained, so a key cannot reach logs or the database. |
@@ -112,8 +112,9 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Assistant, Haiku / Sonnet / Opus | F1 0.988 / 0.981 / 0.981 | same |
 | Cost per document | $0.006 / $0.074 / $0.152 | same (list prices, from token counts) |
 | Retrieval, right passage first / top 3 | 18/28 = 0.64 / 21/28 = 0.75 | `evaluation/README.md` (held-out, 28 answerable questions) |
-| Retrieval cutoff balanced accuracy | 0.84 dev, **0.56** held-out | decision 30 |
-| Tests | 563 backend, 94 frontend, 5 browser | `PROJECT_STATUS.md` |
+| Retrieval cutoff balanced accuracy | 0.84 dev, 0.56 first held-out, 0.61 second held-out, **0.60 pooled** (0.52-0.68) | decisions 30 and 53, `evaluation/retrieval2/REPORT.md` |
+| Retrieval, right passage in top 3 (pooled, 64 answerable questions) | 0.81 (0.70-0.89) | same |
+| Tests | 585 backend, 94 frontend, 5 browser | `PROJECT_STATUS.md` |
 
 ## Plain-English glossary
 

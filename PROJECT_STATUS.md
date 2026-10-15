@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide. Not done: a second retrieval question set, polish |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide, the second retrieval question set. Not done: polish |
 
 ## Working features (verified)
 
@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full backend run (2026-10-14, `phase-6-evaluation`, with the evaluation tests):** **`563 passed in 497.86s`**, `ruff check app tests` clean. **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-retrieval-set2`, with the evaluation and second-set tests):** **`585 passed in 551.82s`**, `ruff check app tests` clean. (The 563 earlier on 2026-10-15 predates the 22 second-set tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -303,6 +303,19 @@ Docker, a fresh database inside the stack, the scripted assistant; the pinned em
 
 Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
 task; the test filters to undecided findings). Details and limits: decision 52.
+
+### Phase 6: second retrieval question set (2026-10-15, branch `phase-6-retrieval-set2`)
+
+`evaluation/retrieval2/` (protocol, build script, report) and `evaluation/retrieval_heldout2.json` (frozen, sha256 `68eaf4dc...`): 95
+questions written by a model that never saw the policies and labelled by two other model runs (kept only if both agreed): 36 answerable,
+59 not addressed. The unchanged production retriever was run once (`eval_heldout.py --set 2 --label baseline`; the runner gained a
+backwards-compatible `--set` option, and a smoke run on the dev set still reproduces its known numbers). Result: balanced accuracy
+**0.61** at the cutoff (first held-out set 0.56, pooled **0.60**, interval 0.52 to 0.68); right passage in the top 3 for 0.86 (pooled 0.81).
+Four of five pre-registered predictions held; prediction 1 (worse ranking) was wrong. Cost **$0.061** (cap $0.20). Tests:
+`backend/tests/test_retrieval_set2.py` (22 tests; the selection rules, the spend guard, the blindness of the writer prompt and the report
+logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
+
+Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
 
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
@@ -523,8 +536,7 @@ because of the port conflicts above.
 
 ## Remaining work (by phase)
 
-**Phase 6 — QA & docs**: a **new** held-out retrieval question set (the current one has used its two allowed runs),
-export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
+**Phase 6 — QA & docs**: a retrieval question set **written by people** (the second set is model-written), export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** the second retrieval set (decision 53), `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
 detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:
@@ -533,10 +545,10 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
   treat company addresses as sensitive (known, logged); a harder set with corrected labels, written first, is the follow-up.
 - Live mode supports one provider (Anthropic); replies arrive when a request finishes (polling, no token streaming).
 - No server-side per-tool timeout (tools are threads; the client enforces it).
-- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (held-out balanced accuracy 0.56). The
-  assistant is built around that (it must quote or say the policy does not address the question, and quotes are checked
-  by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one
-  has had its two allowed runs).
+- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (balanced accuracy 0.56 and 0.61 on two held-out
+  sets, pooled 0.60; decision 53). The assistant is built around that (it must quote or say the policy does not address the
+  question, and quotes are checked by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a THIRD
+  set (both held-out sets have been measured and must not be used to tune).
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
 - Component tests run in happy-dom, which cannot prove focus trapping or real layout; the Playwright test covers focus and Escape for
   the citation dialog in one real browser engine. Real layout, other browsers and phones are still unchecked.

@@ -772,3 +772,47 @@ database, `clearcase_e2e`, dropped at every start, and ports 8011 and 5183 so it
 **What it does not cover.** Live mode (it spends money; `scripts/live_check.py` is the manual check), other browsers and phones,
 scanned PDFs, long documents, concurrent users. One browser engine, one document, English. The five tests share state on purpose
 and must be run as a file.
+
+## 53. A second retrieval question set, written blind and labelled by two models (run 2026-10-15)
+
+**Why.** Decision 36 measured the similarity cutoff on one small held-out set written by the same author as the policies, and found
+balanced accuracy 0.56 against 0.84 on the set it was tuned on. One small same-author set cannot say whether 0.56 was typical, and that
+set had used its two allowed runs.
+
+**What was built** (`evaluation/retrieval2/`, protocol first): a model that was **never shown the policy text** (only that the library has
+a document about redaction and one about sharing and retaining documents) wrote 148 candidate questions in six personas; two other model
+runs (`claude-sonnet-5-5`, `claude-haiku-5-5`) each labelled every question against the 19 passages (answerable with the passages that
+settle it, not addressed, or unclear); a question was kept only if both gave the same definite verdict and, for answerable ones, named a
+common passage. 95 questions survived (36 answerable, 59 not addressed), were frozen by SHA-256, and the unchanged production retriever
+was run on them **once**. The protocol (prompt hashes, rules, five predictions) was written before any question existed, and the build
+script refuses to spend unless the protocol contains the hashes of the exact prompts. Total cost **$0.061** (a hard cap of $0.20 was set).
+
+**Result** (`evaluation/retrieval2/REPORT.md`; synthetic, model-written): right passage first 0.61, in the top 3 0.86; the relevant
+passage was shown for 0.44 of answerable questions and 0.50 were wrongly told "no matching policy"; 0.22 of not-addressed questions were
+shown a passage; **balanced accuracy 0.61** (first set 0.56; pooled 0.60, interval 0.52 to 0.68). The two sets do not disagree beyond
+sampling noise. The earlier conclusion stands and now has more support: the cutoff is a weak answer/no-answer decision, ranking is
+decent (pooled top-3 0.81), and the assistant is rightly built to quote a passage or say the policies do not address the question.
+Nothing in the product changed.
+
+**What went wrong, or was wrong.**
+- *Prediction 1 failed.* I predicted worse ranking on blind questions (top-3 below 0.75); it was better (0.86). I do not have a tested
+  explanation, so none is claimed.
+- *A test caught a leak of my own in the writer prompt*: it said "keeping records", the name of a policy section. Nothing had been spent;
+  I reworded it and logged the change. The test now checks the writer prompt shares no five consecutive words with the policy text and
+  contains no section name.
+- *The first design cost about $0.33*, over the cap and not "a few cents" (Opus as second labeler plus a rationale field). Changed before
+  any call: Haiku as second labeler, no rationale. The real cost was about a fifth of that estimate.
+- *The suspected confound did not occur.* The "Topics this policy does not address" passage names topics on purpose and could have
+  inflated wrong "shown a passage" results; it was served for none of the 95 questions. A misspelt passage id would have hidden behind a
+  zero, so a test ties the id to the real chunking.
+
+**A sanity read afterwards** (post-hoc; it changed nothing): I read 16 random labelled questions (8 answerable with the passage the
+labelers chose, 8 not addressed). All labels looked right to me; two answerable ones (a regulator's request "must be passed to the legal
+team unchanged") are borderline but defensible, and none of the not-addressed topics (secure transfer, Word or PDF/A export, templates,
+tool colours, GDPR) appears anywhere in the policy text. I wrote the policies, so this is a sanity check, not validation.
+
+**Limits.** The questions and labels come from language models of the same family as the assistant, not from people or real users. The
+second labeler is the writer's own model (a consistency check, not an independent expert). **46 of 145 candidates were unclear to at
+least one labeler and were excluded**; real questions are often borderline, so this set is probably easier than real use. Two fictional
+policies and 19 passages. Any new retrieval method (a re-ranker, an LLM relevance check) must be tested on a **third** set: these two
+are now measured and must not be used to tune.

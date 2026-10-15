@@ -2,11 +2,12 @@
 
     backend/.venv/bin/python evaluation/eval_heldout.py --label baseline
     backend/.venv/bin/python evaluation/eval_heldout.py --label final
+    backend/.venv/bin/python evaluation/eval_heldout.py --set 2 --label baseline   # the second, more independent set (retrieval2/PROTOCOL.md)
 
 Read evaluation/README.md ("Held-out protocol") first. In short:
 
-* The question file must match the SHA-256 in retrieval_heldout.sha256, otherwise this refuses
-  to run (so a question cannot be edited after seeing results without it being visible).
+* The question file must match the SHA-256 in retrieval_heldout.sha256 (retrieval_heldout2.sha256 for --set 2),
+  otherwise this refuses to run (so a question cannot be edited after seeing results without it being visible).
 * Each label may be used once. Every run is appended to results/retrieval_heldout_runs.json
   together with the configuration and a code fingerprint, so the full history is auditable.
 * It runs the real ``MongoCosineRetriever`` (not a copy of its logic) against a scratch
@@ -40,6 +41,10 @@ QUESTIONS = ROOT / "evaluation" / "retrieval_heldout.json"
 DEV_QUESTIONS = ROOT / "evaluation" / "retrieval_dev.json"
 FROZEN_HASH = ROOT / "evaluation" / "retrieval_heldout.sha256"
 RUNS = ROOT / "evaluation" / "results" / "retrieval_heldout_runs.json"
+# The second held-out set (written blind to the policies, labelled by two models): same runner, its own file, hash and run history.
+QUESTIONS2 = ROOT / "evaluation" / "retrieval_heldout2.json"
+FROZEN_HASH2 = ROOT / "evaluation" / "retrieval_heldout2.sha256"
+RUNS2 = ROOT / "evaluation" / "results" / "retrieval_heldout2_runs.json"
 SCRATCH_DB = "clearcase_eval"
 OWNER = "eval-user"
 
@@ -77,6 +82,7 @@ def git_state() -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--set", type=int, choices=[1, 2], default=1, help="which frozen held-out set (default 1)")
     parser.add_argument("--label", help="e.g. baseline or final; each label may be used once")
     parser.add_argument("--smoke", action="store_true", help="test this script on the DEV set; nothing is recorded")
     parser.add_argument("--details", action="store_true", help="also print per-question results (do not tune on them)")
@@ -85,21 +91,22 @@ def main() -> int:
 
     if not args.smoke and not args.label:
         parser.error("--label is required (or use --smoke)")
-    questions_path = DEV_QUESTIONS if args.smoke else QUESTIONS
+    questions_path = DEV_QUESTIONS if args.smoke else (QUESTIONS2 if args.set == 2 else QUESTIONS)
+    frozen_path, runs_path = (FROZEN_HASH2, RUNS2) if args.set == 2 else (FROZEN_HASH, RUNS)
     args.label = args.label or "smoke"
 
     # ---- 1. the question file must be the frozen one
-    frozen = FROZEN_HASH.read_text().strip()
+    frozen = frozen_path.read_text().strip()
     actual = sha256(questions_path)
     if not args.smoke and actual != frozen:
-        print(f"REFUSING TO RUN: retrieval_heldout.json changed.\n  frozen {frozen}\n  actual {actual}", file=sys.stderr)
+        print(f"REFUSING TO RUN: {questions_path.name} changed.\n  frozen {frozen}\n  actual {actual}", file=sys.stderr)
         return 2
 
     # ---- 2. one run per label
-    runs = json.loads(RUNS.read_text()) if RUNS.exists() else []
+    runs = json.loads(runs_path.read_text()) if runs_path.exists() else []
     repeat = any(r["label"] == args.label for r in runs)
     if repeat and not args.allow_repeat and not args.smoke:
-        print(f"REFUSING TO RUN: label '{args.label}' was already used. See {RUNS.name}.", file=sys.stderr)
+        print(f"REFUSING TO RUN: label '{args.label}' was already used. See {runs_path.name}.", file=sys.stderr)
         return 2
 
     data = json.loads(questions_path.read_text())
@@ -205,13 +212,18 @@ def main() -> int:
         },
         "corpus": {"policies": [f"{r.policy_id}:{r.version}" for r in records], "chunks": chunk_total},
         "questions": {"answerable": n_a, "unanswerable": n_u},
-        "note": "Synthetic, same-author questions: not real-world accuracy.",
+        "set": args.set,
+        "note": (
+            "Synthetic questions written by a model that had not seen the policies and labelled by two models: not real-world accuracy."
+            if args.set == 2
+            else "Synthetic, same-author questions: not real-world accuracy."
+        ),
         "metrics": metrics,
         "per_question": per_question,
     }
     if not args.smoke:
-        RUNS.parent.mkdir(exist_ok=True)
-        RUNS.write_text(json.dumps([*runs, record], indent=2))
+        runs_path.parent.mkdir(exist_ok=True)
+        runs_path.write_text(json.dumps([*runs, record], indent=2))
 
     # ---- 4. print aggregates (per-question only on request)
     r = metrics["ranking_independent_of_cutoff"]
@@ -240,7 +252,7 @@ def main() -> int:
     if args.smoke:
         print("\n(smoke test on the DEV set; nothing recorded)")
     else:
-        print(f"\nrecorded in {RUNS.relative_to(ROOT)} (run {len(runs) + 1})")
+        print(f"\nrecorded in {runs_path.relative_to(ROOT)} (run {len(runs) + 1})")
     return 0
 
 
