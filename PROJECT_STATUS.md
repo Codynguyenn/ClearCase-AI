@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison and the browser end-to-end test (below). Not done: a second retrieval question set, demo script, interview guide, polish, final Compose re-run |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide. Not done: a second retrieval question set, polish, final Compose re-run |
 
 ## Working features (verified)
 
@@ -519,8 +519,7 @@ because of the port conflicts above.
 ## Remaining work (by phase)
 
 **Phase 6 — QA & docs**: a **new** held-out retrieval question set (the current one has used its two allowed runs),
-export-verification outcomes and latency, the three-minute demo script, the interview guide, polish, and a full Docker
-Compose re-run. **Done in Phase 6 so far:** the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
+export-verification outcomes and latency, polish, and a full Docker Compose re-run. **Done in Phase 6 so far:** `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
 detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:

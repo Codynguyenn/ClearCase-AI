@@ -4,11 +4,11 @@ AI-assisted legal document redaction — a local portfolio MVP demonstrating rea
 MCP tool use, retrieval-augmented generation over redaction policies, PDF
 processing with true content removal, and MongoDB as the system of record.
 
-> **Status: Phase 5 of 6 complete** (upload, extraction, search, detection,
-> review, real export and verification, a real MCP server/client, policy
-> retrieval with local embeddings and clickable citations, and a chat assistant
-> that works in a scripted demo mode or with a hosted model). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-> for what works, test results and the next step. The full specification lives in
+> **Status: Phases 1–5 complete, Phase 6 (evaluation, end-to-end test, demo and interview material, polish) in
+> progress** (upload, extraction, search, detection, review, real export and verification, a real MCP
+> server/client, policy retrieval with local embeddings and clickable citations, and a chat assistant that works
+> in a scripted demo mode or with a hosted model; a pre-registered model comparison and a real-browser end-to-end
+> test are done). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what works, test results and the next step. The full specification lives in
 > [`docs/ClearCase_Cursor_Prompt.md`](docs/ClearCase_Cursor_Prompt.md).
 
 ClearCase does **not** guarantee legal compliance or detect every sensitive
@@ -40,7 +40,7 @@ item. Sample documents and the seeded policy are synthetic and fictional.
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 144 backend tests against a **real MongoDB**; 11 frontend geometry tests.
+- 563 backend tests against a **real MongoDB**, 94 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -369,6 +369,6 @@ backend/tests              pytest suite
 frontend/src               React app (api/, hooks/, components/, lib/)
 sample_data/               synthetic contract generator + two fictional policies
 evaluation/                retrieval sets + scripts (Phase 4); assistant model comparison (Phase 6)
-docs/                      spec, architecture, decisions
+docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md
 scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh
 ```
