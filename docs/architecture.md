@@ -42,12 +42,17 @@ flowchart LR
 
 | Layer | Folder | Responsibility | Knows about |
 | --- | --- | --- | --- |
-| API | `backend/app/api` | Parse HTTP, call a service, shape the response | FastAPI, Pydantic models |
+| API | `backend/app/api` | Parse HTTP, call a service, shape the response; `upload_limit.py` cuts off over-size uploads while they stream in | FastAPI, Pydantic models |
 | Services | `backend/app/services` | Business rules: validation, extraction, lifecycle, deletion cascade | Repositories, PyMuPDF |
 | Repositories | `backend/app/repositories` | The only code that runs MongoDB queries; every query filters by `owner_id` | pymongo, GridFS |
 | Models | `backend/app/models` | Pydantic schemas shared by API, services and (later) MCP tools | nothing else |
 | MCP server | `backend/app/mcp_server` | The seven tools, their schemas and safety rules; runs as its own process | Services |
 | MCP client / agent | `backend/app/agent` | `mcp_client.py` (Phase 3): discovery, argument validation, timeouts, size cap. The tool-calling loop arrives in Phase 5 | MCP SDK |
+
+**Startup** (`app/main.py` lifespan): connect to MongoDB, create indexes, mark jobs interrupted by a restart as
+errors, then start a background thread that re-embeds policy passages left stale by a model change (skipped when
+no embedding model is available; never blocks the API). **Sample data** (`app/services/sample_data.py`, run through
+`python -m app.cli seed-samples`) is a separate command, not part of startup.
 
 Keeping PDF processing, persistence and HTTP in different modules means each can
 be tested on its own: `test_pdf_processing.py` never touches the database, and

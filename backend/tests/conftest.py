@@ -33,7 +33,7 @@ TEST_URI = os.environ.get("CLEARCASE_MONGODB_URI", "mongodb://127.0.0.1:27017")
 
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
-    return Settings(mongodb_uri=TEST_URI, mongodb_db=TEST_DB, max_upload_mb=2, max_pages=10)
+    return Settings(mongodb_uri=TEST_URI, mongodb_db=TEST_DB, max_upload_mb=2, max_pages=10, reindex_on_startup=False)
 
 
 @pytest.fixture(scope="session")
@@ -130,6 +130,19 @@ def make_mixed_pdf() -> bytes:
     pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 80, 100), False)
     pix.clear_with(120)
     page.insert_image(pymupdf.Rect(20, 80, 380, 480), pixmap=pix)
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def make_small_image_pdf(*, text: str = "Signed by the parties below") -> bytes:
+    """A text page with a small image (a logo/stamp, ~2% of the page) that text extraction cannot read."""
+    doc = pymupdf.open()
+    page = doc.new_page(width=400, height=500)
+    page.insert_text((40, 40), text, fontsize=11)
+    pix = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 40, 20), False)
+    pix.clear_with(90)
+    page.insert_image(pymupdf.Rect(40, 400, 140, 440), pixmap=pix)
     data = doc.tobytes()
     doc.close()
     return data

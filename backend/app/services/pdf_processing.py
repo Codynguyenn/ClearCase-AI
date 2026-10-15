@@ -16,6 +16,11 @@ Key behaviours (plain English):
 * Each page is classified as text / scanned / mixed / empty using simple,
   explainable heuristics (word count and image coverage). Anything that is not a
   plain text page is flagged as unsupported rather than silently analysed.
+* A text page that also shows a *small* image (a logo, a stamp) stays "text", but is
+  listed in ``pages_with_images`` so the reviewer is told that text inside the image
+  was not searched and cannot be redacted automatically.
+* Extraction has a time budget, checked after every page. It cannot interrupt one page
+  that hangs inside PyMuPDF (that is C code); see docs/decisions.md.
 """
 
 from __future__ import annotations
@@ -53,6 +58,10 @@ class PdfValidationError(Exception):
         super().__init__(message)
         self.code = code
         self.message = message
+
+
+class ExtractionTimeout(Exception):
+    """Extraction used up its time budget (checked between pages)."""
 
 
 @dataclass
@@ -106,6 +115,7 @@ class ExtractedPage:
     words: list[Word]
     image_count: int
     image_coverage: float
+    visible_images: int = 0
 
     @property
     def supported(self) -> bool:
@@ -136,30 +146,45 @@ def _page_geometry(page: pymupdf.Page) -> PageGeometry:
     return PageGeometry(width=width, height=height, rotation=rotation)
 
 
-def _image_coverage(page: pymupdf.Page) -> tuple[int, float]:
-    """Return (image_count, fraction_of_page_area_covered_by_images)."""
+@dataclass
+class ImageStats:
+    count: int  # images in the page's resources (may include images that are never drawn)
+    coverage: float  # fraction of the page area covered by drawn images (0..1)
+    visible: int  # images actually drawn on the page, plus any whose position could not be read
+    unmeasured: int  # images whose position could not be read (coverage may be understated)
+
+
+def _image_stats(page: pymupdf.Page) -> ImageStats:
     page_area = page.rect.width * page.rect.height
-    if page_area <= 0:
-        return 0, 0.0
     images = page.get_images(full=True)
+    if page_area <= 0:
+        return ImageStats(count=len(images), coverage=0.0, visible=0, unmeasured=0)
     covered = 0.0
+    visible = 0
+    unmeasured = 0
     for img in images:
         xref = img[0]
         try:
             rects = page.get_image_rects(xref)
-        except Exception:  # pragma: no cover - defensive against odd PDFs
+        except Exception:  # noqa: BLE001 - defensive against odd PDFs; we must not guess "no image"
+            unmeasured += 1
+            visible += 1
             continue
+        drawn = False
         for r in rects:
             clipped = r & page.rect  # intersect with the visible page
             if not clipped.is_empty:
                 covered += clipped.width * clipped.height
+                drawn = True
+        visible += 1 if drawn else 0
     # Overlapping images can exceed the page; cap at 1.0 for a clean fraction.
-    return len(images), min(covered / page_area, 1.0)
+    return ImageStats(count=len(images), coverage=min(covered / page_area, 1.0), visible=visible, unmeasured=unmeasured)
 
 
-def _classify(word_count: int, image_coverage: float) -> PageKind:
+def _classify(word_count: int, image_coverage: float, unmeasured_images: int = 0) -> PageKind:
     if word_count == 0:
-        return "scanned" if image_coverage >= SCANNED_IMAGE_COVERAGE else "empty"
+        # An image whose position cannot be read might be a full-page scan, so do not call the page "empty".
+        return "scanned" if image_coverage >= SCANNED_IMAGE_COVERAGE or unmeasured_images else "empty"
     if image_coverage >= MIXED_IMAGE_COVERAGE:
         return "mixed"
     return "text"
@@ -204,17 +229,22 @@ def _extract_words(page: pymupdf.Page) -> tuple[str, list[Word]]:
     return "".join(parts), words
 
 
-def extract_document(data: bytes) -> ExtractionResult:
-    """Extract every page. Caller is responsible for having validated the bytes."""
+def extract_document(data: bytes, *, time_limit_seconds: float | None = None) -> ExtractionResult:
+    """Extract every page. Caller is responsible for having validated the bytes.
+
+    ``time_limit_seconds`` is a budget for the whole document, checked after each page; going over it raises
+    ``ExtractionTimeout``. ``None`` means no limit (used for files this app produced itself).
+    """
     started = time.perf_counter()
     doc = pymupdf.open(stream=data, filetype="pdf")
     pages: list[ExtractedPage] = []
     limitations: list[str] = []
     try:
+        total = doc.page_count
         for index, page in enumerate(doc):
             text, words = _extract_words(page)
-            image_count, coverage = _image_coverage(page)
-            kind = _classify(len(words), coverage)
+            images = _image_stats(page)
+            kind = _classify(len(words), images.coverage, images.unmeasured)
             pages.append(
                 ExtractedPage(
                     page_number=index + 1,
@@ -222,10 +252,16 @@ def extract_document(data: bytes) -> ExtractionResult:
                     kind=kind,
                     text=text,
                     words=words,
-                    image_count=image_count,
-                    image_coverage=round(coverage, 4),
+                    image_count=images.count,
+                    image_coverage=round(images.coverage, 4),
+                    visible_images=images.visible,
                 )
             )
+            if time_limit_seconds is not None and time.perf_counter() - started >= time_limit_seconds:
+                raise ExtractionTimeout(
+                    f"Extraction stopped after {time_limit_seconds:g} s (reached page {index + 1} of {total}). "
+                    "The PDF may be unusually complex; try saving or printing it to a simpler PDF."
+                )
     finally:
         doc.close()
 
@@ -236,6 +272,12 @@ def extract_document(data: bytes) -> ExtractionResult:
             f"{len(unsupported)} page(s) are {'/'.join(kinds)} and cannot be analysed as text. "
             "OCR is not implemented; content in images is not searched or redacted."
         )
+    with_images = [p.page_number for p in pages if p.supported and p.visible_images > 0]
+    if with_images:
+        limitations.append(
+            f"Page(s) {', '.join(map(str, with_images))} contain images. Text inside images is not searched, and an "
+            "image is only blanked where an approved box covers it."
+        )
     limitations.append("Text inside images, annotations and form fields is not extracted.")
 
     info = ExtractionInfo(
@@ -244,6 +286,7 @@ def extract_document(data: bytes) -> ExtractionResult:
         duration_ms=int((time.perf_counter() - started) * 1000),
         supported_pages=len(pages) - len(unsupported),
         unsupported_pages=unsupported,
+        pages_with_images=with_images,
         limitations=limitations,
     )
     return ExtractionResult(pages=pages, info=info, limitations=limitations)

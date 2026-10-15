@@ -29,6 +29,7 @@ from app.services.detection import (
 from app.services.pdf_processing import extract_document
 from tests.conftest import SAMPLE_CONTRACT, make_text_pdf
 
+
 class _FakePage:
     """Minimal page (text + word boxes) for tests that need exact characters."""
 
@@ -39,7 +40,7 @@ class _FakePage:
         self.page_number = 1
         self.text = text
         self.words = []
-        cursor, line = 0, 0
+        cursor = 0
         for line_no, line_text in enumerate(text.split("\n")):
             for token in line_text.split(" "):
                 start = text.index(token, cursor)
@@ -55,7 +56,6 @@ class _FakePage:
                     )
                 )
                 cursor = start + len(token)
-            line = line_no
         self.geometry = None
 
 

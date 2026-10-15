@@ -9,6 +9,7 @@ interface Props {
 /** Filename, status and any honest warnings about what could not be analysed. */
 export function DocumentHeader({ doc, onRetry }: Props) {
   const ex = doc.extraction
+  const imagePages = ex?.pages_with_images ?? []
   return (
     <header className="border-b border-slate-200 bg-white px-4 py-2">
       <div className="flex items-center gap-3">
@@ -42,6 +43,14 @@ export function DocumentHeader({ doc, onRetry }: Props) {
           {ex.unsupported_pages.length === 1 ? '' : 's'} {ex.unsupported_pages.join(', ')}{' '}
           {ex.unsupported_pages.length === 1 ? 'is' : 'are'} scanned or image-heavy and{' '}
           <strong>cannot be analysed</strong>. Review of this document is incomplete.
+        </p>
+      )}
+
+      {doc.status === 'ready' && imagePages.length > 0 && (
+        <p role="status" className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">
+          Page{imagePages.length === 1 ? '' : 's'} {imagePages.join(', ')}{' '}
+          {imagePages.length === 1 ? 'contains an image' : 'contain images'}. Text inside images is{' '}
+          <strong>not searched</strong>, and an image is only blanked where an approved box covers it.
         </p>
       )}
 

@@ -1,6 +1,7 @@
 # Pinned transitive dependencies (see README "Dependencies").
 # torch: macOS uses the PyPI wheel; Linux uses the CPU-only build from PyTorch's own index.
 # Without this, `pip install torch` on Linux pulls several GB of NVIDIA CUDA packages we never use.
+# Regenerate with scripts/regenerate_lock.sh (a plain `pip freeze` would lose the torch markers).
 --extra-index-url https://download.pytorch.org/whl/cpu
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -67,6 +68,7 @@ regex==2026.9.29
 requests==2.34.2
 rich==15.0.0
 rpds-py==2026.9.1
+ruff==0.16.10
 safetensors==0.8.0
 scikit-learn==1.9.1
 scipy==1.18.1

@@ -47,6 +47,13 @@ class PolicyRecord(ApiModel):
     truncated_chunks: int = Field(
         default=0, description="chunks longer than the embedding model reads (the tail is ignored by retrieval)"
     )
+    chunker_version: int = Field(description="version of the chunking rules this policy version was split with")
+    chunker_outdated: bool = Field(
+        description="true when the chunking rules have changed since; upload the text as a new version to re-split it"
+    )
+    cited_by_findings: int = Field(
+        default=0, description="review findings that cite a passage of this version (they show 'unavailable' if it is deleted)"
+    )
     embedding: EmbeddingSummary
     created_at: datetime
     updated_at: datetime

@@ -112,7 +112,13 @@ backend/.venv/bin/python sample_data/generate_samples.py
 ```
 
 Open <http://127.0.0.1:5173>, upload `sample_data/sample_contract.pdf`, then open the
-**Policy** tab and click **Load the fictional sample policies**.
+**Policy** tab and click **Load the fictional sample policies**. Or load the sample PDF and both
+fictional policies in one go (safe to repeat; `--reset` rebuilds only the samples, found by the SHA-256
+of their bytes, and never touches your own documents):
+
+```bash
+cd backend && .venv/bin/python -m app.cli seed-samples            # add --reset to rebuild them
+```
 
 **Disk space:** PyTorch and the embedding libraries add about 1 GB to `backend/.venv`
 (plus the 87 MB model in `.local/models`). The pip download cache can briefly use
@@ -131,10 +137,25 @@ docker compose up mongo            # just the database, run backend/frontend nat
 docker compose up --build          # the whole stack
 # ONCE: download the policy-search model into the `models` volume (it is never baked into the image)
 docker compose run --rm backend python -m app.cli download-embedding-model
+docker compose exec backend python -m app.cli seed-samples      # sample PDF + fictional policies
 ```
 
-The backend image is about 2.3 GB (CPU-only PyTorch, no CUDA). The two fictional sample
-policies are mounted read-only from `sample_data/` and loaded from the Policy tab.
+The backend image is about 2.3 GB (CPU-only PyTorch, no CUDA). The sample files are mounted
+read-only from `sample_data/`. The backend and frontend containers run as unprivileged users (not
+root) and report health: `docker compose ps` shows `(healthy)` once the API answers **and** MongoDB
+is reachable, and the frontend waits for that. If you created the `models` volume with an older
+version of the compose file, remove it once (`docker volume rm clearcase-ai_models`) so it is
+recreated writable for the non-root user.
+
+### Dependencies and the lock file
+
+Direct dependencies are pinned exactly in `backend/pyproject.toml`; `backend/requirements.lock` pins
+everything else too, and is what Docker and CI install. A plain `pip freeze` would break it: Linux needs
+PyTorch's CPU-only build (two `torch` lines with platform markers and an extra index) and the spaCy
+model is pinned by wheel URL and hash. To regenerate it correctly, run `scripts/regenerate_lock.sh`
+(add `python3.12` to match Docker/CI), then the backend tests, and read the diff: transitive dependencies
+move to their newest compatible releases. `backend/tests/test_lockfile.py` fails if the lock drifts from
+`pyproject.toml` or loses those lines.
 
 ## Running the tests
 
@@ -144,9 +165,10 @@ The backend tests need a reachable MongoDB (they use a separate
 ```bash
 scripts/dev_mongo.sh start
 cd backend && .venv/bin/python -m pytest -q
+cd backend && .venv/bin/ruff check app tests      # lint (CI runs it too)
 ```
 
-Frontend checks (58 tests: geometry maths plus React component tests that run in a simulated
+Frontend checks (68 tests: geometry maths plus React component tests that run in a simulated
 browser with a faked network; the real-browser end-to-end test arrives in Phase 6):
 
 ```bash
@@ -206,7 +228,15 @@ for the reasoning behind each major choice.
 ## Limitations (current)
 
 - Only English, text-based PDFs. No OCR: scanned/mixed pages are flagged, not read.
-- Text inside images, annotations and form fields is not extracted.
+- Text inside images, annotations and form fields is not extracted. A page that is mostly text but
+  also shows a small image (a logo, a stamp) is still analysed; the document header and the export panel
+  list those pages, because text inside the image is not searched and an image is only blanked where an
+  approved box covers it. Scanned and large-image pages are not analysed at all.
+- Resource limits: an upload over the size limit is cut off while it streams in (HTTP 413) instead of
+  being received in full, and extraction has a 60-second budget per document (`CLEARCASE_EXTRACTION_TIMEOUT_SECONDS`),
+  checked after each page. That budget cannot interrupt a single page that hangs inside PyMuPDF's C
+  code; a hostile PDF could still stall one worker. Running extraction in a killable child process is the
+  next step if this is ever exposed beyond localhost.
 - Single server-controlled demo identity; **not** authentication. Localhost only.
 - Extraction and export run inside the API process, suitable for a local MVP.
 - NER is a pretrained model we did not train; it produces false positives
@@ -222,6 +252,11 @@ for the reasoning behind each major choice.
   `evaluation/README.md`). When nothing reaches the cutoff the reviewer can open a collapsed
   "possibly related" list of weaker matches. A human still decides.
 - The first policy question after the app starts takes ~15-20 s while the model loads.
+- If the embedding model revision changes, passages embedded with the old one are refreshed automatically
+  in a background thread at startup (`CLEARCASE_REINDEX_ON_STARTUP`, on by default); policy search covers
+  only the already-refreshed passages until that finishes, and says so. The chunking rules are versioned
+  separately: a policy split with older rules is flagged, never re-split in place (that would silently
+  change what existing citations point at). Upload the text as a new version to re-split it.
 - The MCP server and client exist and are tested, but nothing in the UI calls them yet; that is Phase 5.
 
 ## MCP server (Phase 3)

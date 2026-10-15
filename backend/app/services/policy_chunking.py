@@ -18,6 +18,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+# Bump this whenever a change to this module could make the SAME policy text split into different chunks.
+# Each stored policy version records the value it was chunked with; existing versions are never re-chunked in
+# place, because their chunk ids ("policy:version:ordinal") are what findings cite and must keep pointing at the
+# same words. A policy chunked by an older version is flagged instead, and the fix is to upload it as a new version.
+CHUNKER_VERSION = 1
+
 MAX_WORDS_PER_CHUNK = 140
 MAX_CHUNKS_PER_POLICY = 300
 INTRO_SECTION = "Introduction"
@@ -157,7 +163,7 @@ def chunk_markdown(body: str, *, max_words: int = MAX_WORDS_PER_CHUNK) -> list[C
     lines: list[str] = []
 
     def flush() -> None:
-        if any(l.strip() for l in lines):
+        if any(text.strip() for text in lines):
             sections.append((section, list(lines)))
         lines.clear()
 
@@ -184,12 +190,12 @@ def chunk_markdown(body: str, *, max_words: int = MAX_WORDS_PER_CHUNK) -> list[C
         current: list[str] = []
         current_words = 0
 
-        def emit() -> None:
+        def emit(heading: str = name) -> None:  # bound now: this runs inside the loop that rebinds `name`
             nonlocal current, current_words
             if current:
                 text = "\n\n".join(current).strip()
                 if text:
-                    drafts.append(ChunkDraft(len(drafts) + 1, name, text, len(_words(text))))
+                    drafts.append(ChunkDraft(len(drafts) + 1, heading, text, len(_words(text))))
             current, current_words = [], 0
 
         for block in _section_blocks(section_lines):

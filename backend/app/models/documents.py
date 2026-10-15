@@ -91,6 +91,8 @@ class ExtractionInfo(BaseModel):
     duration_ms: int | None = None
     supported_pages: int = 0
     unsupported_pages: list[int] = Field(default_factory=list)
+    # Pages that are analysed as text but also show an image (logo, stamp...): text inside it is not searched.
+    pages_with_images: list[int] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
 
 

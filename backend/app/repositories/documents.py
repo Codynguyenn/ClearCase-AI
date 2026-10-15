@@ -86,6 +86,11 @@ class DocumentRepository:
     def count(self, *, owner_id: str) -> int:
         return self._col.count_documents({"owner_id": owner_id})
 
+    def find_by_hash(self, *, owner_id: str, content_hash: str) -> list[DocumentRecord]:
+        """Every document of this owner whose uploaded bytes have this SHA-256 (newest first)."""
+        cursor = self._col.find({"owner_id": owner_id, "content_hash": content_hash}).sort("created_at", DESCENDING)
+        return [_record_from_doc(d) for d in cursor]
+
     def update(self, document_id: str, *, owner_id: str, fields: dict[str, Any]) -> DocumentRecord:
         fields = {**fields, "updated_at": utcnow()}
         doc = self._col.find_one_and_update(

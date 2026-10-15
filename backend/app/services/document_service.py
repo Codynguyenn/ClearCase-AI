@@ -81,7 +81,11 @@ class DocumentService:
                 max_pages=self._settings.max_pages,
             )
         except PdfValidationError as exc:
-            raise ValidationFailed(exc.message, code=exc.code) from exc
+            # 413 ("payload too large") is the accurate status for an over-size file; every other
+            # rejection is a 422 about the content.
+            raise ValidationFailed(
+                exc.message, code=exc.code, status_code=413 if exc.code == "file_too_large" else None
+            ) from exc
 
         safe_name = sanitize_filename(filename)
         content_hash = hashlib.sha256(data).hexdigest()
@@ -125,7 +129,7 @@ class DocumentService:
 
         try:
             data = self.files.get_bytes(raw["original_file_id"], owner_id=owner_id)
-            result = extract_document(data)
+            result = extract_document(data, time_limit_seconds=self._settings.extraction_timeout_seconds)
             new_version = int(raw.get("version", 1)) + (1 if raw.get("extraction") else 0)
             self.pages.replace_for_document(
                 document_id, owner_id=owner_id, version=new_version, pages=result.pages

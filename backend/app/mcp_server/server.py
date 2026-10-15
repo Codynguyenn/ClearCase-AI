@@ -52,13 +52,13 @@ from app.mcp_server.schemas import (
     DocumentId,
     ExportOutput,
     PolicyGuidanceOutput,
+    ProposableCategory,
     ProposalItem,
     ProposedFindingRef,
-    ProposableCategory,
     ProposeRedactionsOutput,
     ReviewSummaryOutput,
-    ToolRetrievalMethod,
     SearchDocumentOutput,
+    ToolRetrievalMethod,
     UnresolvedItem,
 )
 from app.models.findings import Category, Finding, Origin, ProposalInput, ReviewLabel, ReviewStatus

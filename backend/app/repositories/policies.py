@@ -59,6 +59,10 @@ class PolicyRepository:
     def list(self, owner_id: str) -> list[dict[str, Any]]:
         return list(self._col.find({"owner_id": owner_id}).sort([("policy_id", ASCENDING), ("created_at", -1)]))
 
+    def owners(self) -> list[str]:
+        """Every owner that has at least one policy (used by the startup re-index, which covers all of them)."""
+        return sorted(self._col.distinct("owner_id"))
+
     def versions(self, owner_id: str, policy_id: str) -> list[dict[str, Any]]:
         return list(self._col.find({"owner_id": owner_id, "policy_id": policy_id}))
 

@@ -26,6 +26,7 @@ dependencies = [
 dev = [
     "pytest==9.1.1",
     "httpx==0.28.1",
+    "ruff==0.16.10",
 ]
 
 [tool.pytest.ini_options]
@@ -34,3 +35,17 @@ addopts = "-ra"
 filterwarnings = [
     "error::DeprecationWarning:app.*",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes (unused names), I import order, B bugbear (likely bugs), UP modern Python.
+select = ["E", "F", "W", "I", "B", "UP"]
+# E501 (line length) is ignored on purpose: there is no auto-formatter here, a long line is not a defect, and
+# forcing wraps on prose-heavy lines (tests, messages) makes them harder to read.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "tests"]
