@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-14 (Phases 1-5 merged to `main`; Phase 6 under way: the assistant model comparison is done on branch `phase-6-evaluation`, not yet committed)
+Last updated: 2026-10-15 (Phases 1-5 merged to `main`; Phase 6 under way: the assistant model comparison and the browser end-to-end test are merged, PR #7; demo script and interview guide are in the follow-up docs PR)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison and the browser end-to-end test (below). Not done: a second retrieval question set, demo script, interview guide, polish, final Compose re-run |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide. Not done: a second retrieval question set, polish |
 
 ## Working features (verified)
 
@@ -258,7 +258,7 @@ apply to PDF.js 6.3): see "Phase 4 hardening bundle" below and `docs/decisions.m
 - **Small extras**: all four were done afterwards in the hardening bundle below (chunker version, script that
   regenerates `requirements.lock`, citing-finding count in the delete confirmation, automatic re-index at startup).
 
-### Phase 6: assistant model comparison (2026-10-14, branch `phase-6-evaluation`, uncommitted)
+### Phase 6: assistant model comparison (2026-10-14, merged in PR #7)
 
 What was built (`evaluation/assistant_eval/`): a seeded generator of synthetic contract-like PDFs with ground truth (6 templates; a
 6-document dev set for debugging and a frozen 12-document held-out set, SHA-256 checked), the scoring rules, a runner that drives the
@@ -283,7 +283,7 @@ flaw in my ground truth, not a result about the models, and it is in the protoco
 Spend so far on the live provider, estimated from token counts: about $3.3 of the $20 bought (Phase 5 checks ~$0.5, evaluation setup
 ~$0.04, held-out run $2.78). The Console's usage page is the authority.
 
-### Phase 6: browser end-to-end test (2026-10-15, branch `phase-6-evaluation`)
+### Phase 6: browser end-to-end test (2026-10-15, merged in PR #7)
 
 `frontend/e2e/review-flow.spec.ts` (Playwright, `npm run e2e`): five tests, one reviewer's session, in a real Chrome against the real
 frontend, backend, MongoDB and PDF engine, with the scripted demo assistant (no model call is possible; `scripts/e2e_backend.sh` blanks
@@ -294,7 +294,12 @@ assistant refused an export until the reviewer authorizes, then exporting; the r
 downloaded file to search it (approved name 5 matches before, 1 after = the rejected one; approved e-mails and SSN gone; company names
 kept); the conversation after a reload. Checked by breaking the product on purpose: a non-modal dialog and a do-nothing redaction each
 make the tests fail. Frontend lint, typecheck (now includes the specs via `tsconfig.e2e.json`), 94 unit tests and build still pass.
-A new CI job `e2e` runs it with Playwright's own Chromium; it had not run on GitHub when this was written (see the PR).
+A new CI job `e2e` runs it with Playwright's own Chromium; it **passed on GitHub's runners** (PR #7: backend, frontend and e2e all green).
+
+**Compose re-run (2026-10-15):** `docker compose build` and `up` with the current tree: mongo, backend and frontend all came up healthy,
+the backend runs as uid 10001 (non-root), and the same five browser tests **passed against the containers** (backend and database in
+Docker, a fresh database inside the stack, the scripted assistant; the pinned embedding model was copied from the local cache into the
+`models` volume, so nothing was downloaded). The temporary port override and scratch database were removed afterwards.
 
 Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
 task; the test filters to undecided findings). Details and limits: decision 52.
@@ -519,8 +524,7 @@ because of the port conflicts above.
 ## Remaining work (by phase)
 
 **Phase 6 — QA & docs**: a **new** held-out retrieval question set (the current one has used its two allowed runs),
-export-verification outcomes and latency, the three-minute demo script, the interview guide, polish, and a full Docker
-Compose re-run. **Done in Phase 6 so far:** the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
+export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
 detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:
@@ -547,8 +551,8 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
 
 ## Next implementation step
 
-1. **Commit and push `phase-6-evaluation`** (the user decides; everything is currently uncommitted), open a PR, let CI run
-   (it never calls the provider; the evaluation tests need no key), and merge. The default model recommendation (Haiku) is already applied (decision 51).
+1. Merge the docs PR (demo script, interview guide, README fixes). The bulk "Approve shown/Reject shown" fix is being done in a
+   separate session; it will also need to adjust `frontend/e2e/review-flow.spec.ts` if it changes what the default view does.
 2. Continue **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
    user's key in `.env` and spends real credit (about $0.03-$0.17 per request observed; the account is prepaid with
    auto-reload off). `scripts/live_check.py` is the manual way to look at it.
