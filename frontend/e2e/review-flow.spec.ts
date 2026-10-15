@@ -98,11 +98,11 @@ test('upload, search, detect, and review: the detectors only propose, the review
   const findings = page.getByLabel('Findings', { exact: true }).getByRole('listitem')
   await findings.first().getByRole('button', { name: 'Reject', exact: true }).click()
   await expect(page.getByText('1 rejected')).toBeVisible()
-  // "Approve shown" acts on everything on screen, so a careful reviewer first narrows the list to the undecided findings.
-  await page.getByLabel('Filter by status').selectOption('proposed')
-  await page.getByRole('button', { name: 'Approve shown' }).click()
+  // With "all statuses" shown, "Approve shown" acts only on findings nobody has decided yet (and says how many), so it
+  // cannot turn the rejection above into an approval.
+  await page.getByRole('button', { name: `Approve shown (${proposed - 1} undecided)` }).click()
   await expect(page.getByText(`${proposed - 1} approved`)).toBeVisible()
-  await expect(page.getByText('1 rejected')).toBeVisible() // the rejected finding was not on screen, so it was not touched
+  await expect(page.getByText('1 rejected')).toBeVisible() // the rejected finding was left alone
 })
 
 test('policy library: load the samples, ask, open a cited passage, and the dialog behaves like a dialog', async ({ page }) => {
