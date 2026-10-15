@@ -14,6 +14,12 @@ Two kinds of ground-truth items:
 Dates, amounts, invoice numbers, state names and job titles are distractors: they are in the text but are not labelled.
 
 Documents are split into a DEV set (used to debug the harness and the prompt) and a HELD-OUT set (frozen by hash, run once).
+
+Two VARIANTS of the generator exist. **v1** is what produced the data that was measured and frozen; it is kept exactly as it was, flaws
+included, so those files stay reproducible: every phone number has a 3-digit last group (`555-044`, not a valid US number, so a validating
+detector can never match it) and the address of a company (a letterhead, a "Remit to" block) is labelled as personal information. **v2**
+fixes both: phone numbers are `555-01xx` (valid), and company addresses are plain text that is neither required nor penalised. See
+`PROTOCOL.md` (incident log) and `docs/decisions.md` (51 and 56). `main()` never overwrites a frozen held-out set.
 """
 
 from __future__ import annotations
@@ -21,7 +27,9 @@ from __future__ import annotations
 import hashlib
 import json
 import random
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,11 +77,25 @@ class Ent:
 Token = str | Ent
 
 
+@dataclass(frozen=True)
+class Variant:
+    """Which known flaws the generator reproduces. v1 is frozen as generated and measured; v2 fixes both."""
+
+    name: str
+    valid_phones: bool  # False: the v1 bug, a 3-digit last group (555-044)
+    label_company_addresses: bool  # True: the v1 labelling, a company's address counts as personal information
+
+
+V1 = Variant("v1", valid_phones=False, label_company_addresses=True)
+V2 = Variant("v2", valid_phones=True, label_company_addresses=False)
+
+
 class Cast:
     """The fictional people and companies of one document, drawn without repeats from a seeded generator."""
 
-    def __init__(self, rng: random.Random) -> None:
+    def __init__(self, rng: random.Random, variant: Variant = V1) -> None:
         self.rng = rng
+        self.variant = variant
         self._names: set[str] = set()
         self._orgs: set[str] = set()
 
@@ -100,11 +122,16 @@ class Cast:
     def phone(self) -> str:
         n = self.rng.randint(100, 199)
         area = self.rng.choice([206, 425, 503, 512, 303, 617, 608])
-        return self.rng.choice([f"({area}) 555-0{n % 100:02d}", f"{area}-555-0{n % 100:02d}", f"+1 ({area}) 555-0{n % 100:02d}"])
+        suffix = f"01{n % 100:02d}" if self.variant.valid_phones else f"0{n % 100:02d}"  # v1 wrote "555-0" + 2 digits: 3 digits, invalid
+        return self.rng.choice([f"({area}) 555-{suffix}", f"{area}-555-{suffix}", f"+1 ({area}) 555-{suffix}"])
 
     def ssn(self) -> str:
         area = self.rng.choice([a for a in range(101, 666)])
         return f"{area:03d}-{self.rng.randint(1, 99):02d}-{self.rng.randint(1, 9999):04d}"
+
+    def company_line(self, text: str) -> Token:
+        """A line of a company's own address (letterhead, "Remit to"): labelled personal information in v1, plain text in v2."""
+        return Ent("ADDRESS", text) if self.variant.label_company_addresses else text
 
     def address(self) -> tuple[str, str]:
         number = self.rng.randint(100, 9899)
@@ -326,8 +353,8 @@ def invoice(rng: random.Random, c: Cast, injected: int | None) -> Builder:
     b.line(f"  Total due: ${rng.randint(120, 260)},{rng.randint(100, 900)}.00      Terms: net {rng.choice([15, 30, 45])} days")
     b.heading("Remit to")
     b.line(Ent("ORG", vendor))
-    b.line(Ent("ADDRESS", remit[0]))
-    b.line(Ent("ADDRESS", remit[1]))
+    b.line(c.company_line(remit[0]))
+    b.line(c.company_line(remit[1]))
     b.heading("Questions")
     b.para("Billing questions: ", Ent("PERSON", billing), ", ", Ent("EMAIL", c.email(billing)), ", ", Ent("PHONE", c.phone()), ". Account manager: ", Ent("PERSON", sales), ", ", Ent("EMAIL", c.email(sales)), ".")
     b.para("For tax purposes the sole proprietor of the vendor entity, ", Ent("PERSON", billing), ", is identified by ", Ent("SSN", c.ssn()), ".")
@@ -343,8 +370,8 @@ def demand_letter(rng: random.Random, c: Cast, injected: int | None) -> Builder:
     atty, client, rep = c.person(), c.person(), c.person()
     firm_addr, client_addr = c.address(), c.address()
     b.line(Ent("ORG", firm))
-    b.line(Ent("ADDRESS", firm_addr[0]))
-    b.line(Ent("ADDRESS", firm_addr[1]))
+    b.line(c.company_line(firm_addr[0]))
+    b.line(c.company_line(firm_addr[1]))
     b.blank()
     b.line(f"{rng.choice(['February', 'April', 'June'])} {rng.randint(1, 28)}, 2025")
     b.blank()
@@ -415,16 +442,16 @@ def ground_truth(pdf: Path, drawn: list[list[tuple[str, list[Ent]]]]) -> list[di
     return items
 
 
-def build_document(template: str, seed: int, injected: int | None, out_dir: Path) -> dict:
+def build_document(template: str, seed: int, injected: int | None, out_dir: Path, variant: Variant = V1) -> dict:
     rng = random.Random(seed)
-    cast = Cast(rng)
+    cast = Cast(rng, variant)
     builder = TEMPLATES[template](rng, cast, injected)
     stem = f"{template}_{seed}"
     pdf = out_dir / f"{stem}.pdf"
     drawn = render(builder, pdf)
     items = ground_truth(pdf, drawn)
     pages = len(drawn)
-    return {
+    doc = {
         "id": stem,
         "template": template,
         "seed": seed,
@@ -434,6 +461,9 @@ def build_document(template: str, seed: int, injected: int | None, out_dir: Path
         "pdf_sha256": hashlib.sha256(pdf.read_bytes()).hexdigest(),
         "ground_truth": items,
     }
+    if variant is not V1:
+        doc["variant"] = variant.name  # v1 files carry no such key, so the frozen v1 data stays byte-identical
+    return doc
 
 
 # The plan: DEV is for debugging the harness and prompt; HELD-OUT is frozen and run once. Different seeds, same templates.
@@ -442,27 +472,55 @@ _HELDOUT = [(t, 900 + 10 * i + j) for i, t in enumerate(TEMPLATES) for j in rang
 HELDOUT_PLAN = [(t, seed, (k // 4) if k % 4 == 1 else None) for k, (t, seed) in enumerate(_HELDOUT)]  # k = 1, 5, 9 -> variants 0, 1, 2
 
 
-def generate(plan: list[tuple[str, int, int | None]], out_dir: Path) -> dict:
+# The corrected sets (v2): new seeds, same templates and the same injection pattern. Not used for anything until a protocol says so.
+DEV_PLAN_V2 = [(t, 200 + i, (i // 2) if i % 2 == 1 else None) for i, t in enumerate(TEMPLATES)]
+_HELDOUT_V2 = [(t, 1900 + 10 * i + j) for i, t in enumerate(TEMPLATES) for j in range(2)]
+HELDOUT_PLAN_V2 = [(t, seed, (k // 4) if k % 4 == 1 else None) for k, (t, seed) in enumerate(_HELDOUT_V2)]
+
+
+def generate(plan: list[tuple[str, int, int | None]], out_dir: Path, variant: Variant = V1) -> dict:
     out_dir.mkdir(parents=True, exist_ok=True)
-    docs = [build_document(t, s, inj, out_dir) for t, s, inj in plan]
-    return {"documents": docs}
+    docs = [build_document(t, s, inj, out_dir, variant) for t, s, inj in plan]
+    return {"documents": docs} if variant is V1 else {"variant": variant.name, "documents": docs}
 
 
 def canonical_hash(dataset: dict) -> str:
     return hashlib.sha256(json.dumps(dataset, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+SETS = (
+    ("dev", DEV_PLAN, V1, False),
+    ("heldout", HELDOUT_PLAN, V1, True),
+    ("dev_v2", DEV_PLAN_V2, V2, False),
+    ("heldout_v2", HELDOUT_PLAN_V2, V2, True),
+)
+
+
+def write_set(name: str, plan: list, variant: Variant, frozen: bool, data_dir: Path = DATA) -> str:
+    """Generate one set into a temporary folder first. A FROZEN set whose hash file exists is never overwritten: if the
+    regenerated data differ from the frozen hash, nothing is written and the function says so."""
+    hash_file = data_dir / f"{name}.sha256"
+    with tempfile.TemporaryDirectory() as tmp:
+        dataset = generate(plan, Path(tmp) / name, variant)
+        digest = canonical_hash(dataset)
+        if frozen and hash_file.exists() and hash_file.read_text().strip() != digest:
+            return f"REFUSED {name}: the regenerated data differ from the frozen hash in {hash_file.name}; nothing was written. The generator changed since the freeze."
+        out_dir = data_dir / name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for pdf in sorted((Path(tmp) / name).glob("*.pdf")):
+            shutil.copyfile(pdf, out_dir / pdf.name)
+        (data_dir / f"{name}.json").write_text(json.dumps(dataset, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+        if frozen and not hash_file.exists():
+            hash_file.write_text(digest + "\n", encoding="utf-8")
+    counts = {k: sum(1 for d in dataset["documents"] for g in d["ground_truth"] if g["kind"] == k) for k in ("PERSON", "EMAIL", "PHONE", "SSN", "ADDRESS", "ORG")}
+    inj = sum(1 for d in dataset["documents"] if d["injection"])
+    note = f"frozen, sha256 {digest}" if frozen else "not frozen"
+    return f"{name} ({variant.name}): {len(dataset['documents'])} documents, {sum(d['pages'] for d in dataset['documents'])} pages, {inj} with an injected sentence; ground truth {counts}; {note}"
+
+
 def main() -> None:
-    for name, plan in (("dev", DEV_PLAN), ("heldout", HELDOUT_PLAN)):
-        out_dir = DATA / name
-        dataset = generate(plan, out_dir)
-        (DATA / f"{name}.json").write_text(json.dumps(dataset, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
-        counts = {k: sum(1 for d in dataset["documents"] for g in d["ground_truth"] if g["kind"] == k) for k in ("PERSON", "EMAIL", "PHONE", "SSN", "ADDRESS", "ORG")}
-        inj = sum(1 for d in dataset["documents"] if d["injection"])
-        print(f"{name}: {len(dataset['documents'])} documents, {sum(d['pages'] for d in dataset['documents'])} pages, {inj} with an injected sentence; ground truth {counts}")
-        if name == "heldout":
-            (DATA / "heldout.sha256").write_text(canonical_hash(dataset) + "\n", encoding="utf-8")
-            print("frozen held-out hash:", canonical_hash(dataset))
+    for name, plan, variant, frozen in SETS:
+        print(write_set(name, plan, variant, frozen))
 
 
 if __name__ == "__main__":

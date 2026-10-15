@@ -126,7 +126,7 @@ everything" sentence. One run per document and model, 36 runs, $2.78 in total. F
 | Claude Opus 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.152 |
 
 What the numbers support:
-- Every model beat the detectors; the paired F1 difference is about +0.16 as frozen (about +0.10 once the malformed phone numbers
+- Every model beat the detectors **on this first (v1) set**; the paired F1 difference is about +0.16 as frozen (about +0.10 once the malformed phone numbers
   described below are set aside) and its interval excludes zero either way.
 - The three models cannot be told apart on accuracy (Haiku minus Opus: -0.006, interval -0.022 to +0.000), but Opus cost
   about 27 times as much per document as Haiku. Under the pre-registered rule the recommended default is Haiku.
@@ -182,12 +182,41 @@ never errs; in-process timing on one machine (no network, no large files); the v
 nobody proposed (33 of 108 here) stays readable and unflagged unless a copy of the same text was approved. PHONE coverage is 0 of 27
 only because the synthetic phone numbers are malformed (see the assistant comparison above).
 
+## Corrected data (v2): what changed once the two data flaws were fixed (run 2026-10-15)
+
+The first synthetic set (v1) had two flaws (malformed phone numbers; company addresses labelled as personal), found after the run. The
+generator now has a **v1 variant that reproduces the old, measured data byte for byte** and a **v2 variant that fixes both**; new seeds, a
+new frozen held-out set (`heldout_v2`, sha256 `90188e77...`), and `dataset.py` can no longer overwrite a frozen set. Protocol first:
+`assistant_eval/PROTOCOL_V2.md`. Only the free steps have been run: the detector baselines and the pipeline measurement.
+
+| | v1 (as frozen) | v2 (corrected) |
+| --- | --- | --- |
+| Detectors, pattern plus NER: precision / recall / F1 | 0.921 / 0.744 / 0.823 | 0.895 / 0.942 / **0.918** |
+| PHONE recall of the detectors | 0 of 18 | 18 of 18 |
+| NER PERSON recall | 0.67 (48 of 72) | 0.88 (63 of 72) |
+| Pipeline: exports clean / needing acknowledgement | 9 / 9 | 14 / 4 |
+| Pipeline: leftover copies the verifier reported / found independently | 9 / 9 | 4 / 4 |
+| Pipeline: upload to ready, export (median) | 47 ms, 186 ms | 55 ms, 208 ms |
+
+What it supports and what it changes:
+- On clean data the detectors alone score 0.92, so the models' advantage there is **at most about +0.08** (the models have **not** been run
+  on v2; that would cost about $0.07 for Haiku or $2.8 for all three and needs approval) against +0.16 on v1 as frozen.
+- NER's PERSON recall moved from 0.67 to 0.88 between two sets of 72 mentions drawn from the same lists: on synthetic data **the size of an
+  advantage depends on the draw**. Quote ranges, not single numbers.
+- Unchanged: the export verifier reported every leftover copy of approved text in both sets (13 of 13); latency is tens to a couple of hundred
+  milliseconds on these small documents.
+- Four predictions for the free steps (`PROTOCOL_V2.md`): two held, two failed (PERSON recall was not below 0.80; fewer than 6 exports needed an
+  acknowledgement).
+
+What it does not support: v2 is a re-draw with the flaws removed, using the same name lists and templates, so it is not a harder or more
+varied set. Reports: `assistant_eval/REPORT_heldout_v2.md` (detectors only) and `pipeline_eval/REPORT_v2.md`.
+
 ## What does NOT exist yet (Phase 6)
 
 - A retrieval question set **written by people** (the second set above is model-written and model-labelled, which is
   more independent than same-author but not human), and a **third** set before any new retrieval method is tuned or tested.
-- A repeat of the assistant comparison on harder, longer, messier documents with labels that separate personal from
-  business addresses, written before running anything. Until then nothing here should be quoted as real-world accuracy.
+- The assistant models run on the corrected v2 set (`heldout_v2`; needs approval to spend), and a repeat on harder, longer, messier
+  documents, written before running anything. Until then nothing here should be quoted as real-world accuracy.
   All data in this project is synthetic.
 
 ## Held-out protocol for policy retrieval (written BEFORE any held-out run)

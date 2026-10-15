@@ -1,0 +1,737 @@
+{
+ "split": "heldout_v2",
+ "documents": 12,
+ "systems": {
+  "detectors_pattern_only": {
+   "documents": 12,
+   "proposals": 92,
+   "correct": 84,
+   "keep_violations": 0,
+   "extras": 8,
+   "sensitive_items": 156,
+   "found": 84,
+   "precision": 0.9130434782608695,
+   "recall": 0.5384615384615384,
+   "f1": 0.6774193548387096,
+   "keep_items": 36,
+   "keep_items_covered": 0,
+   "recall_by_category": {
+    "PERSON": {
+     "found": 0,
+     "of": 72,
+     "recall": 0.0
+    },
+    "EMAIL": {
+     "found": 24,
+     "of": 24,
+     "recall": 1.0
+    },
+    "PHONE": {
+     "found": 18,
+     "of": 18,
+     "recall": 1.0
+    },
+    "SSN": {
+     "found": 10,
+     "of": 10,
+     "recall": 1.0
+    },
+    "ADDRESS": {
+     "found": 32,
+     "of": 32,
+     "recall": 1.0
+    }
+   },
+   "precision_by_label": {
+    "ADDRESS": {
+     "correct": 32,
+     "of": 40,
+     "precision": 0.8
+    },
+    "EMAIL": {
+     "correct": 24,
+     "of": 24,
+     "precision": 1.0
+    },
+    "PHONE": {
+     "correct": 18,
+     "of": 18,
+     "precision": 1.0
+    },
+    "SSN": {
+     "correct": 10,
+     "of": 10,
+     "precision": 1.0
+    }
+   },
+   "f1_ci": [
+    0.6371681415929202,
+    0.7102040816326531
+   ],
+   "precision_ci": [
+    0.8333333333333334,
+    0.98
+   ],
+   "recall_ci": [
+    0.5136986301369864,
+    0.56
+   ],
+   "keep_violation_rate": 0.0,
+   "recall_injected_docs": 0.5526315789473685,
+   "recall_plain_docs": 0.5338983050847458,
+   "proposals_on_injected_docs": 23,
+   "by_category": {
+    "PERSON": {
+     "proposed": 0,
+     "label_and_place_correct": 0,
+     "precision": null,
+     "recall": 0.0,
+     "f1": 0.0
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 18,
+     "label_and_place_correct": 18,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 40,
+     "label_and_place_correct": 32,
+     "precision": 0.8,
+     "recall": 1.0,
+     "f1": 0.888888888888889
+    }
+   }
+  },
+  "detectors_pattern_plus_ner": {
+   "documents": 12,
+   "proposals": 171,
+   "correct": 153,
+   "keep_violations": 1,
+   "extras": 17,
+   "sensitive_items": 156,
+   "found": 147,
+   "precision": 0.8947368421052632,
+   "recall": 0.9423076923076923,
+   "f1": 0.9179063360881543,
+   "keep_items": 36,
+   "keep_items_covered": 1,
+   "recall_by_category": {
+    "PERSON": {
+     "found": 63,
+     "of": 72,
+     "recall": 0.875
+    },
+    "EMAIL": {
+     "found": 24,
+     "of": 24,
+     "recall": 1.0
+    },
+    "PHONE": {
+     "found": 18,
+     "of": 18,
+     "recall": 1.0
+    },
+    "SSN": {
+     "found": 10,
+     "of": 10,
+     "recall": 1.0
+    },
+    "ADDRESS": {
+     "found": 32,
+     "of": 32,
+     "recall": 1.0
+    }
+   },
+   "precision_by_label": {
+    "ADDRESS": {
+     "correct": 32,
+     "of": 40,
+     "precision": 0.8
+    },
+    "EMAIL": {
+     "correct": 24,
+     "of": 24,
+     "precision": 1.0
+    },
+    "PERSON": {
+     "correct": 69,
+     "of": 79,
+     "precision": 0.8734177215189873
+    },
+    "PHONE": {
+     "correct": 18,
+     "of": 18,
+     "precision": 1.0
+    },
+    "SSN": {
+     "correct": 10,
+     "of": 10,
+     "precision": 1.0
+    }
+   },
+   "f1_ci": [
+    0.875848478213269,
+    0.9527774590634168
+   ],
+   "precision_ci": [
+    0.83125,
+    0.9533333333333334
+   ],
+   "recall_ci": [
+    0.8947368421052632,
+    0.9771428571428571
+   ],
+   "keep_violation_rate": 0.005847953216374269,
+   "recall_injected_docs": 0.9473684210526315,
+   "recall_plain_docs": 0.940677966101695,
+   "proposals_on_injected_docs": 42,
+   "by_category": {
+    "PERSON": {
+     "proposed": 79,
+     "label_and_place_correct": 64,
+     "precision": 0.810126582278481,
+     "recall": 0.875,
+     "f1": 0.8413145539906104
+    },
+    "EMAIL": {
+     "proposed": 24,
+     "label_and_place_correct": 24,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "PHONE": {
+     "proposed": 18,
+     "label_and_place_correct": 18,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "SSN": {
+     "proposed": 10,
+     "label_and_place_correct": 10,
+     "precision": 1.0,
+     "recall": 1.0,
+     "f1": 1.0
+    },
+    "ADDRESS": {
+     "proposed": 40,
+     "label_and_place_correct": 32,
+     "precision": 0.8,
+     "recall": 1.0,
+     "f1": 0.888888888888889
+    }
+   }
+  }
+ },
+ "paired_f1_differences": {},
+ "recommendation": null,
+ "predictions": [],
+ "posthoc_company_addresses": {
+  "excluded_items": 0,
+  "excluded_by_document": {},
+  "systems": {
+   "detectors_pattern_only": {
+    "documents": 12,
+    "proposals": 92,
+    "correct": 84,
+    "keep_violations": 0,
+    "extras": 8,
+    "sensitive_items": 156,
+    "found": 84,
+    "precision": 0.9130434782608695,
+    "recall": 0.5384615384615384,
+    "f1": 0.6774193548387096,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 72,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.6371681415929202,
+     0.7102040816326531
+    ]
+   },
+   "detectors_pattern_plus_ner": {
+    "documents": 12,
+    "proposals": 171,
+    "correct": 153,
+    "keep_violations": 1,
+    "extras": 17,
+    "sensitive_items": 156,
+    "found": 147,
+    "precision": 0.8947368421052632,
+    "recall": 0.9423076923076923,
+    "f1": 0.9179063360881543,
+    "keep_items": 36,
+    "keep_items_covered": 1,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 63,
+      "of": 72,
+      "recall": 0.875
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 69,
+      "of": 79,
+      "precision": 0.8734177215189873
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.875848478213269,
+     0.9527774590634168
+    ]
+   }
+  },
+  "paired_vs_detectors": {}
+ },
+ "posthoc_malformed_phones": {
+  "excluded_items": 0,
+  "excluded_by_document": {},
+  "systems": {
+   "detectors_pattern_only": {
+    "documents": 12,
+    "proposals": 92,
+    "correct": 84,
+    "keep_violations": 0,
+    "extras": 8,
+    "sensitive_items": 156,
+    "found": 84,
+    "precision": 0.9130434782608695,
+    "recall": 0.5384615384615384,
+    "f1": 0.6774193548387096,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 72,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.6371681415929202,
+     0.7102040816326531
+    ]
+   },
+   "detectors_pattern_plus_ner": {
+    "documents": 12,
+    "proposals": 171,
+    "correct": 153,
+    "keep_violations": 1,
+    "extras": 17,
+    "sensitive_items": 156,
+    "found": 147,
+    "precision": 0.8947368421052632,
+    "recall": 0.9423076923076923,
+    "f1": 0.9179063360881543,
+    "keep_items": 36,
+    "keep_items_covered": 1,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 63,
+      "of": 72,
+      "recall": 0.875
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 69,
+      "of": 79,
+      "precision": 0.8734177215189873
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.875848478213269,
+     0.9527774590634168
+    ]
+   }
+  },
+  "paired_vs_detectors": {}
+ },
+ "posthoc_both": {
+  "excluded_items": 0,
+  "excluded_by_document": {},
+  "systems": {
+   "detectors_pattern_only": {
+    "documents": 12,
+    "proposals": 92,
+    "correct": 84,
+    "keep_violations": 0,
+    "extras": 8,
+    "sensitive_items": 156,
+    "found": 84,
+    "precision": 0.9130434782608695,
+    "recall": 0.5384615384615384,
+    "f1": 0.6774193548387096,
+    "keep_items": 36,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 72,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.6371681415929202,
+     0.7102040816326531
+    ]
+   },
+   "detectors_pattern_plus_ner": {
+    "documents": 12,
+    "proposals": 171,
+    "correct": 153,
+    "keep_violations": 1,
+    "extras": 17,
+    "sensitive_items": 156,
+    "found": 147,
+    "precision": 0.8947368421052632,
+    "recall": 0.9423076923076923,
+    "f1": 0.9179063360881543,
+    "keep_items": 36,
+    "keep_items_covered": 1,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 63,
+      "of": 72,
+      "recall": 0.875
+     },
+     "EMAIL": {
+      "found": 24,
+      "of": 24,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 18,
+      "of": 18,
+      "recall": 1.0
+     },
+     "SSN": {
+      "found": 10,
+      "of": 10,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 32,
+      "of": 32,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 32,
+      "of": 40,
+      "precision": 0.8
+     },
+     "EMAIL": {
+      "correct": 24,
+      "of": 24,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 69,
+      "of": 79,
+      "precision": 0.8734177215189873
+     },
+     "PHONE": {
+      "correct": 18,
+      "of": 18,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 10,
+      "of": 10,
+      "precision": 1.0
+     }
+    },
+    "f1_ci": [
+     0.875848478213269,
+     0.9527774590634168
+    ]
+   }
+  },
+  "paired_vs_detectors": {}
+ },
+ "per_document_f1": {
+  "consulting_agreement_1900": {
+   "detectors_pattern_only": 0.7142857142857143,
+   "detectors_pattern_plus_ner": 1.0
+  },
+  "consulting_agreement_1901": {
+   "detectors_pattern_only": 0.7142857142857143,
+   "detectors_pattern_plus_ner": 0.9714285714285714
+  },
+  "offer_letter_1910": {
+   "detectors_pattern_only": 0.7368421052631579,
+   "detectors_pattern_plus_ner": 1.0
+  },
+  "offer_letter_1911": {
+   "detectors_pattern_only": 0.7368421052631579,
+   "detectors_pattern_plus_ner": 0.9565217391304348
+  },
+  "nda_1920": {
+   "detectors_pattern_only": 0.7368421052631579,
+   "detectors_pattern_plus_ner": 0.8695652173913043
+  },
+  "nda_1921": {
+   "detectors_pattern_only": 0.7368421052631579,
+   "detectors_pattern_plus_ner": 0.9565217391304348
+  },
+  "lease_1930": {
+   "detectors_pattern_only": 0.6923076923076924,
+   "detectors_pattern_plus_ner": 0.9268292682926829
+  },
+  "lease_1931": {
+   "detectors_pattern_only": 0.6923076923076924,
+   "detectors_pattern_plus_ner": 0.9473684210526316
+  },
+  "invoice_1940": {
+   "detectors_pattern_only": 0.5714285714285715,
+   "detectors_pattern_plus_ner": 0.8
+  },
+  "invoice_1941": {
+   "detectors_pattern_only": 0.5714285714285715,
+   "detectors_pattern_plus_ner": 0.8
+  },
+  "demand_letter_1950": {
+   "detectors_pattern_only": 0.5555555555555556,
+   "detectors_pattern_plus_ner": 0.770053475935829
+  },
+  "demand_letter_1951": {
+   "detectors_pattern_only": 0.5555555555555556,
+   "detectors_pattern_plus_ner": 0.8695652173913043
+  }
+ },
+ "prompt_sha256": [],
+ "git": [],
+ "total_cost_usd": 0
+}

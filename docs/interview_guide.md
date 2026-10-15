@@ -63,8 +63,8 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 - **Say:** "I did not train a model; spaCy's is pretrained and imperfect, and it has no honest confidence score, so I never show one."
   Detectors only propose; the **server derives rectangles** from the stored word map, so no model ever supplies coordinates.
 - **Honest numbers (decision 51):** on 12 synthetic documents the pattern detectors alone scored recall 0.45, F1 0.62; adding NER gave
-  recall 0.74, F1 0.82 (0.87 once I set aside a flaw in my own test data: the synthetic phone numbers were malformed, so no validating detector could match them); the model-assisted workflow scored F1 about 0.98. Synthetic, easy, one author.
-- **Honest numbers for the pipeline (decision 55):** on 18 synthetic documents upload-to-ready took about 47 ms and an export with verification about 186 ms (median, 1 to 2 pages, in-process). A simulated reviewer who approved exactly the right detector proposals got 9 exports verified cleanly and 9 that needed an acknowledgement because NER had missed one occurrence of an approved name: the verifier flagged 9 of the 9 leftover copies my independent re-check found, and every kept company name survived (54 of 54). My own prediction (at least 15 clean) was wrong.
+  recall 0.74, F1 0.82 (0.87 once I set aside a flaw in my own test data: the synthetic phone numbers were malformed, so no validating detector could match them; **0.92** on a second, corrected set of 12 documents, where NER recall was much higher because different names were drawn); the model-assisted workflow scored F1 about 0.98 on the first set and has not been run on the corrected one. The lesson: on synthetic data the size of an advantage depends on the draw, so quote the range, not one number. Synthetic, easy, one author.
+- **Honest numbers for the pipeline (decision 55):** on 18 synthetic documents upload-to-ready took about 47 ms and an export with verification about 186 ms (median, 1 to 2 pages, in-process). A simulated reviewer who approved exactly the right detector proposals got 9 exports verified cleanly and 9 that needed an acknowledgement because NER had missed one occurrence of an approved name (on a second, corrected set: 14 clean and 4); the verifier flagged every leftover copy my independent re-check found (13 of 13 across the two sets), and every kept company name survived (54 of 54 in both). My own predictions were wrong on both sets.
 
 ### Redaction correctness — decisions 15, 5
 - **Here:** export is authorize → redact (PyMuPDF `apply_redactions`: text really deleted, image pixels blanked) → scrub metadata →
@@ -92,7 +92,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 4. **Found two flaws in my own test data, both by reading the numbers closely**: all 16 misses were a company's address, which my labels
    called sensitive although the request asks for individuals' information; and every synthetic phone number had a 3-digit last group, so
    the validating detectors could not match any of them (their PHONE recall of 0 was an artefact; the per-category table exposed it). I kept
-   the headline as frozen and added clearly marked post-hoc tables. The model-versus-detector gap shrinks from +0.16 to about +0.10, still clear.
+   the headline as frozen and added clearly marked post-hoc tables. The model-versus-detector gap shrinks from +0.16 to about +0.10, still clear; I then fixed the generator, kept the old data reproducible, protected the frozen file from being overwritten, and built a corrected v2 set (decision 56).
 5. What I would say: "It supports a narrow claim, that the model-assisted workflow found more than the detectors alone on easy synthetic
    documents and the cheapest model did as well. It does not predict real-world accuracy."
 

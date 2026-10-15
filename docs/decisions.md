@@ -879,8 +879,55 @@ product improvement, not built: a button that proposes the unresolved copies dir
 them, coverage is 186 of 219. Latency and verification outcomes do not depend on it. The measurement was run twice (the second time
 after adding a per-category breakdown); outcomes were identical and timings within 10%, both logged in the protocol.
 
+**On the corrected v2 data (decision 56) the picture is milder**: 14 of 18 exports clean and 4 needing an acknowledgement (PERSON coverage
+97 of 108, everything else covered including all 27 phone numbers), 4 leftover copies, and again the verifier reported every one of them
+(4 of 4); kept names 54 of 54; upload to ready 55 ms and export 208 ms. So "half the exports need an acknowledgement" was partly the
+particular names drawn for v1: the honest range from these two sets is a fifth to a half.
+
 **What it does not show.** One author's synthetic documents, one and two pages; a simulated reviewer who never errs (a real one makes
 mistakes the verifier cannot see); in-process timing on one machine (no network, no large files); the verifier checks what was
 approved and cannot find sensitive text nobody proposed (33 of the 108 person mentions here, 31 percent, were never approved; where no
 copy of the same text was approved anywhere, they remain readable with no warning at all); scanned, mixed and encrypted
 PDFs are covered by the test suite, not measured here.
+
+## 56. Fixing the test data: a corrected v2 set, v1 kept as measured, and the frozen set protected (2026-10-15)
+
+**What was wrong** (all found while evaluating, none in the product): (1) the generator wrote every phone number with a 3-digit last
+group, so none was a valid US number; (2) a company's own address (letterhead, "Remit to") was labelled personal information; (3)
+`dataset.py` **overwrote the frozen held-out hash file unconditionally**, so a later change to the generator plus a re-run would have
+silently re-frozen a different set and defeated the freeze.
+
+**What was done.** `dataset.py` has two variants. **v1 is the generator exactly as it produced the measured, frozen data, flaws
+included**; the new code regenerates the committed v1 files byte for byte (JSON, PDFs and hash; a test checks it, and breaking either
+flaw back or forth fails a test). **v2** fixes both flaws (valid `555-01xx` phone numbers; company addresses as plain text, neither
+required nor penalised), with new seeds and the same templates and injection positions; `heldout_v2` is frozen by SHA-256
+(`90188e77...`). Generation now goes through a temporary folder: a frozen set whose regenerated hash differs is **refused and nothing
+is written**. Protocol first: `evaluation/assistant_eval/PROTOCOL_V2.md`. The runner, report and pipeline measurement accept the v2
+split names; the report omits model sections when no model has been run.
+
+**Results of the free steps** (v1 untouched; v2 run once; synthetic):
+
+| | v1 (as frozen) | v2 (corrected) |
+| --- | --- | --- |
+| Detectors, pattern only: F1 | 0.622 | 0.677 |
+| Detectors, pattern plus NER: precision / recall / F1 | 0.921 / 0.744 / 0.823 | 0.895 / 0.942 / **0.918** |
+| PHONE recall of the detectors | 0 of 18 | 18 of 18 |
+| NER PERSON recall | 48 of 72 (0.67) | 63 of 72 (0.88) |
+| Pipeline: exports clean / needing acknowledgement | 9 / 9 | 14 / 4 |
+| Pipeline: verifier agreed with the independent re-check | 9 of 9 | 4 of 4 |
+| Pipeline: personal items covered at the end | 186 of 246 | 223 of 234 |
+
+**Predictions** (PROTOCOL_V2.md section 4): PHONE recall at least 0.90 **held** (1.00); F1 between 0.84 and 0.92 **held** (0.918, at the
+edge); NER PERSON recall below 0.80 **failed** (0.88); at least 6 of 18 exports still needing an acknowledgement **failed** (4).
+
+**What this changes about what I said.** On clean data the detectors alone score 0.92, so the models' advantage is **at most about
++0.08 there** (the models have not been run on v2), against +0.16 on v1 as frozen. NER's PERSON recall moved from 0.67 to 0.88 between two
+sets of 72 mentions drawn from the same name lists, so on synthetic data **the size of an advantage depends on the draw**; quote a range,
+not one number. The v1 conclusions that survive: the models found essentially everything on v1, and the export verifier caught every
+leftover copy in both sets (13 of 13).
+
+**Not done, and needs the owner's approval because it spends money:** running the assistant on `heldout_v2`. Haiku alone costs about
+$0.07; all three models about $2.8. I recommend Haiku alone: it completes the comparison on clean data for the recommended model.
+
+**Limits.** Synthetic data of one author; v2 uses the same name and company lists and templates as v1, so it is a re-draw with the flaws
+removed, not a harder or more varied set; two sets of 12 documents say little about the spread of NER recall.

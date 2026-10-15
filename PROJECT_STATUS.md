@@ -334,6 +334,17 @@ detectors score PHONE recall 0. The detectors' F1 is 0.823 as frozen and 0.876 w
 +0.16 to about +0.10 (still clear). Headline numbers keep the frozen data; a marked post-hoc section and the protocol's incident log carry the
 correction (decision 51, addendum).
 
+### Phase 6: the data generator fixed, and corrected v2 data (2026-10-15, branch `phase-6-data-v2`)
+
+`dataset.py` now has two variants: **v1 reproduces the old, measured data byte for byte** (a test checks it) and **v2 fixes the two data
+flaws** (valid phone numbers; company addresses not labelled as personal). It also **can no longer overwrite a frozen held-out set**
+(before, `main()` replaced the hash file unconditionally). New frozen set `heldout_v2` (sha256 `90188e77...`); protocol first
+(`evaluation/assistant_eval/PROTOCOL_V2.md`). Free steps run once: on v2 the detectors score **F1 0.918** (v1: 0.823), PHONE recall 18 of 18,
+NER PERSON recall 0.88 (v1: 0.67); in the pipeline measurement 14 of 18 exports are clean and 4 need an acknowledgement (v1: 9 and 9), the
+verifier again reported every leftover copy (4 of 4), latency 55 ms upload-to-ready and 208 ms export. Two of four predictions failed. **The
+models have not been run on v2** (about $0.07 for Haiku, $2.8 for all three; needs approval); so the models' advantage on clean data is at
+most about +0.08, against +0.16 on v1 as frozen. Decision 56; tests in `test_assistant_eval.py` (31, with 7 deliberate mutations all caught).
+
 ### Phase 6: README polish (2026-10-15, branch `phase-6-polish`)
 
 - **Screenshots:** five real screenshots of the running app (synthetic sample, scripted demo assistant) in `docs/images/`, made by
@@ -575,10 +586,10 @@ tests were checked by reverting the fix: they fail.
 ## Remaining work (by phase)
 
 **Phase 6 is complete** (the specification's deliverables and evaluation requirements are all met, with their limits stated; the Compose
-re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: a retrieval question set **written by people**
+re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: run the assistant (Haiku, about $0.07) on the corrected `heldout_v2` set, which needs the owner's approval and would finish the comparison on clean data; a retrieval question set **written by people**
 (both held-out sets are model-written or same-author); a harder, longer, messier assistant evaluation with corrected labels and valid
 phone numbers, written first; a button that proposes the unresolved copies straight from the export warning (the pipeline measurement
-shows half of the NER-based exports hit it); a responsive layout; real authentication and a worker process.
+shows a fifth to a half of the NER-based exports hit it); a responsive layout; real authentication and a worker process.
 
 **Known gaps (deliberate or deferred)**:
 - Live assistant quality is measured **only on 12 easy synthetic one-page documents** (see Phase 6 above): it separates the
