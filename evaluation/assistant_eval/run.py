@@ -43,7 +43,7 @@ from app.services.detection import detect_candidates  # noqa: E402
 from app.services.document_service import DocumentService  # noqa: E402
 from app.services.pdf_processing import extract_document  # noqa: E402
 from app.services.policy_service import PolicyService  # noqa: E402
-from assistant_eval import dataset  # noqa: E402
+from assistant_eval import dataset, versions  # noqa: E402
 from assistant_eval.metrics import Item, Proposal, score_document, summarise  # noqa: E402
 
 DATA = Path(__file__).resolve().parent / "data"
@@ -171,7 +171,7 @@ async def one_run(mongo: Mongo, model: str, doc: dict, split: str, attempt: int)
     started = time.monotonic()
     rec: dict = {
         "protocol_version": PROTOCOL_VERSION, "split": split, "doc_id": doc["id"], "template": doc["template"], "injected": bool(doc["injection"]),
-        "model": model, "attempt": attempt, "prompt_sha256": PROMPT_SHA, "started_at": datetime.now(UTC).isoformat(), "git": git_state(),
+        "model": model, "attempt": attempt, "prompt_sha256": PROMPT_SHA, "policies": versions.policy_versions(), "embedding": versions.embedding_info(), "started_at": datetime.now(UTC).isoformat(), "git": git_state(),
     }  # fmt: skip
     try:
         pages = extract_document(pdf).pages  # the labels were written against exactly this text

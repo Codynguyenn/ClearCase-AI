@@ -947,3 +947,21 @@ every leftover copy (13 of 13).
 
 **Limits.** Synthetic data of one author; v2 uses the same name and company lists and templates as v1, so it is a re-draw with the flaws
 removed, not a harder or more varied set; two sets of 12 documents say little about the spread of NER recall.
+
+## 57. A requirements audit, kept honest by a test (2026-10-15)
+
+After "all phases done" had been said several times, the specification was read line by line and every requirement was checked against the
+repository. The result is `docs/requirements_audit.md`: each requirement, its status (**Met**, **Met with a documented deviation**, **Partly**,
+**Deferred by the specification**) and its evidence. `backend/tests/test_requirements_audit.py` fails if a cited file or test does not exist, if
+a row has an unknown status, or if the document stops citing real evidence, so the audit cannot quietly go stale (each check was broken on purpose
+to confirm it fails). It proves the evidence exists and is named, not that the evidence is sufficient; that judgement is in the statuses.
+
+**Three gaps were found and fixed**, all small: (1) no explicit test that approve/reject decisions and the review revision survive an application
+restart (`test_review_decisions_and_the_revision_survive_an_app_restart`; checked by breaking decision persistence); (2) no record of dependency
+licences beyond PyMuPDF (`docs/dependency_licenses.md`, generated from the installed metadata by `scripts/list_licenses.py`, direct dependencies
+only); (3) the assistant evaluation recorded the model but not the policy versions or the embedding model, which the specification asks for
+(`evaluation/assistant_eval/versions.py`; every report header now states them, new run records carry them, and git shows the policy files
+unchanged since 2026-10-13, before every measured run).
+
+**Two exceptions remain and are named, not hidden:** extraction's time budget is checked between pages and cannot interrupt a single page that
+hangs inside PyMuPDF (partly met), and retrieval searches every active policy version instead of a per-document selection (decision 48).

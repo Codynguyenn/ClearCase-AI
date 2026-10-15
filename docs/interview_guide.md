@@ -101,11 +101,12 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Question | Answer |
 | --- | --- |
 | Did you train a model? | No. Pretrained spaCy and a pretrained embedding model; the language model is a hosted API. |
-| How do you know it works? | Backend tests against a real MongoDB (622), component tests (100), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
+| How do you know it works? | Backend tests against a real MongoDB (633), component tests (100), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
 | How do you test the tests? | I break the code on purpose and check the tests fail. Several tests passed for the wrong reason until I did (see decisions 50-52). |
 | What if the model follows an injected instruction in the PDF? | It still cannot approve, cannot export without the reviewer's authorization, and cannot read other documents. Injection is defended by structure, not by trusting the model (decision 22). |
 | Is it secure? | It is a local demo: the identity is not authentication, and live mode sends excerpts to a provider (the UI says so and asks first). Keys live only in the git-ignored `.env`; the SDK exception is not chained, so a key cannot reach logs or the database. |
 | What was the hardest bug? | Pick one: the policy tool failing in live mode because the loop injected a `document_id` it does not take (found only by a real-server test); or the docstring that leaked a rule into the model's schema. |
+| Is it complete against the specification? | I audited it line by line (`docs/requirements_audit.md`; every cited file and test is checked by a test). Three small gaps turned up and were fixed (no explicit restart test for review decisions, no dependency-licence list, model and policy versions not recorded in the assistant evaluation). Two exceptions are stated: a page that hangs inside PyMuPDF is not interrupted (partly met), and every active policy version is searched rather than a per-document choice (a documented deviation). Complete does not mean production-ready: the data is synthetic and there is no real authentication. |
 | What would you do next? | A harder, longer evaluation set with labels that separate personal from business addresses, written first; real authentication and a worker process; OCR for scanned pages; a responsive (phone) layout. A bug the browser test found, bulk "Approve shown" silently overwriting earlier decisions, is already fixed (decision 54). |
 
 ## Numbers you can quote (and where they come from)
@@ -118,7 +119,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Retrieval, right passage first / top 3 | 18/28 = 0.64 / 21/28 = 0.75 | `evaluation/README.md` (held-out, 28 answerable questions) |
 | Retrieval cutoff balanced accuracy | 0.84 dev, 0.56 first held-out, 0.61 second held-out, **0.60 pooled** (0.52-0.68) | decisions 30 and 53, `evaluation/retrieval2/REPORT.md` |
 | Retrieval, right passage in top 3 (pooled, 64 answerable questions) | 0.81 (0.70-0.89) | same |
-| Tests | 622 backend, 100 frontend, 5 browser | `PROJECT_STATUS.md` |
+| Tests | 633 backend, 100 frontend, 5 browser | `PROJECT_STATUS.md` |
 
 ## Plain-English glossary
 

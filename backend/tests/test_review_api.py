@@ -362,3 +362,28 @@ def test_detect_preview_stores_nothing(client: TestClient):
     assert r.status_code == 200 and len(r.json()["candidates"]) == 2
     assert client.get(f"/api/documents/{doc_id}/findings").json()["total"] == 0
     assert revision(client, doc_id) == 0
+
+
+# -------------------------------------------------------------------- persistence after a restart
+def test_review_decisions_and_the_revision_survive_an_app_restart(client: TestClient, test_settings):
+    """The spec asks for approve/reject behaviour *and* persistence after restart: decisions come from MongoDB, not process memory."""
+    from app.main import create_app
+
+    doc_id = new_doc(client)
+    ids = [f["id"] for f in propose_emails(client, doc_id)["created"]]
+    assert len(ids) == 2
+    client.post(f"/api/documents/{doc_id}/findings/{ids[0]}/decision", json={"action": "approve"})
+    client.post(f"/api/documents/{doc_id}/findings/{ids[1]}/decision", json={"action": "reject"})
+    before = revision(client, doc_id)
+    assert before >= 2  # every decision bumps the review revision
+
+    with TestClient(create_app(test_settings)) as restarted:  # a brand-new application object over the same database
+        statuses = {f["id"]: f["status"] for f in restarted.get(f"/api/documents/{doc_id}/findings").json()["items"]}
+        assert statuses == {ids[0]: "approved", ids[1]: "rejected"}
+        summary = restarted.get(f"/api/documents/{doc_id}/review-summary").json()
+        assert summary["approved"] == 1 and summary["unresolved"] == 0
+        assert revision(restarted, doc_id) == before  # the revision that export authorizations are tied to is unchanged
+        # ...and the review can simply be continued: reopen the rejected one
+        restarted.post(f"/api/documents/{doc_id}/findings/{ids[1]}/decision", json={"action": "reopen"})
+        assert revision(restarted, doc_id) == before + 1
+        assert {f["id"]: f["status"] for f in restarted.get(f"/api/documents/{doc_id}/findings").json()["items"]}[ids[1]] == "proposed"
