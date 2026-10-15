@@ -34,3 +34,5 @@ exports/
 .DS_Store
 .idea/
 .vscode/
+frontend/e2e-results/
+frontend/e2e-report/

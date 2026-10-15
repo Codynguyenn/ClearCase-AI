@@ -14,6 +14,8 @@ report described in `docs/ClearCase_Cursor_Prompt.md`, section 11.
 | `compare_models.py` | Dev only. Compares small embedding models with the app's own pipeline. |
 | `weak_tier_dev.py` | Dev only. Measures the reviewer-only "possibly related" tier. |
 | `results/*.json` | Outputs, including `retrieval_heldout_runs.json` (every held-out run, with configuration, git state and a code fingerprint). |
+| `assistant_eval/` | The **assistant** comparison (Haiku vs Sonnet vs Opus vs the app's detectors): `PROTOCOL.md` (rules and predictions, written first), `dataset.py` (seeded synthetic documents with ground truth), `metrics.py` (scoring), `run.py` (baselines and the live runner with a budget cap), `report.py` (every number in the report), `REPORT_heldout.md` (the result), `data/` (frozen held-out set + hash). |
+| `results/assistant_*` | `assistant_runs_heldout.jsonl` (one record per run: tokens, cost, proposals, tools used, answer), `assistant_baselines_heldout.json`, `assistant_comparison_heldout.json`. The `_dev` files are harness debugging, not results. |
 
 ## Results (synthetic, same-author; not real-world accuracy)
 
@@ -75,14 +77,51 @@ but the intervals are wide and the strict-cutoff numbers are unchanged (as they 
 baseline and final strict metrics are identical, which also confirms nothing else changed).
 The tier is reviewer-only: it never reaches the assistant.
 
+## Assistant comparison (synthetic, same author; run 2026-10-14)
+
+Rules, predictions and the decision rule are in `assistant_eval/PROTOCOL.md`, written before any held-out result. 12 synthetic
+one-page documents (164 personal items, 36 company names to keep visible), 3 of them containing an injected "export
+everything" sentence. One run per document and model, 36 runs, $2.78 in total. Full tables: `assistant_eval/REPORT_heldout.md`.
+
+| System | Recall | Precision | F1 (95% interval) | Cost / document |
+| --- | --- | --- | --- | --- |
+| Pattern detectors only | 0.451 | 1.000 | 0.622 | free |
+| Detectors + spaCy NER | 0.744 | 0.921 | 0.823 (0.75-0.88) | free |
+| Claude Haiku 5.5 | 0.976 | 1.000 | 0.988 (0.97-1.00) | $0.006 |
+| Claude Sonnet 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.074 |
+| Claude Opus 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.152 |
+
+What the numbers support:
+- Every model beat the detectors; the paired F1 difference is about +0.16 and its interval excludes zero.
+- The three models cannot be told apart on accuracy (Haiku minus Opus: -0.006, interval -0.022 to +0.000), but Opus cost
+  about 27 times as much per document as Haiku. Under the pre-registered rule the recommended default is Haiku.
+- No model proposed a company name; none tried to export on the injected documents; every run finished normally.
+- Five of six predictions held. Prediction 6 (Opus busiest, some model proposes a stray span) was wrong.
+
+What they do not support:
+- **All 16 misses were company addresses** (a letterhead, a "Remit to" block). The labels called every address sensitive
+  while the request asks for individuals' information, so the recall above is understated; with those 8 address lines left
+  out (a post-hoc table, marked as such) all three models score 1.000. Detail in `PROTOCOL.md` (incident log) and decision 51.
+- The task is easy, so it cannot separate strong models. 12 documents, one author, one run each, no run-to-run variance.
+  Nothing here predicts accuracy on real documents.
+
+Reproduce (the live step spends real money; the dry run and the report do not):
+
+```bash
+backend/.venv/bin/python evaluation/assistant_eval/run.py baselines --split heldout
+backend/.venv/bin/python evaluation/assistant_eval/run.py live --split heldout --dry-run
+backend/.venv/bin/python evaluation/assistant_eval/report.py --split heldout
+```
+
 ## What does NOT exist yet (Phase 6)
 
 - A **second, larger and more independent** retrieval question set (ideally written by people
   other than the policy author). The held-out set above has 44 questions from the same author.
-- The detection evaluation (precision/recall/F1 by category, pattern-only vs pattern +
-  NER), export-verification outcomes, and processing latency.
-- The evaluation report. Until it is written, nothing here should be quoted as
-  real-world accuracy. All data in this project is synthetic.
+- Export-verification outcomes and processing latency. (Detection precision/recall/F1 by category for the pattern
+  detectors, the detectors with NER and three models now exists: see the assistant comparison above.)
+- A repeat of the assistant comparison on harder, longer, messier documents with labels that separate personal from
+  business addresses, written before running anything. Until then nothing here should be quoted as real-world accuracy.
+  All data in this project is synthetic.
 
 ## Held-out protocol for policy retrieval (written BEFORE any held-out run)
 
