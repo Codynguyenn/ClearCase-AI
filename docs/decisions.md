@@ -722,6 +722,15 @@ frozen labels (changing them after seeing results would defeat the point of free
 table leaves those 8 address lines out: all three models then score 1.000 on the remaining 156 items, the detectors 0.81.
 That also means prediction 5 ("weakest spot is addresses") held on paper for the wrong reason. Logged in the protocol.
 
+**A second flaw, found afterwards (while adding the per-category precision/recall/F1 table the specification asks for):** the data
+generator wrote every phone number with a 3-digit last group (`555-044`), so none of the 18 held-out phone numbers is a valid US
+number (9 digits once the country code is dropped). The pattern detectors validate, so they matched none and scored PHONE recall 0,
+which dragged their recall and F1 down; the models found the numbers and called them truncated. Frozen data and headline are
+unchanged; a marked post-hoc table sets those items aside. The detectors' F1 is then **0.876** instead of 0.823 and the model
+advantage about **+0.10** (interval +0.04 to +0.18) instead of +0.16: smaller, still clear. The first version of my check was itself
+wrong (it called `+1 (206) 555-044` valid and counted 10 phone numbers instead of 18); the report printed the count, which exposed
+it, and a test now pins "every phone number in both datasets is malformed" to the data.
+
 **What this does not show.** The task is easy (one-page documents with clean text), so it cannot separate strong models;
 the whole F1 gap between Haiku and the other two comes from one skipped company address (an invoice's "Remit to" block). 12 documents by one author, one run each (run-to-run
 variance unmeasured), three injected documents is a demonstration and not a rate. Nothing here predicts accuracy on real
@@ -833,3 +842,108 @@ sent. The other filters (category, this page) still narrow the list first. The s
 the reviewer's intent is only known on the screen. The component tests cover the reject-then-approve case, the reverse, the count, and the
 filtered-set case; reverting the fix makes them fail.
 
+
+## 55. Measuring the pipeline: latency and export-verification outcomes (run 2026-10-15)
+
+**Why.** The specification asks for "supported export-verification outcomes" and "processing latency" with defined matching rules and
+denominators. The earlier evaluations covered detection, retrieval and the assistant, not these two.
+
+**What was run** (`evaluation/pipeline_eval/`, protocol and four predictions written first): the real FastAPI app in-process against
+a real MongoDB scratch database, the real PyMuPDF and spaCy, on the 18 synthetic PDFs (22 pages). Per document: upload to "ready",
+detection, a simulated careful reviewer (approve every detector proposal that lands on a personal item, reject the rest), export with
+verification, download, and an **independent re-read of the downloaded file**. A warm-up, then 3 passes. Free, deterministic, no model.
+Full tables: `evaluation/pipeline_eval/REPORT.md`.
+
+**Results** (synthetic; one machine; one- and two-page documents):
+
+| | |
+| --- | --- |
+| Upload to "ready" (median, p90, max) | 47 ms (61, 135), about 45 ms per page |
+| Detection, pattern only / with NER | 8 ms / 189 ms |
+| Export: authorize, redact, verify, store | 186 ms (253, 298) |
+| Exports `verified` with no warning | 9 of 18 |
+| Exports `verified` but needing an acknowledgement | 9 of 18 (`no_unresolved_copies`, an advisory check) |
+| Exports failed or blocked; required checks failed | 0; 0 |
+| Leftover copies of approved text in the downloaded files (independent check) | 9 |
+| Leftover copies the verifier itself reported | 9 (it agreed with the independent check in every document) |
+| Kept company names preserved | 54 of 54 occurrences |
+
+**The two predictions that failed.** I predicted at least 15 clean exports and no leftover approved text. In half the documents the NER
+model proposed some occurrences of a name but missed one (PERSON coverage 75 of 108; EMAIL, SSN and ADDRESS were fully covered), so the
+text that was approved elsewhere remained once in the file. That is the case the verifier is built for: **it reported every one of the
+9 leftover copies, none was missed, none falsely flagged, and the download stayed blocked until acknowledged**. The failure is in
+detection recall, not in verification. A real reviewer closes it by searching the name and proposing the remaining copies. (A possible
+product improvement, not built: a button that proposes the unresolved copies directly from the warning.)
+
+**A data flaw seen here too.** PHONE coverage is 0 of 27 because the synthetic phone numbers are malformed (decision 51): without
+them, coverage is 186 of 219. Latency and verification outcomes do not depend on it. The measurement was run twice (the second time
+after adding a per-category breakdown); outcomes were identical and timings within 10%, both logged in the protocol.
+
+**On the corrected v2 data (decision 56) the picture is milder**: 14 of 18 exports clean and 4 needing an acknowledgement (PERSON coverage
+97 of 108, everything else covered including all 27 phone numbers), 4 leftover copies, and again the verifier reported every one of them
+(4 of 4); kept names 54 of 54; upload to ready 55 ms and export 208 ms. So "half the exports need an acknowledgement" was partly the
+particular names drawn for v1: the honest range from these two sets is a fifth to a half.
+
+**What it does not show.** One author's synthetic documents, one and two pages; a simulated reviewer who never errs (a real one makes
+mistakes the verifier cannot see); in-process timing on one machine (no network, no large files); the verifier checks what was
+approved and cannot find sensitive text nobody proposed (33 of the 108 person mentions here, 31 percent, were never approved; where no
+copy of the same text was approved anywhere, they remain readable with no warning at all); scanned, mixed and encrypted
+PDFs are covered by the test suite, not measured here.
+
+## 56. Fixing the test data: a corrected v2 set, v1 kept as measured, and the frozen set protected (2026-10-15)
+
+**What was wrong** (all found while evaluating, none in the product): (1) the generator wrote every phone number with a 3-digit last
+group, so none was a valid US number; (2) a company's own address (letterhead, "Remit to") was labelled personal information; (3)
+`dataset.py` **overwrote the frozen held-out hash file unconditionally**, so a later change to the generator plus a re-run would have
+silently re-frozen a different set and defeated the freeze.
+
+**What was done.** `dataset.py` has two variants. **v1 is the generator exactly as it produced the measured, frozen data, flaws
+included**; the new code regenerates the committed v1 files byte for byte (JSON, PDFs and hash; a test checks it, and breaking either
+flaw back or forth fails a test). **v2** fixes both flaws (valid `555-01xx` phone numbers; company addresses as plain text, neither
+required nor penalised), with new seeds and the same templates and injection positions; `heldout_v2` is frozen by SHA-256
+(`90188e77...`). Generation now goes through a temporary folder: a frozen set whose regenerated hash differs is **refused and nothing
+is written**. Protocol first: `evaluation/assistant_eval/PROTOCOL_V2.md`. The runner, report and pipeline measurement accept the v2
+split names; the report omits model sections when no model has been run.
+
+**Results of the free steps** (v1 untouched; v2 run once; synthetic):
+
+| | v1 (as frozen) | v2 (corrected) |
+| --- | --- | --- |
+| Detectors, pattern only: F1 | 0.622 | 0.677 |
+| Detectors, pattern plus NER: precision / recall / F1 | 0.921 / 0.744 / 0.823 | 0.895 / 0.942 / **0.918** |
+| PHONE recall of the detectors | 0 of 18 | 18 of 18 |
+| NER PERSON recall | 48 of 72 (0.67) | 63 of 72 (0.88) |
+| Pipeline: exports clean / needing acknowledgement | 9 / 9 | 14 / 4 |
+| Pipeline: verifier agreed with the independent re-check | 9 of 9 | 4 of 4 |
+| Pipeline: personal items covered at the end | 186 of 246 | 223 of 234 |
+
+**Predictions** (PROTOCOL_V2.md section 4): PHONE recall at least 0.90 **held** (1.00); F1 between 0.84 and 0.92 **held** (0.918, at the
+edge); NER PERSON recall below 0.80 **failed** (0.88); at least 6 of 18 exports still needing an acknowledgement **failed** (4).
+
+**The live run on `heldout_v2`** (approved by the owner; protocol and eight predictions first; all three models, 36 runs, hard cap $4,
+**cost $2.56**; `evaluation/assistant_eval/REPORT_heldout_v2.md`):
+
+| System | Precision | Recall | F1 (95% interval) | Cost per document |
+| --- | --- | --- | --- | --- |
+| Pattern detectors only | 0.913 | 0.538 | 0.677 | free |
+| Detectors, pattern plus NER | 0.895 | 0.942 | 0.918 (0.88-0.95) | free |
+| Claude Haiku 5.5 | 0.975 | 0.994 | 0.984 (0.96-1.00) | $0.005 |
+| Claude Sonnet 5.5 | 0.987 | 1.000 | 0.994 (0.98-1.00) | $0.062 |
+| Claude Opus 5.5 | 0.987 | 0.987 | 0.987 (0.97-1.00) | $0.146 |
+
+All 36 runs finished normally; no export attempt on the injected documents; no company-name violation. The paired F1 advantage over the
+pattern-plus-NER detectors is **+0.066 (+0.039 to +0.099) for Haiku, +0.076 (+0.042 to +0.114) for Sonnet and +0.069 (+0.029 to +0.112)
+for Opus**, so real for all three; the models are not distinguishable from each other. Slips: Haiku missed 1 of 72 person mentions, Opus
+2 of 32 address items (a two-line address), Sonnet nothing; the models proposed a few spans that match nothing (4, 2 and 2), **all of them the vendor's own "Remit to"
+address on the two invoices**, which v2 deliberately does not count as personal information. **All eight predictions held.** The
+pre-registered rule again recommends Haiku (cheapest within 0.05 F1 of the best, Sonnet).
+
+**What this changes about what I said.** The models' advantage over the detectors is **about +0.07 on clean data**, against +0.16 on the
+first set as frozen (+0.10 once its two flaws are set aside): real, but smaller than I first reported, and it depends on the test set.
+NER's PERSON recall moved from 0.67 to 0.88 between two sets of 72 mentions drawn from the same name lists, so on synthetic data **the
+size of an advantage depends on the draw**; quote a range, not one number. What survives on both sets: the models find essentially
+everything, they cannot be told apart, Haiku is the sensible default at about 1/27 to 1/29 of Opus's cost, and the export verifier caught
+every leftover copy (13 of 13).
+
+**Limits.** Synthetic data of one author; v2 uses the same name and company lists and templates as v1, so it is a re-draw with the flaws
+removed, not a harder or more varied set; two sets of 12 documents say little about the spread of NER recall.

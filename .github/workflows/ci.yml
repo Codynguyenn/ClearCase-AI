@@ -31,7 +31,7 @@ jobs:
         run: pip install -r requirements.lock
       - name: Lint (ruff)
         working-directory: backend
-        run: ruff check app tests
+        run: ruff check app tests ../evaluation --config pyproject.toml  # the evaluation code is part of the repo too
       - name: Download spaCy English NER model
         run: python -m spacy download en_core_web_sm
       # The embedding model (~90 MB, pinned revision) is cached between runs. The key changes whenever

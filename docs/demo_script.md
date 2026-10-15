@@ -31,7 +31,7 @@ Then, in the app, so the live part has nothing to wait for:
 | 1:45 | Send `policy can company names stay visible?`. Click the citation chip. Press Escape. | "It quotes a sentence from a policy and cites it. The citation is checked by code: the passage was really retrieved and the quote really appears in it. It shows what the policy says; it does not decide." |
 | 2:10 | Send `export`. It refuses. Click **Authorize export**, then **Ask the assistant to export now**. | "The assistant cannot export on its own. Only I can arm it, for five minutes, once. Even then it exports only what I approved." |
 | 2:30 | **Export** tab: show **verified** and its checks; click **Download**. | "Export really removes the text, then a separate check re-reads the file and looks for the approved text and for black boxes. If a required check fails, there is no download." |
-| 2:45 | Close with the numbers. | "On 12 synthetic documents, with the rules written first, a model-assisted workflow scored F1 about 0.98 against 0.82 for the detectors alone, and the cheapest model matched the dearest at about a twenty-seventh of the cost. That is synthetic and easy; I do not claim it for real documents." |
+| 2:45 | Close with the numbers. | "On 12 synthetic documents, with the rules written first, a model-assisted workflow scored F1 about 0.98 to 0.99 against 0.82 to 0.92 for the detectors alone, depending on the test set, and the cheapest model matched the dearest at about a twenty-seventh of the cost. The export check caught every leftover copy of an approved name. That is synthetic and easy; I do not claim it for real documents." |
 
 ## Optional proof (if there is time)
 

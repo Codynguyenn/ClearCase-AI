@@ -10,8 +10,8 @@ interface Props {
 /**
  * Shows the extracted text for the current page with a simple client-side
  * find box. This proves the extraction worked and lets a reviewer read the
- * page even when the PDF rendering is small. Server-side search with
- * occurrence ids and rectangles arrives in Phase 2.
+ * page even when the PDF rendering is small. This is a client-side find only;
+ * the Search tab does the server-side search with occurrence ids and rectangles.
  */
 export function PageTextPanel({ page, loading, error }: Props) {
   const [query, setQuery] = useState('')

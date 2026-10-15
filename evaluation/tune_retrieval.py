@@ -147,7 +147,7 @@ def main() -> None:
             print(f"{s['cutoff']:.2f}    {s['answerable_served']:.2f}                {s['unanswerable_rejected']:.2f}                    {s['balanced']:.2f}{mark}")
     print(f"\nbest balanced accuracy {best:.2f} for cutoffs {plateau[0]:.2f}..{plateau[-1]:.2f}; suggested cutoff (middle of plateau): {chosen}")
     wrongly_turned_away = [
-        item["id"] for item, (_, rel_score) in zip(data["answerable"], ans_top) if rel_score is None or rel_score < chosen
+        item["id"] for item, (_, rel_score) in zip(data["answerable"], ans_top, strict=True) if rel_score is None or rel_score < chosen
     ]
     nearest_negative = max(una_top)
     print(f"answerable questions that would get 'policy does not address this' at {chosen}: {len(wrongly_turned_away)}/{len(ans_top)} {wrongly_turned_away}")

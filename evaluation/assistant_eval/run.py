@@ -96,10 +96,13 @@ class BudgetGuard:
 
 
 # ------------------------------------------------------------------------------------------------ dataset
+SPLITS = ["dev", "heldout", "dev_v2", "heldout_v2"]  # v1 was measured and frozen with two known data flaws; v2 fixes them (dataset.py)
+
+
 def load_split(split: str) -> dict:
     data = json.loads((DATA / f"{split}.json").read_text(encoding="utf-8"))
-    if split == "heldout":
-        frozen = (DATA / "heldout.sha256").read_text().strip()
+    if split.startswith("heldout"):  # heldout (v1) and heldout_v2 are frozen by hash
+        frozen = (DATA / f"{split}.sha256").read_text().strip()
         if dataset.canonical_hash(data) != frozen:
             sys.exit("REFUSING TO RUN: the held-out dataset no longer matches its frozen hash (see PROTOCOL.md).")
         for doc in data["documents"]:
@@ -265,9 +268,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     base = sub.add_parser("baselines")
-    base.add_argument("--split", choices=["dev", "heldout"], required=True)
+    base.add_argument("--split", choices=SPLITS, required=True)
     live = sub.add_parser("live")
-    live.add_argument("--split", choices=["dev", "heldout"], required=True)
+    live.add_argument("--split", choices=SPLITS, required=True)
     live.add_argument("--models", default="haiku,sonnet,opus")
     live.add_argument("--docs", default="", help="comma-separated document ids (dev debugging only)")
     live.add_argument("--max-usd", type=float, default=6.0)
