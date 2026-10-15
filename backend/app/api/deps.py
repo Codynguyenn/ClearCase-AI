@@ -12,8 +12,10 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
+from app.agent.runs import RunManager
 from app.config import Settings, get_settings
 from app.db import Mongo
+from app.services.conversation_service import ConversationService
 from app.services.document_service import DocumentService
 from app.services.export_service import ExportService
 from app.services.policy_service import PolicyService
@@ -67,9 +69,22 @@ def get_retriever(
     return MongoCosineRetriever(mongo, settings, getattr(request.app.state, "embedder_provider", None))
 
 
+def get_conversation_service(
+    mongo: Annotated[Mongo, Depends(get_mongo)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ConversationService:
+    return ConversationService(mongo, settings)
+
+
+def get_run_manager(request: Request) -> RunManager:
+    return request.app.state.run_manager
+
+
 OwnerId = Annotated[str, Depends(get_owner_id)]
 DocService = Annotated[DocumentService, Depends(get_document_service)]
 ReviewSvc = Annotated[ReviewService, Depends(get_review_service)]
 ExportSvc = Annotated[ExportService, Depends(get_export_service)]
 PolicySvc = Annotated[PolicyService, Depends(get_policy_service)]
 Retriever = Annotated[PolicyRetriever, Depends(get_retriever)]
+ConversationSvc = Annotated[ConversationService, Depends(get_conversation_service)]
+Runs = Annotated[RunManager, Depends(get_run_manager)]

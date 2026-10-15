@@ -8,6 +8,7 @@ of surfacing as a confusing runtime error later.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -71,10 +72,21 @@ class Settings(BaseSettings):
     retrieval_keyword_weight: float = Field(default=0.15, ge=0.0, le=1.0)
 
     # --- Assistant (Phase 5) ---
-    assistant_mode: str = "demo"
+    assistant_mode: Literal["demo", "live"] = "demo"
     llm_provider: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
+    # Bounds on one assistant run (see docs/phase5_design.md section 5).
+    agent_max_rounds: int = Field(default=8, ge=1, le=50)  # model calls
+    agent_max_tool_calls: int = Field(default=16, ge=1, le=200)
+    agent_max_seconds: int = Field(default=120, ge=5, le=900)
+    agent_max_output_tokens: int = Field(default=4096, ge=256, le=32000)  # per model call
+    agent_history_messages: int = Field(default=12, ge=0, le=100)  # earlier messages shown to the model (text only)
+    agent_max_tool_result_chars: int = Field(default=40000, ge=1000, le=200000)  # bigger results are refused, not truncated
+    agent_max_context_chars: int = Field(default=240000, ge=1000, le=2000000)  # all tool results of one run together
+    agent_effort: Literal["low", "medium", "high"] = "medium"  # how hard the model thinks
+    agent_max_concurrent_runs: int = Field(default=2, ge=1, le=8)  # runs working at the same time, across conversations
+    agent_tool_idle_seconds: float = Field(default=600.0, ge=0)  # close a conversation's tool server after this idle time
 
     @property
     def cors_origin_list(self) -> list[str]:

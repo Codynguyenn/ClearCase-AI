@@ -107,5 +107,28 @@ class Mongo:
         db[POLICY_CHUNKS].create_index([("owner_id", ASCENDING), ("policy_key", ASCENDING), ("ordinal", ASCENDING)], unique=True)
         db[POLICY_CHUNKS].create_index([("owner_id", ASCENDING), ("citation_id", ASCENDING)], unique=True)
 
+        # Conversations (Phase 5). Messages are ordered by a per-conversation sequence number. The two partial
+        # unique indexes are database-level guarantees: a retried send with the same client id stores one message,
+        # and a conversation can have at most one active (queued/running) assistant run.
+        db[CONVERSATIONS].create_index([("owner_id", ASCENDING), ("document_id", ASCENDING), ("updated_at", DESCENDING)])
+        db[MESSAGES].create_index([("conversation_id", ASCENDING), ("seq", ASCENDING)], unique=True)
+        db[MESSAGES].create_index(
+            [("conversation_id", ASCENDING), ("client_message_id", ASCENDING)],
+            unique=True,
+            partialFilterExpression={"client_message_id": {"$type": "string"}},
+            name="one_message_per_client_id",
+        )
+        db[MESSAGES].create_index([("document_id", ASCENDING)])
+        db[AGENT_RUNS].create_index([("conversation_id", ASCENDING), ("created_at", DESCENDING)])
+        db[AGENT_RUNS].create_index(
+            [("conversation_id", ASCENDING)],
+            unique=True,
+            partialFilterExpression={"active": True},
+            name="one_active_run_per_conversation",
+        )
+        db[AGENT_RUNS].create_index([("document_id", ASCENDING)])
+        db[TOOL_EVENTS].create_index([("run_id", ASCENDING), ("seq", ASCENDING)], unique=True)
+        db[TOOL_EVENTS].create_index([("document_id", ASCENDING)])
+
     def close(self) -> None:
         self.client.close()

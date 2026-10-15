@@ -1,1 +1,1 @@
-"""Agent orchestration (Phase 5). Intentionally empty in Phase 1."""
+"""The assistant (Phase 5): MCP client, bounded tool-calling loop, provider adapter, demo mode, run manager, citation checks."""

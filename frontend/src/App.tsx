@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { api } from './api/client'
 import type { BBox, Category, DecisionAction, Finding, Occurrence, SearchResult } from './api/types'
+import { ChatPanel } from './components/ChatPanel'
 import { DocumentHeader } from './components/DocumentHeader'
 import { ExportPanel } from './components/ExportPanel'
 import { FindingsPanel } from './components/FindingsPanel'
@@ -200,6 +201,15 @@ export default function App() {
             onStartManual={() => setDraw({ kind: 'manual' })}
             onStartAdjust={startAdjust}
             onOpenCitation={setCitation}
+          />
+        )
+      case 'chat':
+        return (
+          <ChatPanel
+            documentId={selected.id}
+            onJumpToPage={setPageNumber}
+            onOpenCitation={setCitation}
+            onRunFinished={review.refresh}
           />
         )
       case 'policy':

@@ -1,4 +1,7 @@
 import type {
+  AgentRun,
+  ChatMessage,
+  Conversation,
   DocumentRecord,
   ExportRecord,
   Finding,
@@ -7,6 +10,8 @@ import type {
   PolicyRecord,
   RetrievalResult,
   RetrievedPassage,
+  RunDetail,
+  ToolEvent,
 } from '../api/types'
 
 export function makePolicy(overrides: Partial<PolicyRecord> = {}): PolicyRecord {
@@ -115,6 +120,7 @@ export function makeHealth(overrides: Partial<HealthResponse> = {}): HealthRespo
     status: 'ok',
     mongodb: true,
     assistant_mode: 'demo',
+    assistant: { mode: 'demo', provider: null, model: null, configured: true, sends_excerpts_to_provider: false },
     pdf_engine: 'pymupdf 1.28.2',
     ner_available: true,
     ner_model: 'ner:spacy:en_core_web_sm@3.8.0',
@@ -199,4 +205,79 @@ export function makeDocument(overrides: Partial<DocumentRecord> = {}): DocumentR
     updated_at: '2026-10-14T00:00:00Z',
     ...overrides,
   }
+}
+
+export function makeConversation(overrides: Partial<Conversation> = {}): Conversation {
+  return {
+    id: 'conv1',
+    document_id: 'doc1',
+    title: 'Conversation',
+    mode: 'demo',
+    message_count: 0,
+    created_at: '2026-10-14T00:00:00Z',
+    updated_at: '2026-10-14T00:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeMessage(overrides: Partial<ChatMessage> = {}): ChatMessage {
+  return {
+    id: 'm1',
+    conversation_id: 'conv1',
+    document_id: 'doc1',
+    seq: 1,
+    role: 'user',
+    content: 'find the emails',
+    status: 'complete',
+    citations: [],
+    run_id: null,
+    client_message_id: null,
+    created_at: '2026-10-14T00:00:00Z',
+    ...overrides,
+  }
+}
+
+export function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
+  return {
+    id: 'run1',
+    conversation_id: 'conv1',
+    document_id: 'doc1',
+    mode: 'demo',
+    provider: null,
+    model: null,
+    status: 'completed',
+    rounds: 1,
+    tool_calls: 1,
+    limits_hit: [],
+    error_code: null,
+    error: null,
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    unverified_citations: 0,
+    assistant_message_id: 'm2',
+    created_at: '2026-10-14T00:00:00Z',
+    started_at: '2026-10-14T00:00:01Z',
+    finished_at: '2026-10-14T00:00:02Z',
+    ...overrides,
+  }
+}
+
+export function makeToolEvent(overrides: Partial<ToolEvent> = {}): ToolEvent {
+  return {
+    id: 'ev1',
+    run_id: 'run1',
+    seq: 1,
+    tool: 'search_document',
+    status: 'ok',
+    duration_ms: 42,
+    summary: '2 match(es) on page(s) 1, 2; 0 page(s) not searched',
+    error_code: null,
+    ...overrides,
+  }
+}
+
+export function makeRunDetail(overrides: Partial<RunDetail> = {}): RunDetail {
+  return { run: makeRun(), tool_events: [makeToolEvent()], assistant_message: makeMessage({ id: 'm2', seq: 2, role: 'assistant', content: 'Done.', run_id: 'run1' }), ...overrides }
 }

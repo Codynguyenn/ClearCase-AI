@@ -14,11 +14,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import PyMongoError
 
-from app.api import documents, exports, health, policies, review
+from app.agent.runs import RunManager
+from app.api import conversations, documents, exports, health, policies, review
 from app.api.errors import register_error_handlers
 from app.api.upload_limit import UploadRule, UploadSizeLimitMiddleware
 from app.config import Settings, get_settings
 from app.db import Mongo
+from app.services.conversation_service import recover_interrupted_runs
 from app.services.document_service import DocumentService
 from app.services.embeddings import embedding_status
 from app.services.policy_service import EmbedderProvider, PolicyService
@@ -59,14 +61,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         mongo = Mongo(settings)
         app.state.mongo = mongo
+        # Tests may set `assistant_factory` / `tool_factory` on app.state before startup to use a scripted model.
+        manager = RunManager(
+            mongo,
+            settings,
+            assistant_factory=getattr(app.state, "assistant_factory", None),
+            tool_factory=getattr(app.state, "tool_factory", None),
+        )
+        app.state.run_manager = manager
+        await manager.start_background()
         try:
             mongo.ensure_indexes()
             interrupted = DocumentService(mongo, settings).recover_interrupted()
+            interrupted_runs = recover_interrupted_runs(mongo)
             logger.info(
-                "Connected to MongoDB %s/%s (recovered %d interrupted job(s))",
+                "Connected to MongoDB %s/%s (recovered %d interrupted job(s), %d assistant run(s))",
                 settings.mongodb_uri,
                 settings.mongodb_db,
                 interrupted,
+                interrupted_runs,
             )
             if settings.reindex_on_startup:
                 app.state.reindex_thread = start_background_reindex(
@@ -76,6 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             # Keep serving so /api/health can report the problem instead of crash-looping.
             logger.error("MongoDB unavailable at startup: %s", exc)
         yield
+        await manager.shutdown()  # stop runs and tool servers while the database is still open
         thread = getattr(app.state, "reindex_thread", None)
         if thread is not None:
             thread.join(timeout=10)  # let a refresh in progress finish its current write before the DB closes
@@ -110,6 +124,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(review.router, prefix="/api")
     app.include_router(exports.router, prefix="/api")
     app.include_router(policies.router, prefix="/api")
+    app.include_router(conversations.router, prefix="/api")
     return app
 
 
