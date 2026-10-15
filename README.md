@@ -53,7 +53,7 @@ demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 607 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 622 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -318,12 +318,12 @@ for the reasoning behind each major choice.
   one of those leftovers (13 of 13) and blocks the download until the reviewer adds them or acknowledges. That is why every finding needs a human decision and why we never invent a confidence score.
 - The real-browser (Playwright) end-to-end test covers the main reviewer session in demo mode (see above). It does not cover
   live mode (that spends money; `scripts/live_check.py` is the manual check), other browsers, phones, scanned PDFs or long documents.
-- The assistant's quality is measured **only on 12 easy synthetic documents** (`evaluation/README.md`): there the
-  model-assisted workflow found clearly more personal information than the app's detectors alone (F1 about 0.98 against
-  0.82 as measured; the detectors alone score 0.87 once a flaw in my test data is set aside, and 0.92 on a second, corrected
-  set where the models were **not** run), Haiku, Sonnet and Opus could not be told apart, and the cheapest cost about 1/27 of
-  the dearest. That shows the design works and is cheap to run, not how accurate it is on real documents: the size of the
-  models' advantage depends heavily on the test set, and the first set had two data flaws, which the reports disclose. It can miss entities or over-propose, which is why everything it proposes needs your decision.
+- The assistant's quality is measured **only on two sets of 12 easy synthetic documents** (`evaluation/README.md`): on both, the
+  model-assisted workflow found more personal information than the app's detectors alone (F1 0.98 to 0.99 against 0.82 on the first
+  set and 0.92 on a second, corrected set, an advantage of about +0.07 to +0.16 depending on the data), Haiku, Sonnet and Opus could
+  not be told apart on either, and the cheapest cost about 1/27 to 1/29 of the dearest. That shows the design works and is cheap to
+  run, not how accurate it is on real documents: the size of the advantage depends on the test set, and the first set had two data
+  flaws, which the reports disclose. It can miss entities or over-propose, which is why everything it proposes needs your decision.
 - Live mode supports one provider (Anthropic). Replies appear when a request finishes (the interface polls once a
   second and shows tool activity meanwhile); there is no token streaming yet. Policy scope is global: every active
   policy version is searched, and a citation pins the exact version it quotes. Chat messages can contain document

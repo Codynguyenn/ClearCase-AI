@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full backend run (2026-10-15, `phase-6-pipeline-eval`, with the evaluation, second-set and pipeline tests):** **`607 passed in 579.36s`**, `ruff check app tests` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (563 earlier on 2026-10-15 predates the 22 second-set tests; 585 predates the 22 pipeline and report tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-data-v2`, with the evaluation, second-set, pipeline and generator tests):** **`622 passed in 512.37s`**, `ruff check app tests ../evaluation` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (Earlier the same day: 563, then 585 after the second-set tests, 607 after the pipeline tests, 619 after the generator tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -315,7 +315,7 @@ Four of five pre-registered predictions held; prediction 1 (worse ranking) was w
 `backend/tests/test_retrieval_set2.py` (22 tests; the selection rules, the spend guard, the blindness of the writer prompt and the report
 logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
 
-Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
+Spend so far on the live provider, estimated from token counts: about $6.0 of the $20 bought (Phase 5 checks about $0.5, setup about $0.04, the first three-model run $2.78, the second retrieval set $0.06, the v2 three-model run $2.56). The Console's usage page is the authority.
 
 ### Phase 6: pipeline latency and export-verification outcomes (2026-10-15, branch `phase-6-pipeline-eval`)
 
@@ -341,9 +341,11 @@ flaws** (valid phone numbers; company addresses not labelled as personal). It al
 (before, `main()` replaced the hash file unconditionally). New frozen set `heldout_v2` (sha256 `90188e77...`); protocol first
 (`evaluation/assistant_eval/PROTOCOL_V2.md`). Free steps run once: on v2 the detectors score **F1 0.918** (v1: 0.823), PHONE recall 18 of 18,
 NER PERSON recall 0.88 (v1: 0.67); in the pipeline measurement 14 of 18 exports are clean and 4 need an acknowledgement (v1: 9 and 9), the
-verifier again reported every leftover copy (4 of 4), latency 55 ms upload-to-ready and 208 ms export. Two of four predictions failed. **The
-models have not been run on v2** (about $0.07 for Haiku, $2.8 for all three; needs approval); so the models' advantage on clean data is at
-most about +0.08, against +0.16 on v1 as frozen. Decision 56; tests in `test_assistant_eval.py` (31, with 7 deliberate mutations all caught).
+verifier again reported every leftover copy (4 of 4), latency 55 ms upload-to-ready and 208 ms export. Two of four predictions failed. **Then the three models were run on v2 (the owner approved; $2.56, cap $4; all 36 runs normal)**: F1 Haiku
+0.984, Sonnet 0.994, Opus 0.987 against the detectors' 0.918, so their advantage on clean data is **+0.07** (every paired interval excludes
+zero), against +0.16 on v1 as frozen; the models cannot be told apart, Opus costs 29 times Haiku, **all eight pre-registered live-run
+predictions held**, and the rule again recommends Haiku. Decision 56; tests in `test_assistant_eval.py` (31) and `test_assistant_report.py`
+(25), each rule broken on purpose to confirm a test fails.
 
 ### Phase 6: README polish (2026-10-15, branch `phase-6-polish`)
 
@@ -586,7 +588,7 @@ tests were checked by reverting the fix: they fail.
 ## Remaining work (by phase)
 
 **Phase 6 is complete** (the specification's deliverables and evaluation requirements are all met, with their limits stated; the Compose
-re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: run the assistant (Haiku, about $0.07) on the corrected `heldout_v2` set, which needs the owner's approval and would finish the comparison on clean data; a retrieval question set **written by people**
+re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: a retrieval question set **written by people**
 (both held-out sets are model-written or same-author); a harder, longer, messier assistant evaluation with corrected labels and valid
 phone numbers, written first; a button that proposes the unresolved copies straight from the export warning (the pipeline measurement
 shows a fifth to a half of the NER-based exports hit it); a responsive layout; real authentication and a worker process.

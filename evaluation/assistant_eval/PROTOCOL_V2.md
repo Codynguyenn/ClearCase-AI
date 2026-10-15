@@ -28,7 +28,7 @@ The v1 headline numbers are reported as frozen, with marked post-hoc tables that
 | --- | --- | --- |
 | Detector baselines on `heldout_v2` (pattern only; pattern plus NER) | free | run once, after this file is written |
 | Pipeline measurement (latency and export-verification outcomes) on the v2 documents | free | run once (`pipeline_eval/run.py --variant v2`) |
-| The assistant with Haiku, Sonnet or Opus on `heldout_v2` | about $0.07 (Haiku) to $2.8 (all three) | **not run; needs the owner's explicit approval**, then the rules of `PROTOCOL.md` apply unchanged |
+| The assistant with Haiku, Sonnet or Opus on `heldout_v2` | about $0.07 (Haiku) to $2.8 (all three) | **not run when this file was written; the owner approved it on 2026-10-15 and it was run (section 6)**, under the rules of `PROTOCOL.md` unchanged |
 
 ## 4. Predictions for the free steps (written before running them)
 
@@ -41,6 +41,10 @@ The v1 headline numbers are reported as frozen, with marked post-hoc tables that
 **Outcomes (added after the free steps were run; the predictions above were not edited).** 1 held: PHONE recall 18 of 18. 2 held: F1 0.918,
 at the upper edge of the range. 3 **failed**: PERSON recall 63 of 72 = 0.88. 4 **failed**: 4 of 18 exports needed an acknowledgement, none failed or was blocked.
 Tables: `REPORT_heldout_v2.md` (detectors) and `../pipeline_eval/REPORT_v2.md`.
+
+**Outcomes of the live run (added after it was run; the predictions above were not edited).** All eight held (V2-1 to V2-8): recall at least
+0.987 and F1 at least 0.984 for every model, spread 0.010, paired advantage over the detectors excluding zero for all three (+0.066, +0.076,
++0.069), Opus 29.3 times Haiku, no export attempt, no company-name violation, spend $2.56. Table: `REPORT_heldout_v2.md`.
 
 ## 5. How the result is read
 
@@ -72,3 +76,4 @@ Predictions (evaluated by `report.py`, numbered V2-1 to V2-8):
 
 | When | What happened | Effect |
 | --- | --- | --- |
+| after the live run | 35 of the 36 run records say `dirty: true` (only the first says false). | Not changed code: the flag counts untracked files and the run's own results file appears after the first record. All records name commit `51d9f6d`, and a diff against it shows only documentation and result files changed afterwards (no `.py`, `.ts`, `.sh` or workflow file). |

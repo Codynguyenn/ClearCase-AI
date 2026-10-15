@@ -63,7 +63,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 - **Say:** "I did not train a model; spaCy's is pretrained and imperfect, and it has no honest confidence score, so I never show one."
   Detectors only propose; the **server derives rectangles** from the stored word map, so no model ever supplies coordinates.
 - **Honest numbers (decision 51):** on 12 synthetic documents the pattern detectors alone scored recall 0.45, F1 0.62; adding NER gave
-  recall 0.74, F1 0.82 (0.87 once I set aside a flaw in my own test data: the synthetic phone numbers were malformed, so no validating detector could match them; **0.92** on a second, corrected set of 12 documents, where NER recall was much higher because different names were drawn); the model-assisted workflow scored F1 about 0.98 on the first set and has not been run on the corrected one. The lesson: on synthetic data the size of an advantage depends on the draw, so quote the range, not one number. Synthetic, easy, one author.
+  recall 0.74, F1 0.82 (0.87 once I set aside a flaw in my own test data: the synthetic phone numbers were malformed, so no validating detector could match them; **0.92** on a second, corrected set of 12 documents, where NER recall was much higher because different names were drawn); the model-assisted workflow scored F1 0.98 to 0.99 on both sets, so its advantage over the detectors is about +0.07 on the clean set and +0.16 on the flawed one. The lesson: on synthetic data the size of an advantage depends on the draw, so quote the range, not one number. Synthetic, easy, one author.
 - **Honest numbers for the pipeline (decision 55):** on 18 synthetic documents upload-to-ready took about 47 ms and an export with verification about 186 ms (median, 1 to 2 pages, in-process). A simulated reviewer who approved exactly the right detector proposals got 9 exports verified cleanly and 9 that needed an acknowledgement because NER had missed one occurrence of an approved name (on a second, corrected set: 14 clean and 4); the verifier flagged every leftover copy my independent re-check found (13 of 13 across the two sets), and every kept company name survived (54 of 54 in both). My own predictions were wrong on both sets.
 
 ### Redaction correctness — decisions 15, 5
@@ -92,7 +92,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 4. **Found two flaws in my own test data, both by reading the numbers closely**: all 16 misses were a company's address, which my labels
    called sensitive although the request asks for individuals' information; and every synthetic phone number had a 3-digit last group, so
    the validating detectors could not match any of them (their PHONE recall of 0 was an artefact; the per-category table exposed it). I kept
-   the headline as frozen and added clearly marked post-hoc tables. The model-versus-detector gap shrinks from +0.16 to about +0.10, still clear; I then fixed the generator, kept the old data reproducible, protected the frozen file from being overwritten, and built a corrected v2 set (decision 56).
+   the headline as frozen and added clearly marked post-hoc tables. The model-versus-detector gap shrinks from +0.16 to about +0.10, still clear; I then fixed the generator, kept the old data reproducible, protected the frozen file from being overwritten, built a corrected v2 set, and re-ran the models on it ($2.56, all eight new predictions held): the advantage over the detectors is about +0.07 there (decision 56).
 5. What I would say: "It supports a narrow claim, that the model-assisted workflow found more than the detectors alone on easy synthetic
    documents and the cheapest model did as well. It does not predict real-world accuracy."
 
@@ -101,7 +101,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Question | Answer |
 | --- | --- |
 | Did you train a model? | No. Pretrained spaCy and a pretrained embedding model; the language model is a hosted API. |
-| How do you know it works? | Backend tests against a real MongoDB (607), component tests (100), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
+| How do you know it works? | Backend tests against a real MongoDB (622), component tests (100), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
 | How do you test the tests? | I break the code on purpose and check the tests fail. Several tests passed for the wrong reason until I did (see decisions 50-52). |
 | What if the model follows an injected instruction in the PDF? | It still cannot approve, cannot export without the reviewer's authorization, and cannot read other documents. Injection is defended by structure, not by trusting the model (decision 22). |
 | Is it secure? | It is a local demo: the identity is not authentication, and live mode sends excerpts to a provider (the UI says so and asks first). Keys live only in the git-ignored `.env`; the SDK exception is not chained, so a key cannot reach logs or the database. |
@@ -113,12 +113,12 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Claim | Number | Source |
 | --- | --- | --- |
 | Assistant, detectors only (pattern + NER) | recall 0.744, F1 0.823 (0.876 without the malformed phones) | `evaluation/assistant_eval/REPORT_heldout.md` |
-| Assistant, Haiku / Sonnet / Opus | F1 0.988 / 0.981 / 0.981 | same |
-| Cost per document | $0.006 / $0.074 / $0.152 | same (list prices, from token counts) |
+| Assistant, Haiku / Sonnet / Opus | F1 0.988 / 0.981 / 0.981 (first set); 0.984 / 0.994 / 0.987 (corrected set, detectors 0.918) | `REPORT_heldout.md`, `REPORT_heldout_v2.md` |
+| Cost per document | $0.006 / $0.074 / $0.152 (first set); $0.005 / $0.062 / $0.146 (corrected set) | same (list prices, from token counts) |
 | Retrieval, right passage first / top 3 | 18/28 = 0.64 / 21/28 = 0.75 | `evaluation/README.md` (held-out, 28 answerable questions) |
 | Retrieval cutoff balanced accuracy | 0.84 dev, 0.56 first held-out, 0.61 second held-out, **0.60 pooled** (0.52-0.68) | decisions 30 and 53, `evaluation/retrieval2/REPORT.md` |
 | Retrieval, right passage in top 3 (pooled, 64 answerable questions) | 0.81 (0.70-0.89) | same |
-| Tests | 607 backend, 100 frontend, 5 browser | `PROJECT_STATUS.md` |
+| Tests | 622 backend, 100 frontend, 5 browser | `PROJECT_STATUS.md` |
 
 ## Plain-English glossary
 

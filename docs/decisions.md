@@ -920,14 +920,30 @@ split names; the report omits model sections when no model has been run.
 **Predictions** (PROTOCOL_V2.md section 4): PHONE recall at least 0.90 **held** (1.00); F1 between 0.84 and 0.92 **held** (0.918, at the
 edge); NER PERSON recall below 0.80 **failed** (0.88); at least 6 of 18 exports still needing an acknowledgement **failed** (4).
 
-**What this changes about what I said.** On clean data the detectors alone score 0.92, so the models' advantage is **at most about
-+0.08 there** (the models have not been run on v2), against +0.16 on v1 as frozen. NER's PERSON recall moved from 0.67 to 0.88 between two
-sets of 72 mentions drawn from the same name lists, so on synthetic data **the size of an advantage depends on the draw**; quote a range,
-not one number. The v1 conclusions that survive: the models found essentially everything on v1, and the export verifier caught every
-leftover copy in both sets (13 of 13).
+**The live run on `heldout_v2`** (approved by the owner; protocol and eight predictions first; all three models, 36 runs, hard cap $4,
+**cost $2.56**; `evaluation/assistant_eval/REPORT_heldout_v2.md`):
 
-**Not done, and needs the owner's approval because it spends money:** running the assistant on `heldout_v2`. Haiku alone costs about
-$0.07; all three models about $2.8. I recommend Haiku alone: it completes the comparison on clean data for the recommended model.
+| System | Precision | Recall | F1 (95% interval) | Cost per document |
+| --- | --- | --- | --- | --- |
+| Pattern detectors only | 0.913 | 0.538 | 0.677 | free |
+| Detectors, pattern plus NER | 0.895 | 0.942 | 0.918 (0.88-0.95) | free |
+| Claude Haiku 5.5 | 0.975 | 0.994 | 0.984 (0.96-1.00) | $0.005 |
+| Claude Sonnet 5.5 | 0.987 | 1.000 | 0.994 (0.98-1.00) | $0.062 |
+| Claude Opus 5.5 | 0.987 | 0.987 | 0.987 (0.97-1.00) | $0.146 |
+
+All 36 runs finished normally; no export attempt on the injected documents; no company-name violation. The paired F1 advantage over the
+pattern-plus-NER detectors is **+0.066 (+0.039 to +0.099) for Haiku, +0.076 (+0.042 to +0.114) for Sonnet and +0.069 (+0.029 to +0.112)
+for Opus**, so real for all three; the models are not distinguishable from each other. Slips: Haiku missed 1 of 72 person mentions, Opus
+2 of 32 address items (a two-line address), Sonnet nothing; the models proposed a few spans that match nothing (4, 2 and 2), **all of them the vendor's own "Remit to"
+address on the two invoices**, which v2 deliberately does not count as personal information. **All eight predictions held.** The
+pre-registered rule again recommends Haiku (cheapest within 0.05 F1 of the best, Sonnet).
+
+**What this changes about what I said.** The models' advantage over the detectors is **about +0.07 on clean data**, against +0.16 on the
+first set as frozen (+0.10 once its two flaws are set aside): real, but smaller than I first reported, and it depends on the test set.
+NER's PERSON recall moved from 0.67 to 0.88 between two sets of 72 mentions drawn from the same name lists, so on synthetic data **the
+size of an advantage depends on the draw**; quote a range, not one number. What survives on both sets: the models find essentially
+everything, they cannot be told apart, Haiku is the sensible default at about 1/27 to 1/29 of Opus's cost, and the export verifier caught
+every leftover copy (13 of 13).
 
 **Limits.** Synthetic data of one author; v2 uses the same name and company lists and templates as v1, so it is a re-draw with the flaws
 removed, not a harder or more varied set; two sets of 12 documents say little about the spread of NER recall.
