@@ -14,7 +14,7 @@ This file is the hand-off point for any new session. Read it first, then
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
 | 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
-| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison (below). Not done: browser E2E, a second retrieval question set, demo script, interview guide, polish, final Compose re-run |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison and the browser end-to-end test (below). Not done: a second retrieval question set, demo script, interview guide, polish, final Compose re-run |
 
 ## Working features (verified)
 
@@ -283,6 +283,22 @@ flaw in my ground truth, not a result about the models, and it is in the protoco
 Spend so far on the live provider, estimated from token counts: about $3.3 of the $20 bought (Phase 5 checks ~$0.5, evaluation setup
 ~$0.04, held-out run $2.78). The Console's usage page is the authority.
 
+### Phase 6: browser end-to-end test (2026-10-15, branch `phase-6-evaluation`)
+
+`frontend/e2e/review-flow.spec.ts` (Playwright, `npm run e2e`): five tests, one reviewer's session, in a real Chrome against the real
+frontend, backend, MongoDB and PDF engine, with the scripted demo assistant (no model call is possible; `scripts/e2e_backend.sh` blanks
+the provider settings and uses its own database `clearcase_e2e`). **5 passed in about 70 s** locally with Chrome (`E2E_CHANNEL=chrome`).
+Covered: upload, search, detect, reject/approve with a status filter; policy library, a cited passage in the modal dialog (focus stays
+off the page behind it, Escape closes it and returns focus); chat summary with visible tool activity; a checked citation chip; the
+assistant refused an export until the reviewer authorizes, then exporting; the reviewer's own export, download, and re-uploading the
+downloaded file to search it (approved name 5 matches before, 1 after = the rejected one; approved e-mails and SSN gone; company names
+kept); the conversation after a reload. Checked by breaking the product on purpose: a non-modal dialog and a do-nothing redaction each
+make the tests fail. Frontend lint, typecheck (now includes the specs via `tsconfig.e2e.json`), 94 unit tests and build still pass.
+A new CI job `e2e` runs it with Playwright's own Chromium; it had not run on GitHub when this was written (see the PR).
+
+Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
+task; the test filters to undecided findings). Details and limits: decision 52.
+
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
 Built in eight steps, each verified before the next; the design and its approved choices are in `docs/phase5_design.md`,
@@ -502,11 +518,9 @@ because of the port conflicts above.
 
 ## Remaining work (by phase)
 
-**Phase 6 — QA & docs**: Playwright E2E (upload → search/analyse → review → approve → export → reopen
-conversation, in a real browser; also cover the Policy tab, the citation dialog and the Chat tab, which component tests
-in happy-dom cannot prove), a **new** held-out retrieval question set (the current one has used its two allowed runs),
+**Phase 6 — QA & docs**: a **new** held-out retrieval question set (the current one has used its two allowed runs),
 export-verification outcomes and latency, the three-minute demo script, the interview guide, polish, and a full Docker
-Compose re-run. **Done in Phase 6 so far:** the detection and model comparison (precision/recall/F1 by category for the
+Compose re-run. **Done in Phase 6 so far:** the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
 detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:
@@ -520,7 +534,9 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
   by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one
   has had its two allowed runs).
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
-- Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real layout.
+- Component tests run in happy-dom, which cannot prove focus trapping or real layout; the Playwright test covers focus and Escape for
+  the citation dialog in one real browser engine. Real layout, other browsers and phones are still unchecked.
+- Bulk "Approve shown"/"Reject shown" overwrite earlier decisions when the status filter is "all" (filed as a separate task).
 - Policies cited by findings can be deleted; the delete confirmation says how many findings cite it and the UI then
   shows the passage as unavailable (it does not block deletion).
 - Chunker changes never re-chunk existing policy versions (on purpose: citation ids must keep pointing at the same

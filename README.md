@@ -113,7 +113,7 @@ read the passages and the library yourself.
 | Backend | Python 3.11+, FastAPI, Pydantic v2, `pymongo` (official), PyMuPDF, spaCy | `backend/requirements.lock` |
 | Embeddings (RAG) | `sentence-transformers` 6.1.0 + CPU-only PyTorch 2.14.1, model `all-MiniLM-L6-v2` (Apache-2.0) at a pinned revision, NumPy | `backend/requirements.lock` |
 | Database | MongoDB 8.0 Community + GridFS | — |
-| Tests | pytest (backend), vitest (frontend geometry), Playwright (Phase 6) | — |
+| Tests | pytest (backend), vitest (frontend), Playwright (real-browser end to end) | — |
 | MCP | official `mcp` SDK 2.3.0 (stdio server + client), `jsonschema` | `backend/requirements.lock` |
 | Later phases | hosted LLM provider (Phase 5) | — |
 
@@ -206,13 +206,26 @@ cd backend && .venv/bin/ruff check app tests      # lint (CI runs it too)
 ```
 
 Frontend checks (94 tests: geometry maths plus React component tests that run in a simulated
-browser with a faked network; the real-browser end-to-end test arrives in Phase 6):
+browser with a faked network):
 
 ```bash
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs both jobs with a MongoDB service container.
+Browser end-to-end test (a real Chrome/Chromium drives the real frontend, backend, MongoDB and PDF engine through one
+reviewer's session: upload, search, detect, review, the assistant's refused and then authorized export, the policy
+dialog, downloading the redacted file and searching it again to prove the approved text is gone). The assistant is the
+scripted demo one and the provider settings are blanked, so it cannot call a paid model; it uses its own database
+(`clearcase_e2e`, dropped at every start) and ports 8011 and 5183:
+
+```bash
+scripts/dev_mongo.sh start
+cd frontend
+npx playwright install chromium     # once; or skip it and use the Chrome you have: E2E_CHANNEL=chrome npm run e2e
+npm run e2e                         # run the file as a whole: the five tests tell one story and share a database
+```
+
+CI (`.github/workflows/ci.yml`) runs three jobs (backend, frontend, browser end-to-end), each with the services it needs.
 
 ## API (Phases 1–5)
 
@@ -284,8 +297,8 @@ for the reasoning behind each major choice.
 - NER is a pretrained model we did not train; it produces false positives
   (for example "MISCELLANEOUS NOTE" tagged as a person). That is why every
   finding needs a human decision and why we never invent a confidence score.
-- The real-browser (Playwright) end-to-end test is Phase 6 and not done yet; the assistant model comparison is done. The Chat tab is covered
-  by component tests with a faked network, and was exercised by hand in a real browser.
+- The real-browser (Playwright) end-to-end test covers the main reviewer session in demo mode (see above). It does not cover
+  live mode (that spends money; `scripts/live_check.py` is the manual check), other browsers, phones, scanned PDFs or long documents.
 - The assistant's quality is measured **only on 12 easy synthetic documents** (`evaluation/README.md`): there the
   model-assisted workflow found clearly more personal information than the app's detectors alone (F1 about 0.98 against
   0.82), Haiku, Sonnet and Opus could not be told apart, and the cheapest cost about 1/27 of the dearest. That shows the

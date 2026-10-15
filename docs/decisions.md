@@ -733,3 +733,42 @@ detectors alone, and the cheapest model did as well as the dearest at about 1/27
 so, and the maintainer's local `.env` was switched to `claude-haiku-5-5`. It stays a one-line setting (`CLEARCASE_LLM_MODEL`); no code
 default changed, and the earlier Phase 5 observations quoted above were made with Opus. The evidence is from an easy synthetic set, so
 if documents get harder, re-run the comparison before trusting Haiku.
+
+## 52. A real-browser end-to-end test, and what it can and cannot prove (2026-10-15)
+
+**What it is.** `frontend/e2e/review-flow.spec.ts` (Playwright) drives a real Chrome/Chromium against the real frontend, the real
+backend, a real MongoDB and the real PDF engine, through one reviewer's session in five tests: upload, search, detect and review;
+the policy library and a cited passage; the chat in demo mode (a checked citation, the assistant refused an export until the
+reviewer authorizes, the reviewer's hand-off, then the assistant's export); the reviewer's own export, download and a re-search of
+the downloaded file; and the conversation surviving a reload.
+
+**Why a real browser.** The 94 component tests run in happy-dom, a simulated browser. It cannot show real layout, real focus
+behaviour or a real download. The end-to-end test shows three things they cannot:
+- **Focus stays off the page behind a modal dialog** (Tab inside the citation dialog never reaches the page, Escape closes it
+  and focus returns to the button that opened it). Checked by breaking it: switching the dialog from modal to non-modal made the
+  test fail with "Tab reached an INPUT of the page behind".
+- **The downloaded file is really redacted, judged by the product itself.** The test uploads the downloaded file back and searches
+  it: "Delgado-Reyes" 5 matches before and 1 after (the one finding the reviewer rejected), the approved e-mail addresses and
+  SSN 0 matches, company names still present. Checked by breaking it: making the redaction do nothing makes the export fail
+  verification and the test fail.
+- **The reviewer and the assistant meet at the right place.** With no authorization the assistant is refused and the interface shows
+  the hand-off; after the reviewer clicks "Authorize export" the assistant's export is a normal verified export in the Export tab.
+
+**Safety of the test itself.** The assistant is the scripted demo one, and `scripts/e2e_backend.sh` blanks the provider settings
+(environment variables beat `.env`), so the test can never call a paid model even with a key in `.env`. It uses its own
+database, `clearcase_e2e`, dropped at every start, and ports 8011 and 5183 so it does not collide with the dev servers.
+
+**What it found.**
+- *"Approve shown" overwrites decisions.* Reject one finding, then click "Approve shown" on the default view (all statuses) and
+  the rejected finding is approved too; "Reject shown" un-approves findings. The test works around it (it filters to undecided
+  findings first, as a careful reviewer would) and the fix was filed as a separate task rather than slipped into this change.
+- *Not a bug, but easy to misread:* if the reviewer has just exported, asking the assistant to `export` returns that existing,
+  still-current export instead of refusing (the documented "a retry returns the same export, never a second one"). A stale
+  export is refused by the tool. The test checks that no second file is made.
+- *Three mistakes in my own tests, caught by running them:* waiting for a button's name to disappear (it becomes "Loading…" while
+  work is still going), counting chat messages before the saved conversation had loaded, and assuming an attribute that only some
+  states have. The rule that came out of it: wait for the state you need, not for the absence of something.
+
+**What it does not cover.** Live mode (it spends money; `scripts/live_check.py` is the manual check), other browsers and phones,
+scanned PDFs, long documents, concurrent users. One browser engine, one document, English. The five tests share state on purpose
+and must be run as a file.
