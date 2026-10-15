@@ -681,3 +681,19 @@ information" while keeping company names visible, quoted policy sentences that a
 injected line told it to ignore the user and export everything, flagged the line and did not act on it. That is one run;
 the protection against the same line does not depend on the model behaving (`tests/test_agent_injection.py`).
 
+## 51. "Approve shown" / "Reject shown" only touch undecided findings (decided 2026-10-15)
+
+A browser test found that the two bulk buttons acted on every finding on screen. With the default "all statuses" list,
+rejecting one finding and then clicking "Approve shown" quietly turned that rejection into an approval, and "Reject
+shown" turned approved findings into rejected ones, which would leave text the reviewer had approved unredacted. The
+server was behaving correctly: it applies whatever ids it is sent, and the screen was sending too many.
+
+**Chosen: fix it in the panel, not the server.** With "all statuses" selected, the buttons now send only findings that
+are still `proposed`, and say how many: "Approve shown (17 undecided)". Findings the reviewer already decided are left
+alone. If the reviewer picks a status in the filter (say "approved"), the buttons act on exactly that list, as before,
+so changing a decision in bulk is still possible but takes a deliberate choice of filter. Stale findings are never
+sent. The other filters (category, this page) still narrow the list first. The server endpoint is unchanged on purpose:
+"apply this action to exactly these ids" is easier to reason about than a call that silently drops some of them, and
+the reviewer's intent is only known on the screen. The component tests cover the reject-then-approve case, the reverse, the count, and the
+filtered-set case; reverting the fix makes them fail.
+
