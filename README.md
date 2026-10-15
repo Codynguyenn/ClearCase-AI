@@ -54,7 +54,7 @@ demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 585 backend tests against a **real MongoDB**, 94 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 585 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -221,7 +221,7 @@ cd backend && .venv/bin/python -m pytest -q
 cd backend && .venv/bin/ruff check app tests      # lint (CI runs it too)
 ```
 
-Frontend checks (94 tests: geometry maths plus React component tests that run in a simulated
+Frontend checks (100 tests: geometry maths plus React component tests that run in a simulated
 browser with a faked network):
 
 ```bash

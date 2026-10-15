@@ -31,10 +31,8 @@ test('README screenshots', async ({ page }) => {
   // 2. The reviewer decides: reject one, approve the rest.
   const findings = page.getByLabel('Findings', { exact: true }).getByRole('listitem')
   await findings.first().getByRole('button', { name: 'Reject', exact: true }).click()
-  await page.getByLabel('Filter by status').selectOption('proposed')
-  await page.getByRole('button', { name: 'Approve shown' }).click()
+  await page.getByRole('button', { name: /^Approve shown/ }).click() // acts only on the undecided ones, so the rejection stays
   await expect(page.getByText('0 proposed')).toBeVisible()
-  await page.getByLabel('Filter by status').selectOption('all')
   await shot(page, '02-review-and-approve.png')
 
   // 3. The chat assistant (scripted demo mode) quotes a policy sentence with a checked citation.

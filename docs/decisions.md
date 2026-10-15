@@ -761,6 +761,7 @@ database, `clearcase_e2e`, dropped at every start, and ports 8011 and 5183 so it
 - *"Approve shown" overwrites decisions.* Reject one finding, then click "Approve shown" on the default view (all statuses) and
   the rejected finding is approved too; "Reject shown" un-approves findings. The test works around it (it filters to undecided
   findings first, as a careful reviewer would) and the fix was filed as a separate task rather than slipped into this change.
+  **Fixed afterwards, see decision 54** (the buttons now act only on undecided findings and the browser test no longer narrows the list).
 - *Not a bug, but easy to misread:* if the reviewer has just exported, asking the assistant to `export` returns that existing,
   still-current export instead of refusing (the documented "a retry returns the same export, never a second one"). A stale
   export is refused by the tool. The test checks that no second file is made.
