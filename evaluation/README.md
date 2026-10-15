@@ -9,8 +9,9 @@ report described in `docs/ClearCase_Cursor_Prompt.md`, section 11.
 | --- | --- |
 | `retrieval_dev.json` | **Development** questions for policy retrieval: 25 answerable (with the expected policy section) and 10 the policies do not address. Used to choose the cutoff. Same author as the policies, so easier than real questions. |
 | `retrieval_heldout.json` + `.sha256` | **Held-out** set: 28 answerable, 16 unanswerable (including near-miss traps). Frozen by hash; never used for tuning. |
+| `retrieval_heldout2.json` + `.sha256` | **Second held-out set** (95 questions: 36 answerable, 59 not addressed), written by a model that never saw the policies and labelled by two other models; frozen by hash; measured once. Built by `retrieval2/` (protocol first, then the build script, then `report.py`). |
 | `tune_retrieval.py` | Dev only. hit@k / MRR and a cutoff sweep, in memory. |
-| `eval_heldout.py` | Runs the frozen held-out set through the **production** retriever against a scratch database. Refuses a changed file or a re-used label. `--smoke` runs the same code on the dev set and records nothing. |
+| `eval_heldout.py` | Runs a frozen held-out set (`--set 2` for the second) through the **production** retriever against a scratch database. Refuses a changed file or a re-used label. `--smoke` runs the same code on the dev set and records nothing. |
 | `compare_models.py` | Dev only. Compares small embedding models with the app's own pipeline. |
 | `weak_tier_dev.py` | Dev only. Measures the reviewer-only "possibly related" tier. |
 | `results/*.json` | Outputs, including `retrieval_heldout_runs.json` (every held-out run, with configuration, git state and a code fingerprint). |
@@ -77,6 +78,38 @@ but the intervals are wide and the strict-cutoff numbers are unchanged (as they 
 baseline and final strict metrics are identical, which also confirms nothing else changed).
 The tier is reviewer-only: it never reaches the assistant.
 
+## Second held-out set for retrieval (model-written, model-labelled; run 2026-10-15)
+
+Why: the first held-out set (44 questions) was written by the same author as the policies, was small, and had used its two allowed
+runs. This set is **larger and more independent**: questions written by a model that was never shown the policies, each labelled
+against the 19 passages by two other model runs, and kept only if both agreed. Protocol (prompts with hashes, selection rules, five
+predictions) written first: `retrieval2/PROTOCOL.md`; full tables: `retrieval2/REPORT.md`. The retriever was run **once**, unchanged,
+after the set was frozen by hash. Total spend $0.061.
+
+| Measure | First set (28 + 16) | **Second set (36 + 59)** | Pooled (64 + 75) |
+| --- | --- | --- | --- |
+| Right passage first | 0.64 | **0.61** (0.45-0.75) | 0.62 (0.50-0.73) |
+| Right passage in top 3 | 0.75 | **0.86** (0.71-0.94) | 0.81 (0.70-0.89) |
+| Answerable: relevant passage shown | 0.43 | **0.44** (0.30-0.60) | 0.44 |
+| Answerable: wrongly told "no matching policy" | 0.46 | **0.50** (0.34-0.66) | 0.48 |
+| Not addressed: wrongly shown a passage | 0.31 | **0.22** (0.13-0.34) | 0.24 |
+| Balanced accuracy at the cutoff | 0.56 (0.41-0.70) | **0.61** (0.52-0.70) | **0.60** (0.52-0.68) |
+
+What it supports:
+- **The earlier finding was not a small-sample accident.** On questions written by someone else the cutoff behaves the same: about
+  half of the answerable questions are wrongly told "no matching policy", about a fifth of the unanswerable ones are shown a
+  passage, balanced accuracy about 0.6 (the two sets do not differ beyond sampling noise: difference -0.12 to +0.23). The pooled
+  figure, 0.60, is the one to quote; the 0.84 on the tuning set was optimistic.
+- **Ranking is decent**: the right passage is in the top 3 for about 4 of 5 answerable questions (pooled 0.81).
+- Four of five predictions held. **Prediction 1 was wrong**: ranking was not worse (hit@3 0.86 against 0.75), and I do not have a
+  tested explanation for it.
+- The weak "possibly related" tier (reviewer only) recovered a relevant passage for 7 of the 18 wrongly refused answerable questions.
+
+What it does not support: this is still not real users' questions. Both the questions and the labels come from language models of
+the same family as the assistant. The second labeler is the writer's own model (a consistency check, not an independent expert).
+**46 of 145 candidate questions were unclear to at least one labeler and were excluded**, so the set is probably easier than real use.
+Two fictional policies, 19 passages. If a better method (a re-ranker or a relevance check) is ever tried, it needs a **third** set.
+
 ## Assistant comparison (synthetic, same author; run 2026-10-14)
 
 Rules, predictions and the decision rule are in `assistant_eval/PROTOCOL.md`, written before any held-out result. 12 synthetic
@@ -115,8 +148,8 @@ backend/.venv/bin/python evaluation/assistant_eval/report.py --split heldout
 
 ## What does NOT exist yet (Phase 6)
 
-- A **second, larger and more independent** retrieval question set (ideally written by people
-  other than the policy author). The held-out set above has 44 questions from the same author.
+- A retrieval question set **written by people** (the second set above is model-written and model-labelled, which is
+  more independent than same-author but not human), and a **third** set before any new retrieval method is tuned or tested.
 - Export-verification outcomes and processing latency. (Detection precision/recall/F1 by category for the pattern
   detectors, the detectors with NER and three models now exists: see the assistant comparison above.)
 - A repeat of the assistant comparison on harder, longer, messier documents with labels that separate personal from

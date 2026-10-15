@@ -40,7 +40,7 @@ item. Sample documents and the seeded policy are synthetic and fictional.
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 563 backend tests against a **real MongoDB**, 94 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 585 backend tests against a **real MongoDB**, 94 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -96,12 +96,14 @@ synthetic documents at list prices (observations, not a promise): about $0.006 p
 accuracy there (`evaluation/README.md`). `backend/.venv/bin/python scripts/live_check.py --yes` repeats that check against the sample and prints
 the tool calls, the answers, which citations verified, the tokens and an estimated cost.
 
-Honest numbers (synthetic, same-author questions; see `evaluation/README.md`): on questions it was
+Honest numbers (synthetic questions; see `evaluation/README.md`): on questions it was
 tuned on, the right passage is first for 19 of 25 and the cutoff refuses all 10 unanswerable ones.
 On a **frozen held-out set it was never tuned on**, the right passage is first for 18 of 28 (64%),
 the app shows a relevant passage for only 12 of 28 answerable questions, tells 13 of 28 "no matching
 policy" when there is one, and still shows a passage for 5 of 16 questions the policies do not cover
-(near-miss topics). In short: ranking is decent, but a similarity cutoff cannot reliably decide
+(near-miss topics). A **second held-out set**, written by a model that never saw the policies, gave the same picture
+(balanced accuracy 0.61, against 0.56 on the first and 0.84 on the tuning set; pooled 0.60), while the right passage was in
+the top 3 for 81% of answerable questions. In short: ranking is decent, but a similarity cutoff cannot reliably decide
 whether the policy answers a question. Treat "no matching passage" as a hint, not a verdict, and
 read the passages and the library yourself.
 
