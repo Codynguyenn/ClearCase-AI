@@ -1,8 +1,8 @@
 # ClearCase architecture
 
 ClearCase is a local, single-user MVP with four processes: a React frontend, a
-FastAPI backend, MongoDB, and an MCP server (Phase 3, built) that the backend's
-agent talks to over stdio.
+FastAPI backend, MongoDB, and an MCP server (Phase 3) that the backend's
+assistant talks to over stdio (Phase 5).
 
 ```mermaid
 flowchart LR
@@ -14,18 +14,18 @@ flowchart LR
         API[/api routes/]
         SVC[services<br/>pdf_processing · document_service]
         REPO[repositories<br/>ownership-checked queries]
-        AGENT[agent loop<br/>Phase 5]
+        AGENT[run manager + assistant<br/>live loop or demo commands]
         MCPC[MCP client<br/>app/agent/mcp_client.py]
         RET[retrieval + policy service<br/>local embeddings · Phase 4]
     end
 
     MCPS[MCP server process<br/>stdio · 7 tools]
-    LLM[(Hosted LLM provider<br/>live mode only · Phase 5)]
+    LLM[(Hosted LLM provider<br/>live mode only)]
 
     subgraph Mongo[MongoDB]
         DOCS[(documents · pages)]
         REV[(findings · exports · audit<br/>Phase 2)]
-        CHAT[(conversations · messages<br/>agent_runs · tool_events · Phase 5)]
+        CHAT[(conversations · messages<br/>agent_runs · tool_events)]
         POL[(policies · policy_chunks<br/>+ embeddings)]
         GFS[(GridFS: original + exported PDFs)]
     end
@@ -47,7 +47,7 @@ flowchart LR
 | Repositories | `backend/app/repositories` | The only code that runs MongoDB queries; every query filters by `owner_id` | pymongo, GridFS |
 | Models | `backend/app/models` | Pydantic schemas shared by API, services and (later) MCP tools | nothing else |
 | MCP server | `backend/app/mcp_server` | The seven tools, their schemas and safety rules; runs as its own process | Services |
-| MCP client / agent | `backend/app/agent` | `mcp_client.py` (Phase 3): discovery, argument validation, timeouts, size cap. The tool-calling loop arrives in Phase 5 | MCP SDK |
+| MCP client / agent | `backend/app/agent` | `mcp_client.py`: discovery, argument validation, timeouts, size cap. `loop.py`: the bounded tool-calling loop and the shared `ToolExecutor`. `provider.py` + `anthropic_provider.py`: the one place a hosted model is called. `demo.py`: scripted commands, no model. `citations.py`: checks citations against what the tools returned. `runs.py`: starts, cancels and records requests, and keeps one tool server per conversation | MCP SDK, Anthropic SDK |
 
 **Startup** (`app/main.py` lifespan): connect to MongoDB, create indexes, mark jobs interrupted by a restart as
 errors, then start a background thread that re-embeds policy passages left stale by a model change (skipped when
@@ -157,3 +157,35 @@ chunk_count, word_count, embedding_note
 Indexes: `policies(owner_id, policy_id, version)` unique; `policies(owner_id, policy_id)`
 unique where `status = active`; `policy_chunks(owner_id, policy_key, ordinal)` unique;
 `policy_chunks(owner_id, citation_id)` unique.
+
+## The assistant (Phase 5)
+
+```mermaid
+sequenceDiagram
+    participant UI as Chat tab
+    participant API as POST /conversations/{id}/messages
+    participant RM as RunManager (background task)
+    participant L as AgentLoop or DemoAssistant
+    participant P as Provider (live only)
+    participant T as MCP tool server
+    UI->>API: message + client_message_id
+    API->>RM: store message and a queued run (409 if one is active)
+    API-->>UI: 202 (message, run)
+    RM->>L: run(document, history, text, cancel)
+    loop until answered or a limit is hit
+        L->>P: transcript + tool schemas
+        P-->>L: text and/or tool calls
+        L->>T: each call, pinned to this document, time-bounded
+        T-->>L: result (document text is untrusted data)
+    end
+    L-->>RM: answer, sanitized tool events, tokens, evidence
+    RM->>RM: verify citations, store answer + activity, finish the run
+    UI->>API: GET /runs/{id} (polling) → progress, then the answer
+```
+
+Where the safety lives (none of it depends on the model behaving): the **tool set** (no approve or authorize tool),
+the **server** (proposals are re-checked against the stored text; export needs a reviewer-issued single-use
+authorization and yields only the approved redactions), the **executor** (one document per conversation, time and size
+bounds), the **citation checker** (a citation verifies only against what the tools returned in that request) and
+the **database** (one active run per conversation, one message per `client_message_id`).
+

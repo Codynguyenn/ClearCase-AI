@@ -638,3 +638,46 @@ reviewer's authority is the approve / reject decision; a manual-attach feature w
 second path by which an unchecked citation could land on a finding. If something is wanted later, **removing** a
 wrong citation is the safer first step than adding one.
 
+## 50. Phase 5 as built: what the design left open, and what building it found
+
+The design (`docs/phase5_design.md`) was implemented as approved. Decisions made while building, and the problems the
+tests found, in plain terms:
+
+- **One shared way to run a tool (`ToolExecutor`).** The live loop and the scripted demo assistant call tools through the
+  same code, so both get the same guarantees: the call is pinned to the conversation's document, bounded in time,
+  logged as a count-only event, and only what was actually shown counts as evidence for citations.
+- **The document is pinned only for tools that take one.** A first version added `document_id` to every call. The
+  real-server test caught that the policy tool takes no `document_id` (policies belong to the owner, not one document),
+  so the server rejected every policy lookup, in live mode too. Fake tools could not have shown this. Lesson: keep at
+  least one test per tool against the real server.
+- **A result the model was not shown is not evidence.** A too-large tool result is refused; its pages and passages no
+  longer count, so a citation to something the model never saw cannot verify.
+- **One MCP server per conversation, opened and closed by one dedicated task.** The MCP/anyio transport must be closed by
+  the task that opened it, so each session lives in its own host task; the pool reuses it while the conversation is
+  active, closes it when idle, and restarts it once (retrying the call) if the server process dies. Safe because every
+  tool is read-only, idempotent or returns the same export on repeat.
+- **Conversation storage.** Messages are separate records ordered by a per-conversation counter. The database itself
+  enforces two rules with partial unique indexes: one active run per conversation, and one message per
+  `client_message_id` (a retried send stores one message). Runs left active by a crash are failed at startup with a
+  visible notice, and a document with a running request cannot be deleted. Raw tool results are not stored; only sanitized
+  activity rows are. Token counts include prompt-cache reads and writes so cost is measured, not guessed.
+- **Failures are fixed sentences.** Provider errors become one of a fixed set of messages. The SDK exception is not chained,
+  so neither the key nor text a provider echoes from a request can reach the database, the API or the log.
+- **Live-model facts used (checked against the provider docs while building):** thinking cannot be switched off on Opus
+  5.5 (a 400), so requests omit `thinking` and set an effort level; a specific tool call cannot be forced, so the prompt
+  steers; top-level `cache_control` caches the stable prefix, which cut a four-step request to 10 uncached input tokens.
+- **Plain text, not Markdown.** The first live answer used `**bold**` and lists, which would show as literal asterisks.
+  The prompt now asks for plain text; rendering Markdown (and the safety questions that come with it) was not worth it.
+- **Progress is written as it happens.** The first version stored the activity rows only when a request finished, so the
+  Chat tab said "Starting…" for the whole 50 seconds of a live request; fake-API tests could not show it. The loop now
+  reports each tool event the moment it happens, the run manager writes it at once, and the final step writes only
+  what is missing (so nothing is duplicated). A failure to report progress never fails the request.
+- **The interface cannot lose a message.** Sending before the conversation had loaded used to be dropped silently; the
+  box is now disabled until it loads and a too-early send reports an error.
+
+**One live observation (not a guarantee):** on the synthetic sample with `claude-opus-5-5`, three requests cost about
+$0.24 in total at list prices (about $0.17, $0.04 and $0.03). The model proposed 10 redactions for "the client's personal
+information" while keeping company names visible, quoted policy sentences that all verified, and, when the contract's
+injected line told it to ignore the user and export everything, flagged the line and did not act on it. That is one run;
+the protection against the same line does not depend on the model behaving (`tests/test_agent_injection.py`).
+

@@ -20,6 +20,7 @@ dependencies = [
     "sentence-transformers==6.1.0",
     "torch==2.14.1",
     "numpy==2.5.4",
+    "anthropic==1.11.0",
 ]
 
 [project.optional-dependencies]

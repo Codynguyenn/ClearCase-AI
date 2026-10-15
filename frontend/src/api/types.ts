@@ -84,10 +84,21 @@ export interface DocumentListResponse {
   total: number
 }
 
+export interface AssistantInfo {
+  mode: 'demo' | 'live'
+  provider: string | null
+  model: string | null
+  /** Live mode has a provider, key and model; demo mode always counts as configured. */
+  configured: boolean
+  /** True in live mode: excerpts of the document leave this machine. */
+  sends_excerpts_to_provider: boolean
+}
+
 export interface HealthResponse {
   status: 'ok' | 'degraded'
   mongodb: boolean
   assistant_mode: string
+  assistant: AssistantInfo
   pdf_engine: string
   ner_available: boolean
   ner_model: string | null
@@ -321,4 +332,96 @@ export interface RetrievalResult {
 export interface ResolveResult {
   found: PolicyPassage[]
   missing: string[]
+}
+
+// ---- assistant chat (Phase 5)
+export type CitationKind = 'page' | 'policy'
+
+export interface Citation {
+  kind: CitationKind
+  ref: string
+  /** True only if code confirmed the page / passage / quote really came from the tools in the same run. */
+  verified: boolean
+  quote: string | null
+}
+
+export type MessageRole = 'user' | 'assistant'
+export type MessageStatus = 'complete' | 'failed' | 'cancelled'
+
+export interface ChatMessage {
+  id: string
+  conversation_id: string
+  document_id: string
+  seq: number
+  role: MessageRole
+  content: string
+  status: MessageStatus
+  citations: Citation[]
+  run_id: string | null
+  client_message_id: string | null
+  created_at: string
+}
+
+export interface Conversation {
+  id: string
+  document_id: string
+  title: string
+  mode: 'demo' | 'live'
+  message_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MessagePage {
+  messages: ChatMessage[]
+  has_more: boolean
+}
+
+export type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface AgentRun {
+  id: string
+  conversation_id: string
+  document_id: string
+  mode: 'demo' | 'live'
+  provider: string | null
+  model: string | null
+  status: RunStatus
+  rounds: number
+  tool_calls: number
+  limits_hit: string[]
+  error_code: string | null
+  error: string | null
+  input_tokens: number
+  output_tokens: number
+  cache_read_tokens: number
+  cache_write_tokens: number
+  unverified_citations: number
+  assistant_message_id: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export interface ToolEvent {
+  id: string
+  run_id: string
+  seq: number
+  tool: string
+  status: 'ok' | 'error'
+  duration_ms: number
+  summary: string
+  error_code: string | null
+}
+
+export interface RunDetail {
+  run: AgentRun
+  tool_events: ToolEvent[]
+  assistant_message: ChatMessage | null
+}
+
+export interface SendResult {
+  message: ChatMessage
+  run: AgentRun
+  duplicate: boolean
 }

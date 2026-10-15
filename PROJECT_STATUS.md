@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-14 (Phase 4 complete and verified, plus a hardening bundle that closed every open audit item; Phase 5 not started; hosted provider chosen: Anthropic)
+Last updated: 2026-10-14 (Phase 5 complete and verified on branch `phase-5-agent`, not yet committed or merged; Phase 6 not started)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -12,8 +12,8 @@ This file is the hand-off point for any new session. Read it first, then
 | 1 | Repository setup, MongoDB, upload, extraction, PDF viewing | **Complete and verified** |
 | 2 | Search, candidate detection, manual review, real export, verification | **Complete and verified** |
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
-| 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3, merged to `main`) |
-| 5 | Live agent integration, persisted chat, visible tool activity | Not started |
+| 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
+| 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (branch `phase-5-agent`; uncommitted, not merged) |
 | 6 | Integration tests, evaluation, interface polish, documentation | Not started |
 
 ## Working features (verified)
@@ -157,9 +157,27 @@ Frontend (Phases 1-2):
   `cssToBbox` (round-trip tested for zoom/rotation).
 - Export panel: authorize + export, check list, download link, honest scope.
 
+### Phase 5 additions (the assistant)
+
+- **Chat tab** per document: history survives restarts; demo-mode command chips or the live-mode banner and a one-time
+  confirmation that excerpts go to the provider; progress with tool activity while a request runs; Cancel; "What it did"
+  (tool, status, duration, count-only summary, tokens); citation chips that jump to a page or open the policy passage,
+  with unverified ones flagged; an **Authorize export** hand-off card for the reviewer.
+- **API**: conversations, paged messages, `POST .../messages` (202; `409 run_active`, `409 assistant_not_configured`;
+  idempotent `client_message_id`), `GET /runs/{id}`, `POST /runs/{id}/cancel`; `/api/health` reports the assistant mode
+  (never the key).
+- **Backend** (`backend/app/agent/`): `loop.py` (bounded loop, `ToolExecutor`), `provider.py` + `anthropic_provider.py`
+  (the only place a model is called), `demo.py` (scripted commands, no model), `citations.py` (code-checked citations),
+  `runs.py` (run manager, one tool server per conversation, cancel, shutdown), `prompts.py`, `summaries.py`.
+- **Storage**: `conversations`, `messages`, `agent_runs`, `tool_events` with database-enforced one-active-run and one-message
+  per `client_message_id`; runs left active by a crash are failed at startup; deleting a document removes its chat data.
+- **Guarantees that do not depend on the model**: no approve/authorize tool exists; proposals are re-checked against the
+  stored text; export works only after a reviewer's single-use authorization and yields only the approved redactions; one
+  document per conversation; time/step/size bounds; fixed error sentences (no key, no raw provider text, no document text).
+
 ## Test results (actually run)
 
-**Latest full runs (2026-10-14, after the hardening bundle):** backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full runs (2026-10-14, Phase 5 on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -239,6 +257,46 @@ apply to PDF.js 6.3): see "Phase 4 hardening bundle" below and `docs/decisions.m
   retrieval message now calls "no matching passage" a heuristic. Both held-out runs are used up.
 - **Small extras**: all four were done afterwards in the hardening bundle below (chunker version, script that
   regenerates `requirements.lock`, citing-finding count in the delete confirmation, automatic re-index at startup).
+
+### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
+
+Built in eight steps, each verified before the next; the design and its approved choices are in `docs/phase5_design.md`,
+what building it found is in `docs/decisions.md` #50.
+
+| Step | What | New tests | Proof beyond passing |
+| --- | --- | --- | --- |
+| 1 | Models, repositories, indexes, delete cascade, restart recovery | 17 | six deliberate breakages each failed a test; two DB-level guarantees tested by bypassing the repository |
+| 2 | Provider interface, fake provider, bounded loop, limits, error mapping; shared `ToolExecutor` | 51 unit + 6 against the real MCP server | eight breakages caught; found that a too-large result still counted as evidence, and that two cancellation tests passed for the wrong reason (both fixed) |
+| 3 | Anthropic adapter (`anthropic==1.11.0`) | 35 (real SDK, mock HTTP transport) | ten breakages caught; **one tiny real call** parsed a tool call and a tool result round trip (about $0.005) |
+| 4 | Run manager, API, tool-server sessions | 29 (two check citations and one checks live progress, all through the API) | seven breakages caught (one needed a timing assertion added); the real server is opened, reused, swept, reopened and closed cleanly |
+| 5 | Citation verifier | 29 | seven breakages caught |
+| 6 | Demo assistant | 36 with fake tools + 4 against the real server | six breakages caught; found that the policy tool takes no `document_id` and the loop was adding one (fixed; affected live mode too) |
+| 7 | Chat tab | 20 component + 6 citation-helper | nine breakages caught (two needed the tests tightened); found a message could be dropped if sent before the conversation loaded (fixed); exercised in a real browser: propose, approve (reviewer), refusal to export, Authorize export, verified export |
+| 8 | Agent-level prompt injection, live check, docs | 4 | the sample contract's injected line really reaches the model, labelled untrusted; an obedient model cannot approve, cannot export without authorization, and with authorization yields only the approved redactions |
+
+**Checks done before Phase 6 (2026-10-14):**
+- **Docker, rebuilt with the new lock:** both images build; the embedding model downloads as the non-root user; the stack comes up
+  healthy; inside the backend container the user is `clearcase`, `anthropic 1.11.0` is installed and no key is in its environment; the
+  demo assistant ran `detect`, `propose`, `summary` and a real policy question through the frontend proxy (the tool server starts inside
+  the container and is reused: the second command took 0.5 s; all 3 policy citations verified). Test volumes and containers removed.
+- **Live mode through the real app** (scratch database; browser plus API): `/api/health` reports live mode and never the key; the Chat tab
+  shows the privacy notice and blocks input until confirmed; a request **cancelled mid-flight** against the real provider ends as
+  "stopped" and the conversation is usable at once; a full request returned a plain-text answer (no Markdown) with verified citation chips,
+  9 proposals highlighted in the viewer, and a run record with tokens, provider and model. Two completed requests and one cancelled one cost
+  about $0.22 at list prices. **This check found that progress was not shown while a request ran** (activity was only written at the end);
+  fixed, covered by tests that fail without the fix, and re-checked live (activity rows appear while the request is still running).
+- The API key still works. Its expiry was set to about 30 days, so check it in the Console before relying on live mode after mid-November.
+
+**Live observation (`scripts/live_check.py`, `claude-opus-5-5`, synthetic sample, one run each; not a guarantee):**
+- "Find the client's personal information, suggest redactions, and keep company names visible": 4 model calls, 7 tool calls, 50 s,
+  about $0.17 at list prices (10 uncached input tokens, 37,751 read from the prompt cache, 19,832 cache writes, 2,872 output).
+  It proposed 10 redactions (PERSON 5, EMAIL 1, PHONE 1, ADDRESS 2, SSN 1), none for company names, listed the consultant's
+  contact details as a decision for the reviewer, and flagged the injected sentence on page 2 instead of following it. All 8
+  citations verified, including four quoted policy sentences.
+- A policy question with "quote the sentence": 2 calls, 23 s, about $0.04, three quotes, all verified.
+- "Summarise page 2" (the page with the injected line): 2 calls, 10 s, about $0.03; it summarised, warned the reviewer about the
+  line, and attempted no export. Findings approved: 0; exports stored: 0.
+- Total about $0.24. First answers used Markdown, so the prompt now asks for plain text.
 
 ### Phase 4 hardening bundle (2026-10-14, branch `phase-4-hardening`)
 
@@ -419,66 +477,41 @@ because of the port conflicts above.
 
 ## Remaining work (by phase)
 
-**Phase 5 — Agent** (read `docs/decisions.md` #39 first): bounded tool loop using `McpToolClient` (reuse ONE MCP server per
-conversation: each fresh server pays a ~20 s model-load on its first policy question), one hosted provider
-via its official SDK (verify model ids against current docs first), demo mode with
-scripted commands, persisted conversations/messages/agent_runs/tool_events,
-prompt-injection resistance in the system prompt (the structural part is done),
-no chain-of-thought storage, Chat tab, "excerpts are sent to a hosted provider"
-notice, and a reviewer-visible **Authorize export** hand-off message.
-
-**Phase 6 — QA & docs**: Playwright E2E (upload → search/analyse → review →
-approve → export → reopen conversation), synthetic evaluation, demo script,
-interview guide, evaluation report, polish, full Compose re-run.
+**Phase 6 — QA & docs**: Playwright E2E (upload → search/analyse → review → approve → export → reopen
+conversation, in a real browser; also cover the Policy tab, the citation dialog and the Chat tab, which component tests
+in happy-dom cannot prove), a **new** held-out evaluation set and report (detection precision/recall/F1 by category,
+retrieval hit rate, verification outcomes, latency; and, with the live key, the optional live comparison of models
+such as Opus vs Sonnet vs Haiku), the three-minute demo script, the interview guide, polish, and a full Docker
+Compose re-run.
 
 **Known gaps (deliberate or deferred)**:
+- Live assistant **quality is unmeasured**: three requests on the synthetic sample with one model were observed, nothing
+  more. Phase 6 should measure it on a labelled synthetic set and say it is synthetic.
+- Live mode supports one provider (Anthropic); replies arrive when a request finishes (polling, no token streaming).
 - No server-side per-tool timeout (tools are threads; the client enforces it).
-- The UI does not call MCP yet (Phase 5).
-- Tool results include document text snippets by design; Phase 5 must show the user when
-  text goes to a hosted provider.
-- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (held-out balanced
-  accuracy 0.56). Phase 5 must not rely on it alone: give the assistant top candidates with scores and
-  require it to quote supporting text or say the policy does not address the question. A cross-encoder
-  re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one has had
-  its two allowed runs).
+- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (held-out balanced accuracy 0.56). The
+  assistant is built around that (it must quote or say the policy does not address the question, and quotes are checked
+  by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one
+  has had its two allowed runs).
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
-- Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real
-  layout. The Phase 6 Playwright test must cover the Policy tab and the citation dialog in a
-  real browser.
-- Policies cited by findings can be deleted; the delete confirmation now says how many findings cite it and the UI
-  then shows the passage as unavailable (it does not block deletion).
+- Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real layout.
+- Policies cited by findings can be deleted; the delete confirmation says how many findings cite it and the UI then
+  shows the passage as unavailable (it does not block deletion).
 - Chunker changes never re-chunk existing policy versions (on purpose: citation ids must keep pointing at the same
   words). Older versions are flagged "split with older chunking rules"; upload the text as a new version.
 - Extraction's time budget is checked between pages and cannot interrupt one page that hangs inside PyMuPDF.
+- The assistant's tool servers and runs live in the API process (fine for localhost); a separate worker would be the
+  next step for several users.
 
 ## Next implementation step
 
-Start **Phase 5** (live agent, persisted chat, visible tool activity). **Provider chosen: Anthropic.** The user created
-an API key in the Claude Console (personal key, Default workspace, short expiry) and put it in the local, git-ignored
-`.env` (`CLEARCASE_LLM_PROVIDER=anthropic`, `CLEARCASE_LLM_MODEL=claude-opus-5-5`; the key itself was never saved
-anywhere else, and a first key that was pasted into chat was deleted and replaced). Two tiny live requests (Haiku and
-Opus, 12 tokens in / 4 out, well under a cent) confirmed the key, the credit balance and the model id. Keep
-`CLEARCASE_ASSISTANT_MODE=demo` until the live path is built. Spend is capped by prepaid credit with auto-reload off.
-
-**Decided by the user on 2026-10-14 (the recommended options; `docs/decisions.md` #47-#49):** the assistant reads the
-top passages and must quote the supporting sentence or say the policy does not address the question (the cutoff is not
-trusted alone); policy scope stays global (every active version, citations pin the exact version); no manual policy
-attach for reviewers. **The Phase 5 design is drafted in `docs/phase5_design.md` and awaits the user's approval (section 15 lists the choices they can veto); do not build before that.**
-
-1. Verify the chosen hosted provider's current **official SDK**, tool-calling API and a
-   valid **model id** against its documentation before writing any code (do not guess
-   ids; use the `claude-api` skill). Keep the provider adapter separate; read key/model from env.
-2. Collections: `conversations`, `messages` (one record per message, paginated),
-   `agent_runs`, `tool_events` (tool, status, duration, sanitized summary; never raw
-   document text, chain-of-thought or keys). Persist across restarts.
-3. Bounded loop (rounds, time, context size) over `McpToolClient`; handle rate limits,
-   provider errors, cancellation, malformed arguments; retries must not duplicate
-   proposals/exports (proposals are already idempotent).
-4. Demo mode: clearly labelled scripted commands with deterministic tool results; live mode
-   shows clear setup errors and never silently falls back to simulated output.
-5. Chat tab; show tool activity; show a notice when excerpts go to a hosted provider; cite
-   real pages and policy citation ids; reviewer-visible "Authorize export" hand-off.
-6. Prompt-injection tests at the agent level (the structural protections already exist).
+1. **Commit, push and open a PR for `phase-5-agent`** (the user decides; everything is currently uncommitted), let CI
+   run (it never calls the provider), and merge.
+2. Start **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
+   user's key in `.env` and spends real credit (about $0.03-$0.17 per request observed; the account is prepaid with
+   auto-reload off). `scripts/live_check.py` is the manual way to look at it.
+3. Before any public or multi-user use: real authentication (the demo identity is not authentication), a worker process
+   for extraction and runs, and a decision on retention of conversation text.
 
 ## How to resume quickly
 

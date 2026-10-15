@@ -6,12 +6,15 @@ import { ReviewSidebar, type TabId } from './ReviewSidebar'
 describe('ReviewSidebar tabs', () => {
   const renderTab = (tab: TabId) => <p>content of {tab}</p>
 
-  it('has a Policy tab between Search and Text, and switches to it', async () => {
+  it('has Chat and Policy tabs between Search and Text, and switches to each', async () => {
     const onTab = vi.fn()
     render(<ReviewSidebar tab="review" onTab={onTab} render={renderTab} error={null} />)
-    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Review', 'Search', 'Policy', 'Text', 'Export'])
-    await userEvent.setup().click(screen.getByRole('tab', { name: 'Policy' }))
-    expect(onTab).toHaveBeenCalledWith('policy')
+    expect(screen.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Review', 'Search', 'Chat', 'Policy', 'Text', 'Export'])
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('tab', { name: 'Policy' }))
+    expect(onTab).toHaveBeenLastCalledWith('policy')
+    await user.click(screen.getByRole('tab', { name: 'Chat' }))
+    expect(onTab).toHaveBeenLastCalledWith('chat')
   })
 
   it('renders only the active tab’s content and marks it selected', () => {

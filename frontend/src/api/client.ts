@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   BBox,
   Category,
+  Conversation,
   DecisionAction,
   DocumentListResponse,
   DocumentRecord,
@@ -10,6 +11,7 @@ import type {
   Finding,
   FindingsResponse,
   HealthResponse,
+  MessagePage,
   PageSummary,
   PageText,
   PolicyPassage,
@@ -17,7 +19,9 @@ import type {
   ProposalResult,
   RetrievalResult,
   ReviewSummary,
+  RunDetail,
   SearchResult,
+  SendResult,
 } from './types'
 
 /** Error thrown for non-2xx responses, carrying the backend's stable error code. */
@@ -198,4 +202,27 @@ export const api = {
 
   getPassage: (citationId: string) =>
     request<PolicyPassage>(`/api/policies/passages/${encodeURIComponent(citationId)}`),
+
+  // ---- assistant chat
+  listConversations: (documentId: string) => request<Conversation[]>(`/api/documents/${documentId}/conversations`),
+
+  createConversation: (documentId: string) =>
+    request<Conversation>(`/api/documents/${documentId}/conversations`, jsonInit('POST', {})),
+
+  listMessages: (conversationId: string, opts: { beforeSeq?: number; limit?: number } = {}) => {
+    const params = new URLSearchParams({ limit: String(opts.limit ?? 50) })
+    if (opts.beforeSeq !== undefined) params.set('before_seq', String(opts.beforeSeq))
+    return request<MessagePage>(`/api/conversations/${conversationId}/messages?${params}`)
+  },
+
+  /** Stores the message and starts the assistant. Repeating `clientMessageId` returns the original (safe retry). */
+  sendMessage: (conversationId: string, content: string, clientMessageId: string) =>
+    request<SendResult>(
+      `/api/conversations/${conversationId}/messages`,
+      jsonInit('POST', { content, client_message_id: clientMessageId }),
+    ),
+
+  getRun: (runId: string) => request<RunDetail>(`/api/runs/${runId}`),
+
+  cancelRun: (runId: string) => request<RunDetail>(`/api/runs/${runId}/cancel`, { method: 'POST' }),
 }

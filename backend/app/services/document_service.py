@@ -18,6 +18,12 @@ from app.config import Settings
 from app.db import Mongo
 from app.models.common import utcnow
 from app.models.documents import DocumentRecord, DocumentStatus
+from app.repositories.conversations import (
+    ConversationRepository,
+    MessageRepository,
+    RunRepository,
+    ToolEventRepository,
+)
 from app.repositories.documents import DocumentRepository, PageRepository
 from app.repositories.files import FileStorage
 from app.repositories.review import (
@@ -64,6 +70,10 @@ class DocumentService:
         self._exports = ExportRepository(mongo.db)
         self._authorizations = AuthorizationRepository(mongo.db)
         self._audit = AuditRepository(mongo.db)
+        self._conversations = ConversationRepository(mongo.db)
+        self._messages = MessageRepository(mongo.db)
+        self._runs = RunRepository(mongo.db)
+        self._tool_events = ToolEventRepository(mongo.db)
 
     def _review(self):
         # Imported lazily: ReviewService does not depend on DocumentService, but this keeps
@@ -199,6 +209,11 @@ class DocumentService:
         at (possibly already removed) children rather than orphans with no parent.
         """
         raw = self.documents.get_raw(document_id, owner_id=owner_id)
+        if self._runs.active_for_document(owner_id, document_id) is not None:
+            raise ConflictError(
+                "The assistant is still working on this document. Cancel it or wait for it to finish, then delete.",
+                code="assistant_active",
+            )
         counts: dict[str, int] = {}
         export_files = 0
         for export in self._exports.list_raw(document_id, owner_id):
@@ -210,6 +225,11 @@ class DocumentService:
         counts["findings"] = self._findings.delete_for_document(document_id, owner_id)
         counts["review_revisions"] = self._revisions.delete_for_document(document_id, owner_id)
         counts["audit_events"] = self._audit.delete_for_document(document_id, owner_id)
+        # Assistant data: activity rows and runs first, then messages, then the conversations that own them.
+        counts["tool_events"] = self._tool_events.delete_for_document(owner_id, document_id)
+        counts["agent_runs"] = self._runs.delete_for_document(owner_id, document_id)
+        counts["messages"] = self._messages.delete_for_document(owner_id, document_id)
+        counts["conversations"] = self._conversations.delete_for_document(owner_id, document_id)
         counts["pages"] = self.pages.delete_for_document(document_id, owner_id=owner_id)
         counts["files"] = 1 if self.files.delete(raw["original_file_id"]) else 0
         counts["documents"] = self.documents.delete(document_id, owner_id=owner_id)

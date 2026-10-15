@@ -1,7 +1,12 @@
-# Phase 5 design: the assistant (DRAFT for approval)
+# Phase 5 design: the assistant
 
-Status: **proposed, not built.** Nothing in this file is implemented yet. Read `docs/decisions.md` #17-#23
-(MCP), #36-#39 and #47-#49 (how the assistant must treat policies) first.
+Status: **approved and built (2026-10-14).** This is the design as approved; `docs/decisions.md` #50 records what building
+it changed or found. Read #17-#23 (MCP), #36-#39 and #47-#49 (how the assistant must treat policies) first.
+
+Deviations from this text, all small: the safe tool-running code lives in a shared `ToolExecutor` (used by both the live
+loop and demo mode); the policy tool is not pinned to a document (it takes none); token counts also include prompt-cache
+reads and writes; `CLEARCASE_AGENT_MAX_CONTEXT_CHARS`, `..._MAX_TOOL_RESULT_CHARS`, `..._MAX_CONCURRENT_RUNS` and
+`..._TOOL_IDLE_SECONDS` exist as settings; the prompt asks for plain text.
 
 ## 1. What Phase 5 delivers
 
