@@ -304,8 +304,9 @@ class DemoAssistant:
             error = executed.result.error or ""
             if "authorization_required" in error:
                 return (
-                    "I cannot create the redacted file yet. A reviewer has to click “Authorize export” in the Export tab first "
-                    "(the authorization lasts 5 minutes). After that, say  export  again, or use the Export button yourself."
+                    "I cannot create the redacted file yet. A reviewer has to click “Authorize export” on the card that appears below "
+                    "this message in the Chat tab (the authorization lasts 5 minutes). After that, say  export  again. "
+                    "The Export tab has its own button that needs no authorization from me."
                 )
             return self._tool_problem("export_approved_redactions", executed) or "The export did not run."
         data = executed.result.data or {}

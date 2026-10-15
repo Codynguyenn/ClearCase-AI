@@ -166,7 +166,7 @@ class ExportService:
         if auth is None:
             raise AuthorizationError(
                 "No export authorization from the reviewer is pending. Ask the reviewer to click "
-                "'Authorize export' in the Export tab, then try again.",
+                "'Authorize export' on the hand-off card in the Chat tab, then try again.",
                 code="authorization_required",
             )
         return self._export_authorized(

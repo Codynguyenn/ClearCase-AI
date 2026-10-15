@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full backend run (2026-10-15, `phase-6-retrieval-set2`, with the evaluation and second-set tests):** **`585 passed in 551.82s`**, `ruff check app tests` clean. (The 563 earlier on 2026-10-15 predates the 22 second-set tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-retrieval-set2`, with the evaluation and second-set tests):** **`585 passed in 551.82s`**, `ruff check app tests` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (The 563 earlier on 2026-10-15 predates the 22 second-set tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -301,8 +301,8 @@ the backend runs as uid 10001 (non-root), and the same five browser tests **pass
 Docker, a fresh database inside the stack, the scripted assistant; the pinned embedding model was copied from the local cache into the
 `models` volume, so nothing was downloaded). The temporary port override and scratch database were removed afterwards.
 
-Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
-task; the test filters to undecided findings). Details and limits: decision 52.
+Found: bulk "Approve shown"/"Reject shown" overwrote decisions already made when the status filter was "all". **Fixed afterwards in PR #11**
+(decision 54; the buttons now act only on undecided findings and say how many). Details and limits: decision 52.
 
 ### Phase 6: second retrieval question set (2026-10-15, branch `phase-6-retrieval-set2`)
 
@@ -316,6 +316,18 @@ Four of five pre-registered predictions held; prediction 1 (worse ranking) was w
 logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
 
 Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
+
+### Phase 6: README polish (2026-10-15, branch `phase-6-polish`)
+
+- **Screenshots:** five real screenshots of the running app (synthetic sample, scripted demo assistant) in `docs/images/`, made by
+  `frontend/e2e-screenshots/screenshots.spec.ts` (`npm run screenshots`) and shown in the README.
+- **A wording bug found by reading the README:** three places told users to click "Authorize export" *in the Export tab*, but that
+  button is the hand-off card in the **Chat** tab (the Export tab's own button needs no authorization). Fixed in the demo assistant's
+  refusal, in the tool's error message (which a live model repeats), and in the README; the demo test was updated. 129 related tests pass.
+- **Stale README text fixed:** the stack table still listed the hosted model as a "later phase", the Limitations section quoted only
+  the first held-out set, and the repository layout missed the new folders.
+- **Window size checked:** the layout is fine from about 900 px up, overflows sideways below about 700 px and is not usable on a
+  phone (three fixed-width columns). Documented as a limitation; a responsive layout was not built.
 
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
@@ -561,7 +573,7 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
 - Component tests run in happy-dom, which cannot prove focus trapping or real layout; the Playwright test covers focus and Escape for
   the citation dialog in one real browser engine. Real layout, other browsers and phones are still unchecked.
-- Bulk "Approve shown"/"Reject shown" overwrite earlier decisions when the status filter is "all" (filed as a separate task).
+- The interface is a desktop layout (about 900 px wide or more); no responsive or phone layout.
 - Policies cited by findings can be deleted; the delete confirmation says how many findings cite it and the UI then
   shows the passage as unavailable (it does not block deletion).
 - Chunker changes never re-chunk existing policy versions (on purpose: citation ids must keep pointing at the same
@@ -572,8 +584,8 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
 
 ## Next implementation step
 
-1. Merge the docs PR (demo script, interview guide, README fixes). The bulk "Approve shown/Reject shown" fix is being done in a
-   separate session; it will also need to adjust `frontend/e2e/review-flow.spec.ts` if it changes what the default view does.
+1. Merge the polish PR (README screenshots, the Authorize-export wording fix, stale README text, and the doc updates after the
+   bulk-button fix). Then tag a release and tidy the merged remote branches (the owner decides).
 2. Continue **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
    user's key in `.env` and spends real credit (about $0.03-$0.17 per request observed; the account is prepaid with
    auto-reload off). `scripts/live_check.py` is the manual way to look at it.
