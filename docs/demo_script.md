@@ -54,3 +54,57 @@ Search `512-44-9087`: zero matches. This is what the browser test automates.
 - Not "the AI decides" (it proposes; you approve).
 - Not that the demo mode is a model: the app labels every scripted reply as scripted.
 - Not that the numbers apply to real documents.
+
+---
+
+# The live-mode version (about four minutes)
+
+Use this when you want to show a **real hosted model** driving the same tools. It sends excerpts of the **synthetic** sample contract to Anthropic and
+costs about half a cent per request with the recommended model (measured: a document-sized request on Haiku was about $0.005 and 39 seconds in the
+evaluation; a policy question on 2026-10-15 was $0.001 and 20 seconds). Never use it with a real document. The offline script above does not need any
+of this.
+
+## Before you go live (once, a few minutes)
+
+1. In `.env`, set `CLEARCASE_ASSISTANT_MODE=live`. The provider, key and model (`claude-haiku-5-5`) are already there. Restart the backend.
+2. Check it is really live (this makes no model call and never shows the key):
+
+```bash
+curl -s http://127.0.0.1:8010/api/health | python3 -m json.tool | grep -A6 assistant
+```
+
+   You should see `"mode": "live"`, `"configured": true` and `"sends_excerpts_to_provider": true`.
+3. **Rehearse once the day before** (a few cents at most): run the whole thing below. It proves the key still works (it expires around mid-November, so
+   check the Console) and loads the embedding model, whose first use takes about 12 seconds.
+4. In the Anthropic Console set a **monthly spend limit** as a hard ceiling, and keep the key out of screenshots and chat.
+5. Do not edit any file while the backend is running (`--reload` would restart it in the middle of a request).
+
+## The script
+
+| Time | Do | Say |
+| --- | --- | --- |
+| 0:00 | Upload `sample_contract.pdf`. Open the **Chat** tab. Click **I understand, continue** on the amber notice. | "In live mode the app tells you what leaves your machine: excerpts the assistant reads are sent to the provider. I only continue with synthetic documents." |
+| 0:30 | Send: `Find the client's personal information, suggest redactions, and keep company names visible.` Open **What it did** while it works (30 to 60 seconds). | "A real model is choosing which tools to call, through MCP. Each call appears here as it happens: tool, status, duration, and counts, never document text." |
+| 1:30 | Open the **Review** tab: the assistant's proposals are there, each with an **assistant** badge. Approve most, reject one. | "It can only propose. Every proposal was checked against the stored document; it cannot invent a location, and it cannot approve anything." |
+| 2:15 | Back in **Chat**: `According to the policy library, can company names stay visible when we share a contract like this? Quote the policy sentence you rely on, or say if the policies do not address it.` Click a citation chip, then press Escape. | "The quote is checked by code against the passage it retrieved. A fabricated quote would show as unverified." |
+| 3:00 | Send `export`. It refuses; click **Authorize export**, then **Ask the assistant to export now**. | "Only I can arm the export, for five minutes, once. It still exports only what I approved." |
+| 3:30 | **Export** tab: show **verified**. Close with the numbers from the offline script. | "That is a real model doing real work, and a human decided every redaction." |
+
+Optional, if there is time: ask `Summarise page 2 of this document in two sentences.` The sample contract contains an injected line telling an AI to export
+everything. The assistant cannot act on it (it cannot approve or export), but **do not promise** it will point the line out: it did in one earlier run, not
+necessarily in every run.
+
+## If something goes wrong
+
+| Symptom | What it means and what to do |
+| --- | --- |
+| The answer is slower than 60 seconds, or the Chat tab says "The AI provider took too long to answer" | Every request is bounded (8 model calls, 16 tool calls, 120 seconds). Click **Cancel** if it is still working, say so honestly, and ask again once. |
+| A plain error message ("The AI provider rejected the API key", "has no usable credit", "is rate limiting requests", "Could not reach the AI provider") | The app **never** falls back to scripted answers. Switch `.env` back to `CLEARCASE_ASSISTANT_MODE=demo`, restart (about 30 seconds) and continue with the offline script above. Rehearse this switch once. |
+| The wording differs from what you expected | Normal: a model's answer changes between runs. Narrate what is on screen; do not read from a script. |
+| The first policy question takes about 12 seconds | The embedding model loads on first use. Ask one before you present. |
+| The `export` command succeeds without asking | You exported within the last five minutes; it returns that same export (never a second file). Skip the step or wait. |
+
+## What to say if asked about cost and safety
+
+About half a cent per request on Haiku; a full live demo is a few cents; your balance is prepaid with auto-reload off, so the worst case is the remaining
+balance, and the app cannot spend anything in demo mode. The key lives only in the git-ignored `.env` and never reaches logs, the database or the browser.

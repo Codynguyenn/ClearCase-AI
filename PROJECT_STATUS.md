@@ -315,6 +315,8 @@ Four of five pre-registered predictions held; prediction 1 (worse ranking) was w
 `backend/tests/test_retrieval_set2.py` (22 tests; the selection rules, the spend guard, the blindness of the writer prompt and the report
 logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
 
+Live mode was checked end to end on 2026-10-15 with a real request through the whole path (policy question on `claude-haiku-5-5`: completed in 20.5 s for about $0.001, both quoted citations verified), and `docs/demo_script.md` now has a live-mode version.
+
 Spend so far on the live provider, estimated from token counts: about $6.0 of the $20 bought (Phase 5 checks about $0.5, setup about $0.04, the first three-model run $2.78, the second retrieval set $0.06, the v2 three-model run $2.56). The Console's usage page is the authority.
 
 ### Phase 6: pipeline latency and export-verification outcomes (2026-10-15, branch `phase-6-pipeline-eval`)
