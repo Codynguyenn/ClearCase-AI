@@ -53,7 +53,7 @@ demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 632 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 633 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -390,6 +390,6 @@ frontend/src               React app (api/, hooks/, components/, lib/)
 frontend/e2e               Playwright browser test (npm run e2e); e2e-screenshots/ makes docs/images (npm run screenshots)
 sample_data/               synthetic contract generator + two fictional policies
 evaluation/                retrieval sets and scripts (Phases 4 and 6, retrieval2/); assistant model comparison (assistant_eval/)
-docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md, requirements_audit.md (each requirement with its evidence), dependency_licenses.md
+docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md, requirements_audit.md (each requirement with its evidence), production_readiness.md (what production-ready would take), dependency_licenses.md
 scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh, e2e_backend.sh, live_check.py, list_licenses.py
 ```

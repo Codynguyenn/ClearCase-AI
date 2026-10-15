@@ -158,4 +158,4 @@ All six phases and every deliverable are done, with the two named exceptions abo
 interrupted; **deviation**: all active policy versions are searched). It does **not** mean the application is production-ready or accurate on
 real documents: the data is synthetic, the demo identity is not authentication (localhost only), the layout is a desktop one, only English
 text-based PDFs are supported, and the similarity cutoff is a weak answer/no-answer decision (balanced accuracy about 0.60). The
-specification's deferred items (OCR, DOCX, authentication, public hosting) are not built.
+specification's deferred items (OCR, DOCX, authentication, public hosting) are not built. What production-ready would take is in `docs/production_readiness.md`.
