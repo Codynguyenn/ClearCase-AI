@@ -8,6 +8,7 @@
 
     /* Bundler mode */
     "module": "nodenext",
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -19,5 +20,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["playwright.config.ts", "e2e"]
+  "include": ["playwright.config.ts", "playwright.screenshots.config.ts", "e2e", "e2e-screenshots"]
 }

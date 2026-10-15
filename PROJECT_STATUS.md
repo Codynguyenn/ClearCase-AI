@@ -317,6 +317,18 @@ logic were each broken on purpose to confirm a test fails). Details and limits: 
 
 Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
 
+### Phase 6: README polish (2026-10-15, branch `phase-6-polish`)
+
+- **Screenshots:** five real screenshots of the running app (synthetic sample, scripted demo assistant) in `docs/images/`, made by
+  `frontend/e2e-screenshots/screenshots.spec.ts` (`npm run screenshots`) and shown in the README.
+- **A wording bug found by reading the README:** three places told users to click "Authorize export" *in the Export tab*, but that
+  button is the hand-off card in the **Chat** tab (the Export tab's own button needs no authorization). Fixed in the demo assistant's
+  refusal, in the tool's error message (which a live model repeats), and in the README; the demo test was updated. 129 related tests pass.
+- **Stale README text fixed:** the stack table still listed the hosted model as a "later phase", the Limitations section quoted only
+  the first held-out set, and the repository layout missed the new folders.
+- **Window size checked:** the layout is fine from about 900 px up, overflows sideways below about 700 px and is not usable on a
+  phone (three fixed-width columns). Documented as a limitation; a responsive layout was not built.
+
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
 Built in eight steps, each verified before the next; the design and its approved choices are in `docs/phase5_design.md`,
@@ -552,6 +564,7 @@ detectors and three hosted models, cost, time, tool use, injected-document behav
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
 - Component tests run in happy-dom, which cannot prove focus trapping or real layout; the Playwright test covers focus and Escape for
   the citation dialog in one real browser engine. Real layout, other browsers and phones are still unchecked.
+- The interface is a desktop layout (about 900 px wide or more); no responsive or phone layout.
 - Bulk "Approve shown"/"Reject shown" overwrite earlier decisions when the status filter is "all" (filed as a separate task).
 - Policies cited by findings can be deleted; the delete confirmation says how many findings cite it and the UI then
   shows the passage as unavailable (it does not block deletion).

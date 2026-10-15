@@ -14,6 +14,20 @@ processing with true content removal, and MongoDB as the system of record.
 ClearCase does **not** guarantee legal compliance or detect every sensitive
 item. Sample documents and the seeded policy are synthetic and fictional.
 
+## Screenshots
+
+All real, taken from the running app with the synthetic sample contract, the two fictional policies and the scripted
+demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm run screenshots` regenerates them.
+
+| | |
+| --- | --- |
+| ![The detectors propose redactions; nothing is approved yet](docs/images/01-detect-and-propose.png) | ![The reviewer rejects one finding and approves the rest](docs/images/02-review-and-approve.png) |
+| **1. Detect and propose.** Patterns and a pretrained NER model only *propose*; nothing is redacted until a person approves it. | **2. Review.** One finding is rejected (it stays readable); the rest are approved and shown as boxes. |
+| ![The assistant quotes a policy sentence with a checked citation](docs/images/03-chat-with-citation.png) | ![The citation opens the real policy passage](docs/images/04-citation-passage.png) |
+| **3. Chat.** The assistant quotes a policy sentence and cites it; the citation is checked by code, and the reply is labelled as scripted. | **4. Citation.** Clicking it opens the actual passage, marked as a fictional example. |
+| ![A verified export with its checks and a download link](docs/images/05-export-verified.png) | |
+| **5. Export.** The text is really removed, then a separate verifier re-reads the file; the download appears only if the required checks pass. | |
+
 ## What works today (Phases 1–5)
 
 - Upload a text-based PDF; the file's **bytes** are validated (not its name or
@@ -117,7 +131,7 @@ read the passages and the library yourself.
 | Database | MongoDB 8.0 Community + GridFS | — |
 | Tests | pytest (backend), vitest (frontend), Playwright (real-browser end to end) | — |
 | MCP | official `mcp` SDK 2.3.0 (stdio server + client), `jsonschema` | `backend/requirements.lock` |
-| Later phases | hosted LLM provider (Phase 5) | — |
+| Assistant (live mode only) | a hosted Claude model through the official `anthropic` SDK; optional and off by default (the default is a scripted demo mode) | `backend/requirements.lock` |
 
 ### Licensing note (important)
 
@@ -294,6 +308,8 @@ for the reasoning behind each major choice.
   checked after each page. That budget cannot interrupt a single page that hangs inside PyMuPDF's C
   code; a hostile PDF could still stall one worker. Running extraction in a killable child process is the
   next step if this is ever exposed beyond localhost.
+- The interface is a **desktop** layout: three columns that need a window about 900 px wide or more. Narrower windows overflow
+  sideways (checked at 640 and 390 px) and it is not usable on a phone. A responsive layout was not built.
 - Single server-controlled demo identity; **not** authentication. Localhost only.
 - Extraction and export run inside the API process, suitable for a local MVP.
 - NER is a pretrained model we did not train; it produces false positives
@@ -314,8 +330,8 @@ for the reasoning behind each major choice.
   in MongoDB (fine for a few thousand passages; use a vector index beyond that).
 - The embedding model reads only the first 256 tokens of a passage (passages are kept well
   under that) and understands English best. Its similarity cutoff (0.38) is a **heuristic that
-  overfitted its tuning set**: on a held-out set it wrongly says "no matching policy" for 13 of 28
-  answerable questions and wrongly shows passages for 5 of 16 unanswerable ones (see
+  overfitted its tuning set**: on two held-out sets together it wrongly says "no matching policy" for 31 of 64
+  answerable questions and wrongly shows passages for 18 of 75 not-addressed ones (see
   `evaluation/README.md`). When nothing reaches the cutoff the reviewer can open a collapsed
   "possibly related" list of weaker matches. A human still decides.
 - The first policy question after the app starts takes ~15-20 s while the model loads.
@@ -355,7 +371,7 @@ Tests that do exactly that: `backend/tests/test_mcp_protocol.py` and
 | Policy shows "needs re-index" | It was embedded with a different model revision (or embedding failed). Click **Re-index**. |
 | Policy upload says `policy_version_exists` | That version already exists with different text. Change the `version:` in the file's front matter and upload again. |
 | "No policy passage was similar enough" for a question you expected to match | The cutoff is a rough heuristic and often wrong (see Limitations). Open **Possibly related** under the message, rephrase with the policy's own words, or read the library. |
-| MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Authorize export** in the Export tab (valid 5 minutes), then ask again. |
+| MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Authorize export** on the card that appears in the **Chat** tab (valid 5 minutes), then ask again. The Export tab has its own button that needs no authorization from the assistant. |
 | Export button disabled | Every proposal must be approved or rejected. Check the Review tab badge. |
 
 ## Repository layout
@@ -369,8 +385,9 @@ backend/app/agent          mcp_client.py (Phase 3); tool-calling loop (Phase 5)
 backend/app/mcp_server     MCP server over stdio: seven tools (Phase 3)
 backend/tests              pytest suite
 frontend/src               React app (api/, hooks/, components/, lib/)
+frontend/e2e               Playwright browser test (npm run e2e); e2e-screenshots/ makes docs/images (npm run screenshots)
 sample_data/               synthetic contract generator + two fictional policies
-evaluation/                retrieval sets + scripts (Phase 4); assistant model comparison (Phase 6)
+evaluation/                retrieval sets and scripts (Phases 4 and 6, retrieval2/); assistant model comparison (assistant_eval/)
 docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md
-scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh
+scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh, e2e_backend.sh, live_check.py
 ```

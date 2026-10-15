@@ -200,7 +200,7 @@ def test_summary_reports_status_blockers_and_warnings():
 def test_export_without_a_reviewer_authorization_explains_the_hand_off():
     err = fail("e", "tool_error", "authorization_required: No export authorization from the reviewer is pending.")
     text = run(FakeTools({"export_approved_redactions": err}), "export").text
-    assert "click “Authorize export” in the Export tab" in text and "5 minutes" in text
+    assert "click “Authorize export” on the card that appears below this message in the Chat tab" in text and "5 minutes" in text
 
 
 def test_export_after_authorization_reports_the_result():
