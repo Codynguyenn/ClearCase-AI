@@ -30,6 +30,12 @@ class FindingRepository:
     def __init__(self, db: Database) -> None:
         self._col = db[FINDINGS]
 
+    def count_citing(self, owner_id: str, citation_ids: list[str]) -> int:
+        """Findings of this owner that cite at least one of these policy passages (exact ids, so an index is used)."""
+        if not citation_ids:
+            return 0
+        return self._col.count_documents({"owner_id": owner_id, "policy_refs": {"$in": citation_ids}})
+
     def existing_ids(self, document_id: str, owner_id: str, ids: list[str]) -> set[str]:
         cursor = self._col.find(
             {"_id": {"$in": ids}, "document_id": document_id, "owner_id": owner_id}, projection={"_id": 1}

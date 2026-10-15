@@ -60,7 +60,7 @@ def validate_email(value: str) -> bool:
     labels = domain.split(".")
     if len(labels) < 2 or not labels[-1].isalpha() or len(labels[-1]) < 2:
         return False
-    return all(l and len(l) <= 63 and not l.startswith("-") and not l.endswith("-") for l in labels)
+    return all(label and len(label) <= 63 and not label.startswith("-") and not label.endswith("-") for label in labels)
 
 
 def validate_phone(value: str) -> bool:

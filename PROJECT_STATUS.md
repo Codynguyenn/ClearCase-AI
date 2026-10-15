@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-14 (Phase 4 complete and verified; Phase 5 not started)
+Last updated: 2026-10-14 (Phase 4 complete and verified, plus a hardening bundle that closed every open audit item; Phase 5 not started; hosted provider chosen: Anthropic)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -159,6 +159,10 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
+**Latest full runs (2026-10-14, after the hardening bundle):** backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+
+The figures below are from the end of Phase 1 and are kept for history.
+
 Backend — `cd backend && .venv/bin/python -m pytest -q` against local
 MongoDB 8.0.34, Python 3.14.7, spaCy 3.8.16 + `en_core_web_sm` 3.8.0:
 
@@ -198,16 +202,9 @@ hidden-text copies the reviewer had not approved (reported by the app).
 3. False "words lost" alarm for PDFs with annotations/form fields -> compares page content only; a real
    loss is still caught.
 
-**Still open from the audit, NOT fixed (the user asked for 1-3 only):**
-- Oversized uploads are fully read into memory before the size limit rejects them (measured: a 120 MB
-  body was received whole against a 20 MB limit). Low risk on localhost; fix = bound the read / limit at the
-  ASGI layer.
-- A page with a small image (< 30% of its area) is not flagged as "mixed", so text inside it is silently not
-  searched; if an image's rectangle cannot be read the page is classified as if it had no image. Extraction
-  has size and page limits but no time limit.
-- No resettable seed script for sample *documents* (spec deliverable); only policies can be seeded.
-- Docker: containers run as root, no HEALTHCHECK; the PDF viewer could set `isEvalSupported: false`.
-- 7 minor lint findings in `backend/app` (none are bugs).
+**The remaining audit items were all closed afterwards** (upload size, small images, extraction time limit,
+sample-document seed script, Docker non-root and health checks, lint; the `isEvalSupported` item turned out not to
+apply to PDF.js 6.3): see "Phase 4 hardening bundle" below and `docs/decisions.md` #41-#46.
 
 ### Phase 4 follow-ups (2026-10-14, after merge)
 
@@ -240,9 +237,30 @@ hidden-text copies the reviewer had not approved (reported by the app).
   refused questions and showed weak passages for 4/16 unanswerable ones. It never reaches the assistant
   (tested; a test caught a docstring of mine that would have told the assistant it exists). The
   retrieval message now calls "no matching passage" a heuristic. Both held-out runs are used up.
-- **Suggested small extras, not started**: store a chunker version on each policy so older
-  chunking shows "needs re-index"; a script that regenerates `requirements.lock` with the
-  PyTorch markers; show how many findings cite a policy in its delete confirmation.
+- **Small extras**: all four were done afterwards in the hardening bundle below (chunker version, script that
+  regenerates `requirements.lock`, citing-finding count in the delete confirmation, automatic re-index at startup).
+
+### Phase 4 hardening bundle (2026-10-14, branch `phase-4-hardening`)
+
+Closes every item that was open after the audit and the four "small extras". Decisions and reasoning:
+`docs/decisions.md` #41-#46. Four choices were the user's (all took the recommended option): warn-but-keep-analysing
+for small images, a between-pages extraction time limit, ruff + a CI lint step, and "flag only" for old chunking.
+
+| Item | What changed | Proof |
+| --- | --- | --- |
+| Oversized uploads read in full | `app/api/upload_limit.py` (ASGI middleware): honest `Content-Length` over the limit refused at once, other bodies counted and cut off at limit + 64 KiB; HTTP 413 with the stable code and CORS headers; service-level over-size also 413 (was 422) | 12 tests in `test_upload_limit.py`; three deliberate breakages each failed tests; in Docker a 25 MB body got `413 file_too_large` |
+| Small images silently unsearched | page stays `text`, listed in `extraction.pages_with_images`; amber notice in the document header; export panel warning; unreadable image position is no longer treated as "no image" (and makes a text-less page "scanned") | unit + API + 5 frontend tests; four breakages failed tests |
+| No extraction time limit | 60 s budget (`CLEARCASE_EXTRACTION_TIMEOUT_SECONDS`) checked after each page; over budget = status `error`, retryable. **Cannot stop one page hanging inside PyMuPDF** (documented) | 3 unit tests + 1 API test (error then successful retry) |
+| No sample-document seed script | `python -m app.cli seed-samples [--reset]` (native and Docker); samples recognised by content hash; reset never touches user uploads or another owner's copy | 7 tests; four breakages failed tests; run for real 3x on a scratch database and inside Docker |
+| Docker root user / no health checks | backend uid 10001, frontend `node`; health checks (backend: API + MongoDB `ok`); frontend waits for a healthy backend | built both images, downloaded the model as non-root, stack came up healthy, `seed-samples` worked inside it, health check exits 1 while MongoDB is stopped; test volumes removed afterwards |
+| `isEvalSupported` | **not needed**: PDF.js 6.3 removed the option and its bundles contain no `eval(`/`new Function(` (the one `eval(` is in the scripting sandbox, which the viewer never enables) | grep of the installed package |
+| 7 lint findings | ruff (pinned `0.16.10`, dev extras + lock) now runs in CI on `app` and `tests`; the findings were fixed | `ruff check app tests` clean |
+| Chunker version | `chunker_version` stored per policy version; older versions flagged "split with older chunking rules"; re-index never re-splits (citations must not move) | 3 backend + 2 frontend tests; three breakages failed tests |
+| Citing-finding count | `cited_by_findings` per policy version (indexed exact-id query); the delete confirmation says how many findings cite any version | 2 backend + 3 frontend tests |
+| `requirements.lock` regeneration | `scripts/regenerate_lock.sh` + `tests/test_lockfile.py`; the script's output was identical to the committed lock apart from two transitive patch releases and a header comment, so the tested pins were kept | script run in a clean venv, diffed; guard tests failed on four deliberately broken locks |
+| Auto re-index on model change | background thread at startup (`CLEARCASE_REINDEX_ON_STARTUP`, default on; off in tests): refreshes stale/missing passages for every owner, skipped without a model, failures logged | 5 tests; four breakages failed tests |
+
+**Totals: backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.****
 
 ### Phase 4 verification (2026-10-14)
 
@@ -387,9 +405,10 @@ because of the port conflicts above.
   Resolved with `.local/` downloads (git-ignored). Docker Desktop is now
   installed, but its CLI is not on PATH in every shell: use
   `/Applications/Docker.app/Contents/Resources/bin/docker` (or open a new terminal).
-- `requirements.lock` is generated on Python 3.14 (macOS) with two hand-edited `torch`
-  lines (markers) and an `--extra-index-url` header; `pip freeze` will not reproduce them,
-  so re-add them if you regenerate the lock. Python 3.12 (Docker, CI) installs from it fine.
+- `requirements.lock` is generated on Python 3.14 (macOS) and installs fine on Python 3.12 (Docker, CI). It carries
+  two platform-marked `torch` lines, an `--extra-index-url` header and the spaCy model pinned by URL and hash, none
+  of which `pip freeze` can produce: regenerate it with `scripts/regenerate_lock.sh` (never plain `pip freeze`);
+  `backend/tests/test_lockfile.py` guards it.
 - The Phase 4 install adds ~1 GB to `backend/.venv` and ~0.9 GB to the backend image.
 - Ports 8000 and 8001 are used by other projects; run ClearCase with
   `CLEARCASE_PORT=8010` and `VITE_API_PROXY_TARGET=http://127.0.0.1:8010`.
@@ -426,18 +445,29 @@ interview guide, evaluation report, polish, full Compose re-run.
 - Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real
   layout. The Phase 6 Playwright test must cover the Policy tab and the citation dialog in a
   real browser.
-- Policies cited by findings can be deleted; the UI then says the passage is unavailable
-  (it does not block deletion).
-- Chunker changes do not re-chunk existing policy versions (their content hash is
-  unchanged); use `seed-samples` with `reset`, or upload a new version.
+- Policies cited by findings can be deleted; the delete confirmation now says how many findings cite it and the UI
+  then shows the passage as unavailable (it does not block deletion).
+- Chunker changes never re-chunk existing policy versions (on purpose: citation ids must keep pointing at the same
+  words). Older versions are flagged "split with older chunking rules"; upload the text as a new version.
+- Extraction's time budget is checked between pages and cannot interrupt one page that hangs inside PyMuPDF.
 
 ## Next implementation step
 
-Start **Phase 5** (live agent, persisted chat, visible tool activity):
+Start **Phase 5** (live agent, persisted chat, visible tool activity). **Provider chosen: Anthropic.** The user created
+an API key in the Claude Console (personal key, Default workspace, short expiry) and put it in the local, git-ignored
+`.env` (`CLEARCASE_LLM_PROVIDER=anthropic`, `CLEARCASE_LLM_MODEL=claude-opus-5-5`; the key itself was never saved
+anywhere else, and a first key that was pasted into chat was deleted and replaced). Two tiny live requests (Haiku and
+Opus, 12 tokens in / 4 out, well under a cent) confirmed the key, the credit balance and the model id. Keep
+`CLEARCASE_ASSISTANT_MODE=demo` until the live path is built. Spend is capped by prepaid credit with auto-reload off.
+
+**Decided by the user on 2026-10-14 (the recommended options; `docs/decisions.md` #47-#49):** the assistant reads the
+top passages and must quote the supporting sentence or say the policy does not address the question (the cutoff is not
+trusted alone); policy scope stays global (every active version, citations pin the exact version); no manual policy
+attach for reviewers. **The Phase 5 design is drafted in `docs/phase5_design.md` and awaits the user's approval (section 15 lists the choices they can veto); do not build before that.**
 
 1. Verify the chosen hosted provider's current **official SDK**, tool-calling API and a
    valid **model id** against its documentation before writing any code (do not guess
-   ids). Keep the provider adapter separate; read key/model from env.
+   ids; use the `claude-api` skill). Keep the provider adapter separate; read key/model from env.
 2. Collections: `conversations`, `messages` (one record per message, paginated),
    `agent_runs`, `tool_events` (tool, status, duration, sanitized summary; never raw
    document text, chain-of-thought or keys). Persist across restarts.

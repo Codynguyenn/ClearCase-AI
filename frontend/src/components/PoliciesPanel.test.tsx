@@ -143,6 +143,59 @@ describe('PoliciesPanel: library', () => {
   })
 })
 
+describe('PoliciesPanel: chunking and citations', () => {
+  it('flags a version split by older chunking rules and says how to fix it', async () => {
+    mockApi({ 'GET /api/policies': { json: [makePolicy({ chunker_version: 1, chunker_outdated: true })] } })
+    render(<PoliciesPanel onOpenCitation={vi.fn()} />)
+    const note = await screen.findByTestId('chunker-outdated')
+    expect(note).toHaveTextContent('older chunking rules')
+    expect(note).toHaveTextContent('existing citations stay valid')
+    expect(note).toHaveTextContent('as a new version')
+  })
+
+  it('shows no chunking note for an up-to-date version', async () => {
+    mockApi({ 'GET /api/policies': { json: [makePolicy()] } })
+    render(<PoliciesPanel onOpenCitation={vi.fn()} />)
+    await screen.findByText('Northwind Analytics Document Redaction Policy')
+    expect(screen.queryByTestId('chunker-outdated')).not.toBeInTheDocument()
+  })
+
+  it('tells you how many findings cite the policy (all versions) before you confirm a delete', async () => {
+    mockApi({
+      'GET /api/policies': {
+        json: [
+          makePolicy({ id: 'a', version: '1.0', status: 'archived', cited_by_findings: 2 }),
+          makePolicy({ id: 'b', version: '2.0', cited_by_findings: 1 }),
+          makePolicy({ id: 'c', policy_id: 'other-policy', title: 'Other', cited_by_findings: 9 }),
+        ],
+      },
+    })
+    const confirm = vi.fn((_message?: string) => false)
+    vi.stubGlobal('confirm', confirm)
+    render(<PoliciesPanel onOpenCitation={vi.fn()} />)
+    await userEvent.setup().click((await screen.findAllByRole('button', { name: 'Delete' }))[0]!)
+    expect(String(confirm.mock.calls[0]?.[0])).toMatch(/3 findings cite this policy and will no longer be able to show the passage/)
+  })
+
+  it('says plainly when nothing cites the policy', async () => {
+    mockApi({ 'GET /api/policies': { json: [makePolicy()] } })
+    const confirm = vi.fn((_message?: string) => false)
+    vi.stubGlobal('confirm', confirm)
+    render(<PoliciesPanel onOpenCitation={vi.fn()} />)
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Delete' }))
+    expect(String(confirm.mock.calls[0]?.[0])).toMatch(/No findings cite it/)
+  })
+
+  it('uses the singular for one finding', async () => {
+    mockApi({ 'GET /api/policies': { json: [makePolicy({ cited_by_findings: 1 })] } })
+    const confirm = vi.fn((_message?: string) => false)
+    vi.stubGlobal('confirm', confirm)
+    render(<PoliciesPanel onOpenCitation={vi.fn()} />)
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Delete' }))
+    expect(String(confirm.mock.calls[0]?.[0])).toMatch(/1 finding cites this policy/)
+  })
+})
+
 describe('PoliciesPanel: asking the policy', () => {
   const library = { 'GET /api/policies': { json: [makePolicy()] } }
 

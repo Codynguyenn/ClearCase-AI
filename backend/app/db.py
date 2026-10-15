@@ -75,6 +75,8 @@ class Mongo:
         # Document list for an owner, newest first; and hash lookup for duplicates.
         db[DOCUMENTS].create_index([("owner_id", ASCENDING), ("created_at", DESCENDING)])
         db[DOCUMENTS].create_index([("owner_id", ASCENDING), ("content_hash", ASCENDING)])
+        # "How many findings cite this policy version?" (shown before a policy is deleted).
+        db[FINDINGS].create_index([("owner_id", ASCENDING), ("policy_refs", ASCENDING)])
         # Pages are fetched by (document, page number); unique prevents double extraction.
         db[PAGES].create_index(
             [("document_id", ASCENDING), ("page_number", ASCENDING)], unique=True

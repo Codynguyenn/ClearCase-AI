@@ -5,7 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Path as PathParam, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, UploadFile, status
+from fastapi import Path as PathParam
 from pydantic import BaseModel
 
 from app.api.deps import OwnerId, PolicySvc, Retriever
@@ -18,7 +19,6 @@ from app.models.policies import (
     ResolveResult,
     RetrievalResult,
 )
-from fastapi import Depends
 
 router = APIRouter(prefix="/policies", tags=["policies"])
 

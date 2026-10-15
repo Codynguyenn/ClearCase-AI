@@ -326,7 +326,6 @@ def test_deleting_one_version_keeps_the_others(fake_client: TestClient, mongo_cl
 def test_seeding_loads_both_fictional_policies_and_is_repeatable(
     fake_client: TestClient, fake_settings: Settings, mongo_client
 ):
-    fake_client.app.dependency_overrides  # app already uses fake_settings; point sample dir at the repo
     first = fake_client.post("/api/policies/seed-samples", json={}).json()
     assert {p["policy_id"] for p in first} == {"northwind-redaction-policy", "northwind-sharing-guidelines"}
     assert all(p["is_fictional_example"] and p["status"] == "active" for p in first)
@@ -340,3 +339,70 @@ def test_seeding_loads_both_fictional_policies_and_is_repeatable(
 def test_health_reports_embedding_status(fake_client: TestClient):
     emb = fake_client.get("/api/health").json()["embeddings"]
     assert {"available", "enabled", "model", "revision"} <= set(emb)
+
+
+# ------------------------------------------------ chunker version: flag, never re-chunk in place
+def test_a_new_policy_version_records_the_chunker_version_it_was_split_with(fake_client: TestClient):
+    from app.services.policy_chunking import CHUNKER_VERSION
+
+    record = upload(fake_client, POLICY_V1).json()
+    assert record["chunker_version"] == CHUNKER_VERSION and record["chunker_outdated"] is False
+
+
+def test_versions_saved_before_the_field_existed_are_not_flagged(fake_client: TestClient, mongo_client, fake_settings):
+    upload(fake_client, POLICY_V1)
+    mongo_client[fake_settings.mongodb_db][POLICIES].update_many({}, {"$unset": {"chunker_version": ""}})
+    record = fake_client.get("/api/policies").json()[0]
+    assert record["chunker_version"] == 1 and record["chunker_outdated"] is False
+
+
+def test_a_version_split_by_older_rules_is_flagged_but_its_chunks_are_never_rewritten(
+    fake_client: TestClient, mongo_client, fake_settings, monkeypatch
+):
+    upload(fake_client, POLICY_V1)
+    before = {c["citation_id"]: c["text_hash"] for c in chunk_docs(mongo_client, fake_settings)}
+
+    # The chunking rules "change" (version bump) after this policy was stored.
+    from app.services import policy_chunking, policy_service
+
+    monkeypatch.setattr(policy_chunking, "CHUNKER_VERSION", 2)
+    monkeypatch.setattr(policy_service, "CHUNKER_VERSION", 2)
+    flagged = fake_client.get("/api/policies").json()[0]
+    assert flagged["chunker_version"] == 1 and flagged["chunker_outdated"] is True
+
+    # Re-indexing and re-seeding must not touch the chunks, so existing citations keep pointing at the same words.
+    assert fake_client.post("/api/policies/acme-policy/versions/1.0/reindex").status_code == 200
+    assert fake_client.post("/api/policies/reindex").status_code == 200
+    after = {c["citation_id"]: c["text_hash"] for c in chunk_docs(mongo_client, fake_settings)}
+    assert after == before
+
+    # The documented fix: the same text uploaded as a new version is split with the current rules.
+    fresh = upload(fake_client, POLICY_V2).json()
+    assert fresh["chunker_version"] == 2 and fresh["chunker_outdated"] is False
+    still_old = [p for p in fake_client.get("/api/policies").json() if p["version"] == "1.0"][0]
+    assert still_old["chunker_outdated"] is True
+
+
+# --------------------------------------------- how many findings cite a policy (shown before delete)
+def _cite(mongo_client, settings: Settings, finding_id: str, refs: list[str], owner: str = "demo-user") -> None:
+    mongo_client[settings.mongodb_db]["findings"].insert_one(
+        {"_id": finding_id, "owner_id": owner, "document_id": "d1", "policy_refs": refs}
+    )
+
+
+def test_each_version_reports_how_many_findings_cite_it(fake_client: TestClient, mongo_client, fake_settings):
+    upload(fake_client, POLICY_V1)
+    upload(fake_client, POLICY_V2)
+    _cite(mongo_client, fake_settings, "f1", ["acme-policy:1.0:1"])
+    _cite(mongo_client, fake_settings, "f2", ["acme-policy:1.0:1", "acme-policy:1.0:2"])  # one finding, two passages
+    _cite(mongo_client, fake_settings, "f3", ["acme-policy:2.0:2"])
+    _cite(mongo_client, fake_settings, "f4", [])
+    _cite(mongo_client, fake_settings, "f5", ["acme-policy:1.0:1"], owner="someone-else")  # other owner's: not counted
+    _cite(mongo_client, fake_settings, "f6", ["other-policy:1.0:1"])  # a different policy: not counted
+
+    counts = {p["version"]: p["cited_by_findings"] for p in fake_client.get("/api/policies").json()}
+    assert counts == {"1.0": 2, "2.0": 1}
+
+
+def test_a_policy_nobody_cites_reports_zero(fake_client: TestClient):
+    assert upload(fake_client, POLICY_V1).json()["cited_by_findings"] == 0

@@ -7,7 +7,7 @@ import hashlib
 from fastapi.testclient import TestClient
 
 from app.db import DOCUMENTS, PAGES, PDF_BUCKET
-from tests.conftest import make_encrypted_pdf, make_scanned_pdf, make_text_pdf, upload
+from tests.conftest import make_encrypted_pdf, make_scanned_pdf, make_small_image_pdf, make_text_pdf, upload
 
 
 def test_health_reports_mongo(client: TestClient):
@@ -92,7 +92,7 @@ def test_rejects_oversized_upload(client: TestClient):
     # test settings cap uploads at 2 MB
     big = make_text_pdf([["x"]]) + b"\n%" + b"A" * (2 * 1024 * 1024)
     r = upload(client, big)
-    assert r.status_code == 422
+    assert r.status_code == 413
     assert r.json()["error"]["code"] == "file_too_large"
 
 
@@ -183,3 +183,31 @@ def test_history_persists_across_app_restart(client: TestClient, test_settings):
         assert [d["id"] for d in listed["items"]] == [doc["id"]]
         page = restarted.get(f"/api/documents/{doc['id']}/pages/1").json()
         assert page["text"] == "persisted"
+
+
+def test_small_image_page_is_ready_and_reported(client: TestClient):
+    doc = upload(client, make_small_image_pdf()).json()
+    record = client.get(f"/api/documents/{doc['id']}").json()
+    assert record["status"] == "ready"  # still analysed, not refused
+    assert record["extraction"]["pages_with_images"] == [1]
+    assert any("contain images" in line for line in record["extraction"]["limitations"])
+    summary = client.get(f"/api/documents/{doc['id']}/review-summary").json()
+    assert any("Pages 1 contain images" in w for w in summary["warnings"])
+    assert summary["unsupported_pages"] == []  # no acknowledgement needed for a small image
+
+
+def test_extraction_over_its_time_budget_becomes_a_retryable_error(client: TestClient, monkeypatch):
+    from app.services import document_service
+
+    real = document_service.extract_document
+    monkeypatch.setattr(
+        document_service, "extract_document", lambda data, time_limit_seconds=None: real(data, time_limit_seconds=0)
+    )
+    doc = upload(client, make_text_pdf([["a"], ["b"]])).json()
+    record = client.get(f"/api/documents/{doc['id']}").json()
+    assert record["status"] == "error"
+    assert "Extraction stopped" in record["processing"]["error"]
+
+    monkeypatch.setattr(document_service, "extract_document", real)  # the file is fine; retry with the normal budget
+    retried = client.post(f"/api/documents/{doc['id']}/reprocess").json()
+    assert retried["status"] == "ready" and retried["processing"]["attempts"] == 2

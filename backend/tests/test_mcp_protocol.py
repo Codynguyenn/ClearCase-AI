@@ -32,10 +32,10 @@ from app.db import EXPORT_AUTHORIZATIONS, Mongo
 from app.mcp_server.schemas import MAX_EXCERPT_CHARS, MAX_SEARCH_RESULTS
 from app.models.common import utcnow
 from app.services.document_service import DocumentService
-from tests.conftest import make_mixed_pdf, make_text_pdf, requires_embedding_model, upload
+from tests.conftest import make_mixed_pdf, make_text_pdf, requires_embedding_model
+from tests.test_export_api import LINES, approve_all_emails, authorize, new_doc
 from tests.test_policy_api import POLICY_V1, POLICY_V2, seed_other_owner
 from tests.test_policy_api import upload as upload_policy
-from tests.test_export_api import LINES, approve_all_emails, authorize, new_doc
 
 EXPECTED_TOOLS = {
     "search_document",

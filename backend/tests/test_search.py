@@ -12,8 +12,8 @@ running the code under test. The sample contract contains:
 
 from __future__ import annotations
 
-import pytest
 import pymupdf
+import pytest
 
 from app.services.errors import ValidationFailed
 from app.services.pdf_processing import extract_document

@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.db import FINDINGS, PAGES, REVIEW_REVISIONS
-from app.models.findings import Origin, ProposalInput, ReviewLabel, Category
+from app.models.findings import Category, Origin, ProposalInput, ReviewLabel
 from app.repositories.review import FindingRepository
 from app.services.errors import NotFoundError
 from app.services.review_service import ReviewService

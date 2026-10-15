@@ -510,3 +510,131 @@ reported). It also found three real problems, now fixed:
    annotations and form fields as lost, though the export removes those on purpose, so any PDF
    with a margin comment tripped it and trained reviewers to ignore the check. It now compares page
    content only; a test confirms a real loss of unapproved text is still caught.
+
+## 41. Resource limits: upload size, small images, extraction time
+
+Three audit findings about untrusted PDFs, fixed together.
+
+- **Upload size is enforced while the body arrives.** FastAPI parses a multipart upload *before* our
+  route runs, so the old size check only fired after a 120 MB body had been received in full against a
+  20 MB limit. A small ASGI middleware (`app/api/upload_limit.py`) now refuses an honest
+  `Content-Length` above the limit immediately, and counts the bytes of a body that has no length
+  header (or lies about it), cutting it off at the limit plus 64 KiB of multipart framing. The reply is
+  HTTP 413 with the same stable error code (`file_too_large`, `policy_too_large`) and carries CORS
+  headers so the browser can show it. The exact limit and friendly message still live in the services.
+  Why plain ASGI and not the usual Starlette middleware helper: it has to wrap `receive` and `send`
+  itself, and FastAPI turns any exception during body parsing into a generic "400", which the wrapper
+  swaps for the 413. The over-size rejection in the service layer was also moved from 422 to 413.
+- **Small images are warned about, not blocked.** A page with a logo or stamp used to be classified as
+  plain text, so text inside the image was silently never searched or redacted. Options were to treat
+  any image as "mixed" (the whole document becomes unsupported; ordinary contracts with a logo would be
+  refused) or to keep analysing and say so. The second was chosen: the page stays `text`, its number goes
+  into `extraction.pages_with_images`, the document header shows an amber note, the export panel lists
+  the same warning, and nothing needs acknowledging. An image whose position PyMuPDF cannot read is no
+  longer treated as "no image": it still counts for the warning, and on a page with no text it makes
+  the page "scanned" rather than "empty". Approved boxes still blank the image pixels they cover.
+- **Extraction has a time budget (60 s, `CLEARCASE_EXTRACTION_TIMEOUT_SECONDS`), checked after each
+  page.** Over budget = status `error` with a clear message, retryable. **Honest limit:** PyMuPDF is C
+  code, so one page that hangs inside it cannot be interrupted by a Python check between pages. The
+  alternative, running extraction in a child process that is killed on timeout, would stop that too, but
+  adds process management and copying the extracted pages back; it was judged not worth it for a localhost
+  MVP and is the documented next step if the app is ever exposed to other users.
+
+## 42. A resettable seed script for the sample data
+
+`python -m app.cli seed-samples [--reset]` loads the sample PDF(s) from `sample_data/` and the two
+fictional policies for the demo user, and works the same natively and in Docker. A sample document is
+recognised by the **SHA-256 of its bytes, never by its name**, so `--reset` can only delete documents
+that are byte-for-byte the shipped samples (with their findings, exports and audit events, the normal
+delete cascade) and never anything the user uploaded; another owner's copy of the same file is not touched.
+Without `--reset` it is idempotent. `--reset` also rebuilds the sample *policies*, which (as before)
+removes every version of those two policy ids, including a newer version the user uploaded under the same
+id; the command says so. The prompt-injection test text already lives inside `sample_contract.pdf`, so no
+second sample document was needed; the multi-template evaluation documents belong to Phase 6.
+
+## 43. Policy chunking is versioned, and old versions are flagged, never re-chunked in place
+
+Each stored policy version records `chunker_version`. If the chunking rules change (bump
+`CHUNKER_VERSION` in `policy_chunking.py`), older versions show "split with older chunking rules" in the
+Policy tab. They are **not** re-split automatically, and **Re-index never re-splits**: a citation id is
+`policy:version:ordinal`, and findings store those ids. Re-splitting in place could make an old
+citation silently point at different words, which is the one thing a legal citation must never do. The fix
+is deliberate: upload the same text as a new version; old findings keep citing the old, unchanged version.
+Records saved before the field existed count as version 1, the current rules. (Considered and rejected:
+keeping the source text so a "Re-chunk as new version" button could exist; it stores a second copy of every
+policy and adds a version-creation flow for a situation that has not happened yet.)
+
+Related: each policy version also reports `cited_by_findings` (a count over an indexed field using the exact
+citation ids), and the delete confirmation says how many findings cite any version of the policy.
+
+## 44. Stale embeddings are refreshed at startup, in the background
+
+If the embedding model revision changes, existing passages become "stale" (retrieval ignores them and says
+so). At startup a daemon thread now re-embeds stale or missing passages for every owner, so the library
+heals itself without a click. It never delays startup, never touches passages that are already current (the
+model is not even loaded when nothing is stale), is skipped when no embedding model is available, and a
+failure is logged and leaves the manual Re-index button working. `CLEARCASE_REINDEX_ON_STARTUP=false` turns
+it off; the tests default it off so a background thread cannot race a test's own setup.
+
+## 45. Docker hardening, and one audit item that no longer applies
+
+Both containers now run as unprivileged users (backend uid 10001, frontend the image's `node` user) and
+declare health checks. The backend is healthy only when the API answers **and** MongoDB is reachable
+(`status == "ok"`); the frontend waits for that. `/models` is created owned by the backend user so the named
+volume starts writable; a `models` volume created by the older (root) setup must be removed once.
+Verified end to end: built both images, downloaded the model as the non-root user, brought the stack up
+healthy, ran `seed-samples` inside it, confirmed the 413 and that the health check fails while MongoDB is
+stopped.
+
+The audit also suggested setting `isEvalSupported: false` for the PDF viewer. The installed PDF.js (6.3)
+no longer has that option, and its main and worker bundles contain no `eval(` or `new Function(`; the only
+`eval(` is in the separate scripting sandbox, which the viewer does not load. Nothing was changed.
+
+## 46. Backend lint and a regenerable lock file
+
+`ruff` (pinned in the dev extras and the lock) now lints `backend/app` and `backend/tests` in CI: pycodestyle,
+pyflakes, import order, bugbear and pyupgrade; line length (E501) is deliberately not enforced because there is
+no formatter and forcing wraps hurts readability of long messages. The first run's findings were fixed:
+two ambiguous `l` variable names, an unused import and variables, a stray expression in a test, unsorted
+imports, a missing final newline and one bugbear warning (a closure inside a loop that read the loop variable;
+harmless as written, now bound explicitly).
+
+`scripts/regenerate_lock.sh` rebuilds `requirements.lock` from `pyproject.toml` in a clean virtualenv and
+re-adds what `pip freeze` cannot produce (the two platform-marked `torch` lines, the CPU index, the spaCy
+model wheel pinned by URL and hash). Checked by regenerating into a scratch file: identical to the committed
+lock except two transitive patch releases that had moved (`filelock`, `wrapt`) and a header comment, so the
+committed pins were kept. `tests/test_lockfile.py` guards the invariants.
+
+## 47. Phase 5: questions the policies may not answer (decided 2026-10-14)
+
+The similarity cutoff is not a reliable answer / no-answer decision (held-out balanced accuracy 0.56: it
+refused 13 of 28 answerable questions and showed a passage for 5 of 16 unanswerable ones; #36-#39). Options were
+to trust the cutoff, to make the assistant read the passages and show evidence, or to add a re-ranker / LLM
+relevance check. **Chosen: make the assistant read and show evidence now; evaluate a re-ranker later.**
+
+- The assistant is given the top candidate passages with their scores (never the reviewer-only weak tier).
+- To state what a policy requires it must **quote the supporting sentence** and cite the passage id, or say the
+  policy does not address the question. "No passage was similar enough" is never worded as "the policy says
+  nothing".
+- A quote is only as good as it is checkable, so the design has the server verify that a quoted sentence really
+  appears in the cited passage; an unverifiable quote is not shown as a citation.
+- A cross-encoder re-ranker or an LLM relevance check stays a documented next step. It needs a NEW held-out set,
+  because the current one has used both of its allowed runs.
+
+Why this is the right trade: a wrong "the policy does not cover that" misleads a reviewer silently, while a wrong
+quote can be checked against the source in one click.
+
+## 48. Policy scope stays global: every active policy version is searched (decided 2026-10-14)
+
+No per-document or per-conversation policy selection. Retrieval searches the owner's active policy versions (one
+active version per policy). This is easy to add later and nothing in the spec needs it. The risk it would address
+is already covered: a citation id is `policy:version:ordinal`, so a finding keeps pointing at the exact words it
+cited even after a newer version becomes active. To be documented in the README as a limitation.
+
+## 49. A reviewer cannot attach a policy citation by hand (decided 2026-10-14)
+
+Citations reach a finding only through the assistant's proposals, where each cited id is checked to exist. The
+reviewer's authority is the approve / reject decision; a manual-attach feature would add a UI, an endpoint and a
+second path by which an unchecked citation could land on a finding. If something is wanted later, **removing** a
+wrong citation is the safer first step than adding one.
+

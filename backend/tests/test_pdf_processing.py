@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import pymupdf
 import pytest
 
-from app.services.pdf_processing import PdfValidationError, extract_document, validate_pdf
-from tests.conftest import make_encrypted_pdf, make_mixed_pdf, make_scanned_pdf, make_text_pdf
+from app.services.pdf_processing import ExtractionTimeout, PdfValidationError, extract_document, validate_pdf
+from tests.conftest import (
+    make_encrypted_pdf,
+    make_mixed_pdf,
+    make_scanned_pdf,
+    make_small_image_pdf,
+    make_text_pdf,
+)
 
 LIMITS = {"max_bytes": 1024 * 1024, "max_pages": 10}
 
@@ -101,3 +108,57 @@ class TestExtract:
         assert [p.kind for p in result.pages] == ["text", "scanned"]
         assert result.info.supported_pages == 1
         assert result.info.unsupported_pages == [2]
+
+
+class TestSmallImages:
+    """A small image does not make a page unsupported, but the reviewer must be told about it."""
+
+    def test_small_image_keeps_the_page_searchable_but_is_listed(self):
+        result = extract_document(make_small_image_pdf())
+        page = result.pages[0]
+        assert page.kind == "text" and page.supported  # still analysed
+        assert page.visible_images == 1
+        assert result.info.pages_with_images == [1]
+        assert result.info.unsupported_pages == []
+        assert any("Page(s) 1 contain images" in line for line in result.limitations)
+
+    def test_pages_without_images_are_not_listed(self):
+        result = extract_document(make_text_pdf([["plain"], ["text"]]))
+        assert result.info.pages_with_images == []
+        assert not any("contain images" in line for line in result.limitations)
+
+    def test_only_the_pages_that_have_images_are_listed(self):
+        doc = pymupdf.open(stream=make_text_pdf([["no image here"]]), filetype="pdf")
+        doc.insert_pdf(pymupdf.open(stream=make_small_image_pdf(), filetype="pdf"))
+        result = extract_document(doc.tobytes())
+        assert result.info.pages_with_images == [2]
+
+    def test_large_image_is_still_mixed_and_not_double_listed(self):
+        result = extract_document(make_mixed_pdf())
+        assert result.pages[0].kind == "mixed"
+        assert result.info.pages_with_images == []  # unsupported pages are reported as unsupported instead
+
+    def test_an_image_whose_position_cannot_be_read_is_not_ignored(self, monkeypatch):
+        def broken(self, xref):
+            raise RuntimeError("cannot read image position")
+
+        monkeypatch.setattr(pymupdf.Page, "get_image_rects", broken)
+        # With text: still analysed, but the image is not silently dropped from the warning...
+        with_text = extract_document(make_small_image_pdf())
+        assert with_text.pages[0].kind == "text" and with_text.info.pages_with_images == [1]
+        # ...and with no text it may be a scan, so it must not be called "empty".
+        no_text = extract_document(make_scanned_pdf())
+        assert no_text.pages[0].kind == "scanned"
+
+
+class TestTimeLimit:
+    def test_no_limit_extracts_everything(self):
+        assert len(extract_document(make_text_pdf([["a"], ["b"], ["c"]])).pages) == 3
+
+    def test_a_generous_limit_does_not_interfere(self):
+        assert len(extract_document(make_text_pdf([["a"], ["b"]]), time_limit_seconds=60).pages) == 2
+
+    def test_going_over_the_budget_stops_extraction_after_the_current_page(self):
+        with pytest.raises(ExtractionTimeout) as exc:
+            extract_document(make_text_pdf([["a"], ["b"], ["c"]]), time_limit_seconds=0)
+        assert "page 1 of 3" in str(exc.value)

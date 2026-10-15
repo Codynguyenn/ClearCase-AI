@@ -40,9 +40,11 @@ from app.models.policies import (
     ResolveResult,
 )
 from app.repositories.policies import PolicyChunkRepository, PolicyRepository, citation_id, policy_key
+from app.repositories.review import FindingRepository
 from app.services.embeddings import Embedder, EmbeddingUnavailable, get_embedder
 from app.services.errors import ConflictError, NotFoundError, ValidationFailed
 from app.services.policy_chunking import (
+    CHUNKER_VERSION,
     MAX_CHUNKS_PER_POLICY,
     chunk_markdown,
     first_heading,
@@ -82,6 +84,7 @@ class PolicyService:
         self._settings = settings
         self.policies = PolicyRepository(mongo.db)
         self.chunks = PolicyChunkRepository(mongo.db)
+        self.findings = FindingRepository(mongo.db)
         self._embedder_provider = embedder_provider or (lambda: get_embedder(settings))
 
     # ----------------------------------------------------------------- ingest
@@ -165,6 +168,7 @@ class PolicyService:
                 "chunk_count": len(drafts),
                 "word_count": sum(d.word_count for d in drafts),
                 "truncated_chunks": 0,
+                "chunker_version": CHUNKER_VERSION,
                 "embedding_note": "Not embedded yet.",
                 "created_at": now,
                 "updated_at": now,
@@ -297,6 +301,12 @@ class PolicyService:
             chunk_count=doc["chunk_count"],
             word_count=doc["word_count"],
             truncated_chunks=doc.get("truncated_chunks", 0),
+            # Versions saved before this field existed were split by the current rules (no change has happened yet).
+            chunker_version=doc.get("chunker_version", 1),
+            chunker_outdated=doc.get("chunker_version", 1) != CHUNKER_VERSION,
+            cited_by_findings=self.findings.count_citing(
+                owner_id, [citation_id(doc["policy_id"], doc["version"], n) for n in range(1, doc["chunk_count"] + 1)]
+            ),
             embedding=self._summary(owner_id, doc),
             created_at=doc["created_at"],
             updated_at=doc["updated_at"],

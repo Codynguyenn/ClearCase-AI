@@ -53,7 +53,13 @@ export function PoliciesPanel({ onOpenCitation }: Props) {
   }
 
   const confirmDelete = (p: PolicyRecord) => {
-    if (window.confirm(`Delete "${p.title}" (all versions)? Findings that cite it will no longer show the passage.`)) {
+    // Deleting removes every version of the policy, so count the findings that cite any of them.
+    const citing = lib.policies.filter((v) => v.policy_id === p.policy_id).reduce((n, v) => n + v.cited_by_findings, 0)
+    const consequence =
+      citing > 0
+        ? `${citing} finding${citing === 1 ? '' : 's'} cite${citing === 1 ? 's' : ''} this policy and will no longer be able to show the passage.`
+        : 'No findings cite it.'
+    if (window.confirm(`Delete "${p.title}" (all versions)? ${consequence}`)) {
       void lib.remove(p)
     }
   }
@@ -213,6 +219,17 @@ function PolicyRow({
         )}
       </p>
       {e.detail && <p className="mt-1 text-[11px] text-red-800">{e.detail}</p>}
+      {p.chunker_outdated && (
+        <p className="mt-1 text-[11px] text-amber-800" data-testid="chunker-outdated">
+          Split with older chunking rules (v{p.chunker_version}). Passages are unchanged so existing citations stay
+          valid; to re-split this text, upload it again as a new version.
+        </p>
+      )}
+      {p.cited_by_findings > 0 && (
+        <p className="mt-1 text-[11px] text-slate-600">
+          Cited by {p.cited_by_findings} finding{p.cited_by_findings === 1 ? '' : 's'}.
+        </p>
+      )}
       {p.truncated_chunks > 0 && (
         <p className="mt-1 text-[11px] text-amber-800">
           {p.truncated_chunks} passage(s) are longer than the model reads; only their start is searched.

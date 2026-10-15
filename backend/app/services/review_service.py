@@ -406,6 +406,7 @@ class ReviewService:
             by_category[f.category.value][f.status.value] += 1
 
         unsupported = list(record.extraction.unsupported_pages) if record.extraction else []
+        with_images = list(record.extraction.pages_with_images) if record.extraction else []
         proposed = [f for f in items if f.status == ReviewStatus.PROPOSED]
         approved = [f for f in items if f.status == ReviewStatus.APPROVED]
 
@@ -421,6 +422,11 @@ class ReviewService:
             warnings.append(
                 f"Pages {', '.join(map(str, unsupported))} are scanned or mixed and were not analysed. "
                 "Exporting requires acknowledging that they may contain unredacted sensitive content."
+            )
+        if with_images:
+            warnings.append(
+                f"Pages {', '.join(map(str, with_images))} contain images. Text inside images was not searched, and an "
+                "image is only blanked where an approved box covers it."
             )
         if by_status.get(ReviewStatus.STALE.value):
             warnings.append(f"{by_status[ReviewStatus.STALE.value]} finding(s) are stale and will be ignored.")

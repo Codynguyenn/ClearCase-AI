@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # --- Upload limits ---
     max_upload_mb: int = Field(default=20, ge=1, le=500)
     max_pages: int = Field(default=200, ge=1, le=5000)
+    # Time budget for extracting one document, checked after each page (it cannot stop a page that hangs inside
+    # PyMuPDF itself). A document over budget is marked "error" and can be retried.
+    extraction_timeout_seconds: int = Field(default=60, ge=1, le=3600)
 
     # --- Retrieval / embeddings (Phase 4) ---
     # Models are downloaded once into `models_dir` (scripts/download_models.sh) and are only ever
@@ -48,6 +51,9 @@ class Settings(BaseSettings):
     # Exact commit of the model repository (its "version"). Recorded on every stored embedding.
     embedding_revision: str = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
     embeddings_enabled: bool = True
+    # At startup, quietly re-embed policy passages that are stale (embedded by a different model revision) or missing,
+    # in a background thread so the API is available immediately. Passages already embedded are never touched.
+    reindex_on_startup: bool = True
     max_policy_kb: int = Field(default=200, ge=1, le=2048)
     # Where the fictional example policies live (in Docker this folder is mounted read-only).
     sample_data_dir: str = str(_REPO_ROOT / "sample_data")

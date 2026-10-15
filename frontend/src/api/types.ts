@@ -51,6 +51,8 @@ export interface ExtractionInfo {
   duration_ms: number | null
   supported_pages: number
   unsupported_pages: number[]
+  /** Pages analysed as text that also show an image: text inside the image is not searched. */
+  pages_with_images?: number[]
   limitations: string[]
 }
 
@@ -273,6 +275,11 @@ export interface PolicyRecord {
   chunk_count: number
   word_count: number
   truncated_chunks: number
+  chunker_version: number
+  /** The chunking rules changed since this version was split; upload the text as a new version to re-split it. */
+  chunker_outdated: boolean
+  /** Review findings that cite a passage of this version. */
+  cited_by_findings: number
   embedding: EmbeddingSummary
   created_at: string
   updated_at: string

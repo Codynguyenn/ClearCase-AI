@@ -1,4 +1,5 @@
 import type {
+  DocumentRecord,
   ExportRecord,
   Finding,
   HealthResponse,
@@ -20,6 +21,9 @@ export function makePolicy(overrides: Partial<PolicyRecord> = {}): PolicyRecord 
     chunk_count: 10,
     word_count: 400,
     truncated_chunks: 0,
+    chunker_version: 1,
+    chunker_outdated: false,
+    cited_by_findings: 0,
     created_at: '2026-10-14T00:00:00Z',
     updated_at: '2026-10-14T00:00:00Z',
     embedding: {
@@ -167,4 +171,32 @@ export function makeExportWithRemainingCopies(overrides: Partial<ExportRecord> =
     retained: { intentionally_retained: 0, unresolved: 2, unresolved_locations: [{ page: 2, group: 0 }, { page: 2, group: 0 }] },
     ...overrides,
   })
+}
+
+export function makeDocument(overrides: Partial<DocumentRecord> = {}): DocumentRecord {
+  return {
+    id: 'doc1',
+    owner_id: 'demo-user',
+    filename: 'contract.pdf',
+    content_hash: 'a'.repeat(64),
+    size_bytes: 1234,
+    page_count: 3,
+    status: 'ready',
+    version: 1,
+    review_revision: 0,
+    extraction: {
+      engine: 'pymupdf',
+      engine_version: '1.28.2',
+      extracted_at: null,
+      duration_ms: 12,
+      supported_pages: 3,
+      unsupported_pages: [],
+      pages_with_images: [],
+      limitations: [],
+    },
+    processing: { attempts: 1, started_at: null, finished_at: null, error: null },
+    created_at: '2026-10-14T00:00:00Z',
+    updated_at: '2026-10-14T00:00:00Z',
+    ...overrides,
+  }
 }

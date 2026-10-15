@@ -29,7 +29,6 @@ import hashlib
 import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 
 import pymupdf
 

@@ -11,10 +11,10 @@ import sys
 from pathlib import Path
 
 import pytest
+from mcp import StdioServerParameters
 
 from app.agent.mcp_client import McpToolClient
 from app.config import Settings
-from mcp import StdioServerParameters
 
 TEST_SERVER = Path(__file__).parent / "support" / "mcp_test_server.py"
 

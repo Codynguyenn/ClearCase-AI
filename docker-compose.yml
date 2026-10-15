@@ -4,6 +4,11 @@
 #   docker compose up mongo          # only the database (then run backend/frontend natively)
 #   docker compose up --build        # everything
 #   docker compose run --rm backend python -m app.cli download-embedding-model   # ONCE: policy-search model
+#   docker compose exec backend python -m app.cli seed-samples [--reset]         # sample PDF + fictional policies
+#
+# The backend and frontend containers run as unprivileged users and report health ("docker compose ps").
+# If you created the `models` volume with an older version of this file (it was root-owned), run
+# `docker volume rm clearcase-ai_models` once (the name is <project>_models) so it is recreated writable.
 #
 # The MongoDB image tag matches the version used by scripts/dev_mongo.sh so that
 # the native and Docker paths behave the same way.
@@ -48,7 +53,8 @@ services:
       context: ./frontend
     container_name: clearcase-frontend
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       # The dev server proxies /api to this address (see frontend/vite.config.ts).
       VITE_API_PROXY_TARGET: http://backend:8000
