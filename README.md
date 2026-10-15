@@ -7,7 +7,7 @@ processing with true content removal, and MongoDB as the system of record.
 > **Status: all six phases complete** (upload, extraction, search, detection, review, real export and
 > verification, a real MCP server/client, policy retrieval with local embeddings and clickable citations, and a chat
 > assistant that works in a scripted demo mode or with a hosted model; plus pre-registered evaluations, a real-browser
-> end-to-end test, a demo script and an interview guide, each with its limits stated). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what works, test results and the next step. The full specification lives in
+> end-to-end test, a demo script and an interview guide, each with its limits stated). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what works, test results and the next step, and [`docs/requirements_audit.md`](docs/requirements_audit.md) for every requirement of the specification with its evidence (checked by a test). The full specification lives in
 > [`docs/ClearCase_Cursor_Prompt.md`](docs/ClearCase_Cursor_Prompt.md).
 
 ClearCase does **not** guarantee legal compliance or detect every sensitive
@@ -53,7 +53,7 @@ demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 622 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 632 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -138,7 +138,7 @@ PyMuPDF is dual-licensed **AGPL-3.0 / commercial**. Because ClearCase depends on
 it, this repository is licensed under **AGPL-3.0** (`LICENSE`). Anyone offering a
 modified ClearCase as a network service must make their source available. A
 closed-source product would need Artifex's commercial licence or another PDF
-library. Details: `docs/decisions.md` §1.
+library. Details: `docs/decisions.md` §1 and `docs/dependency_licenses.md` (every direct dependency's licence, generated from the installed metadata).
 
 ## Setup (Apple Silicon Mac, native)
 
@@ -390,6 +390,6 @@ frontend/src               React app (api/, hooks/, components/, lib/)
 frontend/e2e               Playwright browser test (npm run e2e); e2e-screenshots/ makes docs/images (npm run screenshots)
 sample_data/               synthetic contract generator + two fictional policies
 evaluation/                retrieval sets and scripts (Phases 4 and 6, retrieval2/); assistant model comparison (assistant_eval/)
-docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md
-scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh, e2e_backend.sh, live_check.py
+docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md, requirements_audit.md (each requirement with its evidence), dependency_licenses.md
+scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh, e2e_backend.sh, live_check.py, list_licenses.py
 ```

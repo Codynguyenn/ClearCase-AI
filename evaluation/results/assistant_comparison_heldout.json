@@ -727,6 +727,33 @@
    "detail": "tool calls / doc {'claude-haiku-5-5': 9.7, 'claude-opus-5-5': 7.2, 'claude-sonnet-5-5': 7.0}; {'claude-haiku-5-5': {'company_names': 0, 'unmatched': 0}, 'claude-opus-5-5': {'company_names': 0, 'unmatched': 0}, 'claude-sonnet-5-5': {'company_names': 0, 'unmatched': 0}}"
   }
  ],
+ "provenance": {
+  "assistant_models": [
+   "claude-haiku-5-5",
+   "claude-opus-5-5",
+   "claude-sonnet-5-5"
+  ],
+  "policies": [
+   {
+    "policy_id": "northwind-redaction-policy",
+    "version": "1.0",
+    "file": "fictional_redaction_policy.md",
+    "sha256": "7d00e41c3481ab773711eebba343d895cc4c301e76730c5dae3bed48769acc26"
+   },
+   {
+    "policy_id": "northwind-sharing-guidelines",
+    "version": "1.0",
+    "file": "fictional_sharing_guidelines.md",
+    "sha256": "a19555d3cb373ed28408585ac237eae487d0bd821873ce0a3f3b5e4f7520bf35"
+   }
+  ],
+  "embedding": {
+   "model": "sentence-transformers/all-MiniLM-L6-v2",
+   "revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+   "similarity_cutoff": 0.38,
+   "keyword_weight": 0.15
+  }
+ },
  "posthoc_company_addresses": {
   "excluded_items": 8,
   "excluded_by_document": {

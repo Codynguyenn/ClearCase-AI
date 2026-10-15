@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full backend run (2026-10-15, `phase-6-data-v2`, with the evaluation, second-set, pipeline and generator tests):** **`622 passed in 512.37s`**, `ruff check app tests ../evaluation` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (Earlier the same day: 563, then 585 after the second-set tests, 607 after the pipeline tests, 619 after the generator tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-spec-gaps`, with the evaluation, pipeline, generator, audit and version tests):** **`632 passed in 517.13s`**, `ruff check app tests ../evaluation` clean. Frontend after the bulk-button fix (PR #11): lint and typecheck clean, `npm test` **100 passed**, `npm run build` OK, and the five browser tests pass (2026-10-15). (Earlier the same day: 563, then 585 after the second-set tests, 607 after the pipeline tests, 622 after the generator and v2 tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -333,6 +333,16 @@ exposed a second flaw in my synthetic data: every phone number has a 3-digit las
 detectors score PHONE recall 0. The detectors' F1 is 0.823 as frozen and 0.876 without those items; the model advantage shrinks from about
 +0.16 to about +0.10 (still clear). Headline numbers keep the frozen data; a marked post-hoc section and the protocol's incident log carry the
 correction (decision 51, addendum).
+
+### Phase 6: requirements audit and three small gaps closed (2026-10-15, branch `phase-6-spec-gaps`)
+
+The specification was read line by line and every requirement checked against the repo: **`docs/requirements_audit.md`** (each requirement, its
+status and its evidence; `backend/tests/test_requirements_audit.py` fails if a cited file or test does not exist or a status is unknown; each
+check was broken on purpose to confirm it fails). Result: all six phases and all deliverables are met, with two named exceptions (extraction's
+time budget cannot interrupt a page that hangs inside PyMuPDF: **partly**; every active policy version is searched, no per-document choice:
+**documented deviation**). Three small gaps were found and fixed: a test that review decisions and the revision survive an application restart;
+`docs/dependency_licenses.md` (generated from installed metadata by `scripts/list_licenses.py`; direct dependencies only); and model and policy
+versions in the assistant evaluation (report headers state them, new run records carry them). Decision 57.
 
 ### Phase 6: the data generator fixed, and corrected v2 data (2026-10-15, branch `phase-6-data-v2`)
 

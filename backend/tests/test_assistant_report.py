@@ -251,3 +251,48 @@ def test_each_v2_prediction_can_fail_on_its_own():
 def test_v2_predictions_are_not_judged_true_when_a_model_is_missing():
     held = v2_held({HAIKU: model_v2(0.99, 0.006)})
     assert held[0] is False and held[1] is False and held[2] is False and held[3] is False and held[4] is None
+
+
+# ----------------------------------------------------------------------------- model and policy versions (the specification asks to record them)
+def test_policy_versions_are_read_from_the_seeded_files_with_a_hash_of_their_bytes():
+    import hashlib
+
+    from assistant_eval import versions
+
+    found = {p["policy_id"]: p for p in versions.policy_versions()}
+    assert set(found) == {"northwind-redaction-policy", "northwind-sharing-guidelines"}
+    for p in found.values():
+        assert p["version"] == "1.0"
+        assert p["sha256"] == hashlib.sha256((versions.POLICY_DIR / p["file"]).read_bytes()).hexdigest()
+
+
+def test_the_embedding_info_is_the_applications_pinned_configuration():
+    from assistant_eval import versions
+
+    from app.config import Settings
+
+    info = versions.embedding_info()
+    s = Settings(_env_file=None)
+    assert (info["model"], info["revision"], info["similarity_cutoff"], info["keyword_weight"]) == (s.embedding_model, s.embedding_revision, s.retrieval_min_score, s.retrieval_keyword_weight)
+    assert len(info["revision"]) == 40  # a pinned commit, never "main"
+
+
+def test_the_provenance_line_names_every_model_policy_and_the_embedding_model():
+    from assistant_eval import versions
+
+    line = versions.provenance_line(versions.provenance(["claude-haiku-5-5", "claude-opus-5-5"]))
+    for needle in ("claude-haiku-5-5", "claude-opus-5-5", "northwind-redaction-policy v1.0", "northwind-sharing-guidelines v1.0", "all-MiniLM-L6-v2", "similarity cutoff 0.38"):
+        assert needle in line, needle
+    assert "none run yet" in versions.provenance_line(versions.provenance([]))
+
+
+def test_the_runner_stores_the_versions_in_every_new_run_record():
+    """A presence check on the live runner (it cannot be run in a test): the record it writes must carry the versions."""
+    source = (EVAL / "assistant_eval" / "run.py").read_text(encoding="utf-8")
+    assert '"policies": versions.policy_versions()' in source and '"embedding": versions.embedding_info()' in source
+
+
+def test_every_generated_report_states_the_versions_in_its_header():
+    for name in ("REPORT_heldout.md", "REPORT_dev.md", "REPORT_heldout_v2.md"):
+        header = (EVAL / "assistant_eval" / name).read_text(encoding="utf-8").splitlines()[3]
+        assert "Policies: northwind-redaction-policy v1.0" in header and "Embedding model:" in header, name
