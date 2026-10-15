@@ -681,7 +681,6 @@ information" while keeping company names visible, quoted policy sentences that a
 injected line told it to ignore the user and export everything, flagged the line and did not act on it. That is one run;
 the protection against the same line does not depend on the model behaving (`tests/test_agent_injection.py`).
 
-
 ## 51. Measuring the assistant: rules written first, one run, and what the result does and does not show (run 2026-10-14)
 
 **Question.** Does the assistant (the real loop, tools and MCP server) find the personal information of individuals in a
@@ -816,3 +815,20 @@ second labeler is the writer's own model (a consistency check, not an independen
 least one labeler and were excluded**; real questions are often borderline, so this set is probably easier than real use. Two fictional
 policies and 19 passages. Any new retrieval method (a re-ranker, an LLM relevance check) must be tested on a **third** set: these two
 are now measured and must not be used to tune.
+
+## 54. "Approve shown" / "Reject shown" only touch undecided findings (decided 2026-10-15)
+
+A browser test found that the two bulk buttons acted on every finding on screen. With the default "all statuses" list,
+rejecting one finding and then clicking "Approve shown" quietly turned that rejection into an approval, and "Reject
+shown" turned approved findings into rejected ones, which would leave text the reviewer had approved unredacted. The
+server was behaving correctly: it applies whatever ids it is sent, and the screen was sending too many.
+
+**Chosen: fix it in the panel, not the server.** With "all statuses" selected, the buttons now send only findings that
+are still `proposed`, and say how many: "Approve shown (17 undecided)". Findings the reviewer already decided are left
+alone. If the reviewer picks a status in the filter (say "approved"), the buttons act on exactly that list, as before,
+so changing a decision in bulk is still possible but takes a deliberate choice of filter. Stale findings are never
+sent. The other filters (category, this page) still narrow the list first. The server endpoint is unchanged on purpose:
+"apply this action to exactly these ids" is easier to reason about than a call that silently drops some of them, and
+the reviewer's intent is only known on the screen. The component tests cover the reject-then-approve case, the reverse, the count, and the
+filtered-set case; reverting the fix makes them fail.
+

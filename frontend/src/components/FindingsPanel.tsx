@@ -62,7 +62,11 @@ export function FindingsPanel(p: Props) {
     return m
   }, [p.findings])
 
+  // With "all statuses" the bulk buttons only touch findings nobody has decided yet, so they cannot overwrite a
+  // decision the reviewer already made. Filtering to a specific status is the explicit way to act on those.
   const decidable = visible.filter((f) => f.status !== 'stale')
+  const bulkTargets = statusFilter === 'all' ? decidable.filter((f) => f.status === 'proposed') : decidable
+  const bulkSuffix = statusFilter === 'all' ? ` (${bulkTargets.length} undecided)` : ''
   const toggle = (c: Category) =>
     setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]))
 
@@ -143,24 +147,26 @@ export function FindingsPanel(p: Props) {
           </label>
         </div>
 
-        {decidable.length > 0 && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-500">Shown ({decidable.length}):</span>
+        {bulkTargets.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-slate-500">
+              {statusFilter === 'all' ? 'Shown:' : `Shown (${bulkTargets.length}):`}
+            </span>
             <button
               type="button"
               disabled={p.busy}
-              onClick={() => p.onBulk(decidable.map((f) => f.id), 'approve')}
+              onClick={() => p.onBulk(bulkTargets.map((f) => f.id), 'approve')}
               className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-50 disabled:opacity-50"
             >
-              Approve shown
+              Approve shown{bulkSuffix}
             </button>
             <button
               type="button"
               disabled={p.busy}
-              onClick={() => p.onBulk(decidable.map((f) => f.id), 'reject')}
+              onClick={() => p.onBulk(bulkTargets.map((f) => f.id), 'reject')}
               className="rounded border border-slate-300 px-2 py-0.5 hover:bg-slate-50 disabled:opacity-50"
             >
-              Reject shown
+              Reject shown{bulkSuffix}
             </button>
           </div>
         )}

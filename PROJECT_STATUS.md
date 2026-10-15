@@ -516,6 +516,15 @@ Not yet tested: Playwright E2E (Phase 6), GitHub Actions run (repo has no remote
 yet). A bare `docker compose up --build` with the default ports was not run here
 because of the port conflicts above.
 
+### Bulk-button fix (2026-10-15)
+
+A browser test showed that "Approve shown" / "Reject shown" overwrote decisions already made when the list showed
+"all statuses" (reject one finding, click "Approve shown", and it became approved). The buttons now act only on
+undecided findings in that view and say how many ("Approve shown (17 undecided)"); filtering to a specific status
+still acts on that whole list. Frontend only (`FindingsPanel.tsx`); the server endpoint is unchanged. See
+`docs/decisions.md` #54. Frontend after the fix: `npm test` 100 passed, lint and typecheck clean. The new component
+tests were checked by reverting the fix: they fail.
+
 ## Known issues / notes
 
 - Dev machine: Python 3.14.7, Node 22.11.0 (below Vite 8's ≥22.12), no Homebrew.
