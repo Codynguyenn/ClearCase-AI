@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-14 (Phase 5 complete and verified on branch `phase-5-agent`, not yet committed or merged; Phase 6 not started)
+Last updated: 2026-10-15 (Phases 1-5 merged to `main`; Phase 6 under way: the assistant model comparison and the browser end-to-end test are merged, PR #7; demo script and interview guide are in the follow-up docs PR)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -13,8 +13,8 @@ This file is the hand-off point for any new session. Read it first, then
 | 2 | Search, candidate detection, manual review, real export, verification | **Complete and verified** |
 | 3 | Real MCP server/client integration with tested tools | **Complete and verified** (merged to `main`) |
 | 4 | Policy ingestion, embeddings, retrieval, source citations | **Complete and verified** (PR #3 and the hardening bundle, PR #5, merged to `main`) |
-| 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (branch `phase-5-agent`; uncommitted, not merged) |
-| 6 | Integration tests, evaluation, interface polish, documentation | Not started |
+| 5 | Live agent integration, persisted chat, visible tool activity | **Complete and verified** (PR #6, merged to `main`) |
+| 6 | Integration tests, evaluation, interface polish, documentation | **In progress.** Done: assistant model comparison, the browser end-to-end test, the demo script and the interview guide, the second retrieval question set. Not done: polish |
 
 ## Working features (verified)
 
@@ -177,7 +177,7 @@ Frontend (Phases 1-2):
 
 ## Test results (actually run)
 
-**Latest full runs (2026-10-14, Phase 5 on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
+**Latest full backend run (2026-10-15, `phase-6-retrieval-set2`, with the evaluation and second-set tests):** **`585 passed in 551.82s`**, `ruff check app tests` clean. (The 563 earlier on 2026-10-15 predates the 22 second-set tests.) **Phase 5 runs (on `phase-5-agent`):** backend **`525 passed in 534.52s`**, `ruff check app tests` clean; frontend lint and typecheck clean, `npm test` **94 passed**, `npm run build` OK, `npm audit` 0 vulnerabilities. Earlier run, after the hardening bundle (merged as PR #5): backend **`314 passed in 606.95s`** (271 before the bundle; slower than the previous ~350 s because a Docker image build ran at the same time), `ruff check app tests` clean; frontend `npm run lint` clean, typecheck clean, `npm test` **68 passed** (58 before), `npm run build` OK, `npm audit` 0 vulnerabilities; Docker: both images built, stack healthy, non-root, `seed-samples` run inside it. **CI has not run on this branch yet.**
 
 The figures below are from the end of Phase 1 and are kept for history.
 
@@ -257,6 +257,65 @@ apply to PDF.js 6.3): see "Phase 4 hardening bundle" below and `docs/decisions.m
   retrieval message now calls "no matching passage" a heuristic. Both held-out runs are used up.
 - **Small extras**: all four were done afterwards in the hardening bundle below (chunker version, script that
   regenerates `requirements.lock`, citing-finding count in the delete confirmation, automatic re-index at startup).
+
+### Phase 6: assistant model comparison (2026-10-14, merged in PR #7)
+
+What was built (`evaluation/assistant_eval/`): a seeded generator of synthetic contract-like PDFs with ground truth (6 templates; a
+6-document dev set for debugging and a frozen 12-document held-out set, SHA-256 checked), the scoring rules, a runner that drives the
+real assistant loop and MCP server against a scratch database with a hard budget cap, a report generator, and `PROTOCOL.md` written
+before any held-out result (predictions, decision rule, rules of conduct, incident log).
+
+Verified: `backend/tests/test_assistant_eval.py` (19 tests: scoring rules, bootstrap, dataset reproducibility, ground truth matches the
+real extractor, frozen hash, seed separation) and `backend/tests/test_assistant_report.py` (19 tests: decision rule edges, retry handling,
+the six predictions, the post-hoc company-address logic). The tests that did not fail when I broke the code on purpose were
+tightened until they did. Full backend suite **563 passed in 497.86s**, `ruff check` clean for `app`, `tests` and the evaluation package.
+
+Run: 36 live runs (12 documents x Haiku, Sonnet, Opus), all finished normally, **$2.78** at list prices (about $0.006, $0.074 and
+$0.152 per document). Result in short (full tables: `evaluation/assistant_eval/REPORT_heldout.md`, decision 51 in `docs/decisions.md`):
+F1 0.988 / 0.981 / 0.981 for Haiku / Sonnet / Opus against 0.823 for the app's detectors and 0.622 for pattern-only; the models
+cannot be told apart; no company name proposed; no export attempt on the injected documents. Five of six pre-registered predictions
+held. The pre-registered rule recommends Haiku as the default model: `.env.example` and the README now say so and the local `.env` uses `claude-haiku-5-5` (it is only a setting).
+
+Found by reading the misses: all 16 were the address of a company, which my labels called sensitive although the request says
+"individuals". Headline numbers keep the frozen labels; a separate post-hoc table (marked as such) leaves those 8 lines out. This is a
+flaw in my ground truth, not a result about the models, and it is in the protocol's incident log.
+
+Spend so far on the live provider, estimated from token counts: about $3.3 of the $20 bought (Phase 5 checks ~$0.5, evaluation setup
+~$0.04, held-out run $2.78). The Console's usage page is the authority.
+
+### Phase 6: browser end-to-end test (2026-10-15, merged in PR #7)
+
+`frontend/e2e/review-flow.spec.ts` (Playwright, `npm run e2e`): five tests, one reviewer's session, in a real Chrome against the real
+frontend, backend, MongoDB and PDF engine, with the scripted demo assistant (no model call is possible; `scripts/e2e_backend.sh` blanks
+the provider settings and uses its own database `clearcase_e2e`). **5 passed in about 70 s** locally with Chrome (`E2E_CHANNEL=chrome`).
+Covered: upload, search, detect, reject/approve with a status filter; policy library, a cited passage in the modal dialog (focus stays
+off the page behind it, Escape closes it and returns focus); chat summary with visible tool activity; a checked citation chip; the
+assistant refused an export until the reviewer authorizes, then exporting; the reviewer's own export, download, and re-uploading the
+downloaded file to search it (approved name 5 matches before, 1 after = the rejected one; approved e-mails and SSN gone; company names
+kept); the conversation after a reload. Checked by breaking the product on purpose: a non-modal dialog and a do-nothing redaction each
+make the tests fail. Frontend lint, typecheck (now includes the specs via `tsconfig.e2e.json`), 94 unit tests and build still pass.
+A new CI job `e2e` runs it with Playwright's own Chromium; it **passed on GitHub's runners** (PR #7: backend, frontend and e2e all green).
+
+**Compose re-run (2026-10-15):** `docker compose build` and `up` with the current tree: mongo, backend and frontend all came up healthy,
+the backend runs as uid 10001 (non-root), and the same five browser tests **passed against the containers** (backend and database in
+Docker, a fresh database inside the stack, the scripted assistant; the pinned embedding model was copied from the local cache into the
+`models` volume, so nothing was downloaded). The temporary port override and scratch database were removed afterwards.
+
+Found: bulk "Approve shown"/"Reject shown" overwrite decisions already made when the status filter is "all" (filed as a separate
+task; the test filters to undecided findings). Details and limits: decision 52.
+
+### Phase 6: second retrieval question set (2026-10-15, branch `phase-6-retrieval-set2`)
+
+`evaluation/retrieval2/` (protocol, build script, report) and `evaluation/retrieval_heldout2.json` (frozen, sha256 `68eaf4dc...`): 95
+questions written by a model that never saw the policies and labelled by two other model runs (kept only if both agreed): 36 answerable,
+59 not addressed. The unchanged production retriever was run once (`eval_heldout.py --set 2 --label baseline`; the runner gained a
+backwards-compatible `--set` option, and a smoke run on the dev set still reproduces its known numbers). Result: balanced accuracy
+**0.61** at the cutoff (first held-out set 0.56, pooled **0.60**, interval 0.52 to 0.68); right passage in the top 3 for 0.86 (pooled 0.81).
+Four of five pre-registered predictions held; prediction 1 (worse ranking) was wrong. Cost **$0.061** (cap $0.20). Tests:
+`backend/tests/test_retrieval_set2.py` (22 tests; the selection rules, the spend guard, the blindness of the writer prompt and the report
+logic were each broken on purpose to confirm a test fails). Details and limits: decision 53 and `evaluation/retrieval2/REPORT.md`.
+
+Spend so far on the live provider, estimated from token counts: about $3.4 of the $20 bought. The Console's usage page is the authority.
 
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
@@ -463,7 +522,7 @@ A browser test showed that "Approve shown" / "Reject shown" overwrote decisions 
 "all statuses" (reject one finding, click "Approve shown", and it became approved). The buttons now act only on
 undecided findings in that view and say how many ("Approve shown (17 undecided)"); filtering to a specific status
 still acts on that whole list. Frontend only (`FindingsPanel.tsx`); the server endpoint is unchanged. See
-`docs/decisions.md` #51. Frontend after the fix: `npm test` 100 passed, lint and typecheck clean. The new component
+`docs/decisions.md` #54. Frontend after the fix: `npm test` 100 passed, lint and typecheck clean. The new component
 tests were checked by reverting the fix: they fail.
 
 ## Known issues / notes
@@ -486,24 +545,23 @@ tests were checked by reverting the fix: they fail.
 
 ## Remaining work (by phase)
 
-**Phase 6 — QA & docs**: Playwright E2E (upload → search/analyse → review → approve → export → reopen
-conversation, in a real browser; also cover the Policy tab, the citation dialog and the Chat tab, which component tests
-in happy-dom cannot prove), a **new** held-out evaluation set and report (detection precision/recall/F1 by category,
-retrieval hit rate, verification outcomes, latency; and, with the live key, the optional live comparison of models
-such as Opus vs Sonnet vs Haiku), the three-minute demo script, the interview guide, polish, and a full Docker
-Compose re-run.
+**Phase 6 — QA & docs**: a retrieval question set **written by people** (the second set is model-written), export-verification outcomes and latency, and polish (the Compose re-run was done on 2026-10-15). **Done in Phase 6 so far:** the second retrieval set (decision 53), `docs/demo_script.md` and `docs/interview_guide.md`, the Playwright end-to-end test (decision 52), and the detection and model comparison (precision/recall/F1 by category for the
+detectors and three hosted models, cost, time, tool use, injected-document behaviour).
 
 **Known gaps (deliberate or deferred)**:
-- Live assistant **quality is unmeasured**: three requests on the synthetic sample with one model were observed, nothing
-  more. Phase 6 should measure it on a labelled synthetic set and say it is synthetic.
+- Live assistant quality is measured **only on 12 easy synthetic one-page documents** (see Phase 6 above): it separates the
+  assistant from the detectors but not the models from each other, and says nothing about real documents. The labels also
+  treat company addresses as sensitive (known, logged); a harder set with corrected labels, written first, is the follow-up.
 - Live mode supports one provider (Anthropic); replies arrive when a request finishes (polling, no token streaming).
 - No server-side per-tool timeout (tools are threads; the client enforces it).
-- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (held-out balanced accuracy 0.56). The
-  assistant is built around that (it must quote or say the policy does not address the question, and quotes are checked
-  by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a NEW held-out set (the current one
-  has had its two allowed runs).
+- The retrieval cutoff (0.38) is unreliable as an answer/no-answer decision (balanced accuracy 0.56 and 0.61 on two held-out
+  sets, pooled 0.60; decision 53). The assistant is built around that (it must quote or say the policy does not address the
+  question, and quotes are checked by code). A cross-encoder re-ranker / LLM relevance check should be evaluated on a THIRD
+  set (both held-out sets have been measured and must not be used to tune).
 - Brute-force cosine; fine for thousands of passages, replace `MongoCosineRetriever` beyond.
-- Component tests run in happy-dom, which cannot prove Escape-to-close, focus trapping or real layout.
+- Component tests run in happy-dom, which cannot prove focus trapping or real layout; the Playwright test covers focus and Escape for
+  the citation dialog in one real browser engine. Real layout, other browsers and phones are still unchecked.
+- Bulk "Approve shown"/"Reject shown" overwrite earlier decisions when the status filter is "all" (filed as a separate task).
 - Policies cited by findings can be deleted; the delete confirmation says how many findings cite it and the UI then
   shows the passage as unavailable (it does not block deletion).
 - Chunker changes never re-chunk existing policy versions (on purpose: citation ids must keep pointing at the same
@@ -514,9 +572,9 @@ Compose re-run.
 
 ## Next implementation step
 
-1. **Commit, push and open a PR for `phase-5-agent`** (the user decides; everything is currently uncommitted), let CI
-   run (it never calls the provider), and merge.
-2. Start **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
+1. Merge the docs PR (demo script, interview guide, README fixes). The bulk "Approve shown/Reject shown" fix is being done in a
+   separate session; it will also need to adjust `frontend/e2e/review-flow.spec.ts` if it changes what the default view does.
+2. Continue **Phase 6** (list above). Keep `CLEARCASE_ASSISTANT_MODE=demo` for CI and the default demo; live mode needs the
    user's key in `.env` and spends real credit (about $0.03-$0.17 per request observed; the account is prepaid with
    auto-reload off). `scripts/live_check.py` is the manual way to look at it.
 3. Before any public or multi-user use: real authentication (the demo identity is not authentication), a worker process

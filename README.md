@@ -4,11 +4,11 @@ AI-assisted legal document redaction — a local portfolio MVP demonstrating rea
 MCP tool use, retrieval-augmented generation over redaction policies, PDF
 processing with true content removal, and MongoDB as the system of record.
 
-> **Status: Phase 5 of 6 complete** (upload, extraction, search, detection,
-> review, real export and verification, a real MCP server/client, policy
-> retrieval with local embeddings and clickable citations, and a chat assistant
-> that works in a scripted demo mode or with a hosted model). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-> for what works, test results and the next step. The full specification lives in
+> **Status: Phases 1–5 complete, Phase 6 (evaluation, end-to-end test, demo and interview material, polish) in
+> progress** (upload, extraction, search, detection, review, real export and verification, a real MCP
+> server/client, policy retrieval with local embeddings and clickable citations, and a chat assistant that works
+> in a scripted demo mode or with a hosted model; a pre-registered model comparison and a real-browser end-to-end
+> test are done). See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for what works, test results and the next step. The full specification lives in
 > [`docs/ClearCase_Cursor_Prompt.md`](docs/ClearCase_Cursor_Prompt.md).
 
 ClearCase does **not** guarantee legal compliance or detect every sensitive
@@ -40,7 +40,7 @@ item. Sample documents and the seeded policy are synthetic and fictional.
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 144 backend tests against a **real MongoDB**; 11 frontend geometry tests.
+- 585 backend tests against a **real MongoDB**, 94 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -91,16 +91,19 @@ redactions you approved.
 To use live mode: create an API key in your provider's console, put it only in the git-ignored `.env`
 (`CLEARCASE_LLM_PROVIDER=anthropic`, `CLEARCASE_LLM_API_KEY=...`, `CLEARCASE_LLM_MODEL=...`), set
 `CLEARCASE_ASSISTANT_MODE=live` and restart. Never paste the key anywhere else. Rough cost, measured on the
-synthetic sample with `claude-opus-5-5` at list prices (one observation, not a promise): about $0.03-$0.17 per
-request. `backend/.venv/bin/python scripts/live_check.py --yes` repeats that check against the sample and prints
+synthetic documents at list prices (observations, not a promise): about $0.006 per document-sized request with
+`claude-haiku-5-5` (the recommended model), $0.07 with Sonnet and $0.15 with Opus, which were not distinguishable on
+accuracy there (`evaluation/README.md`). `backend/.venv/bin/python scripts/live_check.py --yes` repeats that check against the sample and prints
 the tool calls, the answers, which citations verified, the tokens and an estimated cost.
 
-Honest numbers (synthetic, same-author questions; see `evaluation/README.md`): on questions it was
+Honest numbers (synthetic questions; see `evaluation/README.md`): on questions it was
 tuned on, the right passage is first for 19 of 25 and the cutoff refuses all 10 unanswerable ones.
 On a **frozen held-out set it was never tuned on**, the right passage is first for 18 of 28 (64%),
 the app shows a relevant passage for only 12 of 28 answerable questions, tells 13 of 28 "no matching
 policy" when there is one, and still shows a passage for 5 of 16 questions the policies do not cover
-(near-miss topics). In short: ranking is decent, but a similarity cutoff cannot reliably decide
+(near-miss topics). A **second held-out set**, written by a model that never saw the policies, gave the same picture
+(balanced accuracy 0.61, against 0.56 on the first and 0.84 on the tuning set; pooled 0.60), while the right passage was in
+the top 3 for 81% of answerable questions. In short: ranking is decent, but a similarity cutoff cannot reliably decide
 whether the policy answers a question. Treat "no matching passage" as a hint, not a verdict, and
 read the passages and the library yourself.
 
@@ -112,7 +115,7 @@ read the passages and the library yourself.
 | Backend | Python 3.11+, FastAPI, Pydantic v2, `pymongo` (official), PyMuPDF, spaCy | `backend/requirements.lock` |
 | Embeddings (RAG) | `sentence-transformers` 6.1.0 + CPU-only PyTorch 2.14.1, model `all-MiniLM-L6-v2` (Apache-2.0) at a pinned revision, NumPy | `backend/requirements.lock` |
 | Database | MongoDB 8.0 Community + GridFS | — |
-| Tests | pytest (backend), vitest (frontend geometry), Playwright (Phase 6) | — |
+| Tests | pytest (backend), vitest (frontend), Playwright (real-browser end to end) | — |
 | MCP | official `mcp` SDK 2.3.0 (stdio server + client), `jsonschema` | `backend/requirements.lock` |
 | Later phases | hosted LLM provider (Phase 5) | — |
 
@@ -205,13 +208,26 @@ cd backend && .venv/bin/ruff check app tests      # lint (CI runs it too)
 ```
 
 Frontend checks (94 tests: geometry maths plus React component tests that run in a simulated
-browser with a faked network; the real-browser end-to-end test arrives in Phase 6):
+browser with a faked network):
 
 ```bash
 cd frontend && npm run lint && npm test && npm run build
 ```
 
-CI (`.github/workflows/ci.yml`) runs both jobs with a MongoDB service container.
+Browser end-to-end test (a real Chrome/Chromium drives the real frontend, backend, MongoDB and PDF engine through one
+reviewer's session: upload, search, detect, review, the assistant's refused and then authorized export, the policy
+dialog, downloading the redacted file and searching it again to prove the approved text is gone). The assistant is the
+scripted demo one and the provider settings are blanked, so it cannot call a paid model; it uses its own database
+(`clearcase_e2e`, dropped at every start) and ports 8011 and 5183:
+
+```bash
+scripts/dev_mongo.sh start
+cd frontend
+npx playwright install chromium     # once; or skip it and use the Chrome you have: E2E_CHANNEL=chrome npm run e2e
+npm run e2e                         # run the file as a whole: the five tests tell one story and share a database
+```
+
+CI (`.github/workflows/ci.yml`) runs three jobs (backend, frontend, browser end-to-end), each with the services it needs.
 
 ## API (Phases 1–5)
 
@@ -283,11 +299,13 @@ for the reasoning behind each major choice.
 - NER is a pretrained model we did not train; it produces false positives
   (for example "MISCELLANEOUS NOTE" tagged as a person). That is why every
   finding needs a human decision and why we never invent a confidence score.
-- The real-browser (Playwright) end-to-end test and the full evaluation report are Phase 6. The Chat tab is covered
-  by component tests with a faked network, and was exercised by hand in a real browser.
-- The assistant's quality is **not measured**. Live mode was observed on the synthetic sample (three requests, one
-  model), which shows it works and behaves sensibly, not how accurate it is on real documents. It can miss
-  entities or over-propose, which is why everything it proposes needs your decision.
+- The real-browser (Playwright) end-to-end test covers the main reviewer session in demo mode (see above). It does not cover
+  live mode (that spends money; `scripts/live_check.py` is the manual check), other browsers, phones, scanned PDFs or long documents.
+- The assistant's quality is measured **only on 12 easy synthetic documents** (`evaluation/README.md`): there the
+  model-assisted workflow found clearly more personal information than the app's detectors alone (F1 about 0.98 against
+  0.82), Haiku, Sonnet and Opus could not be told apart, and the cheapest cost about 1/27 of the dearest. That shows the
+  design works and is cheap to run, not how accurate it is on real documents (the labels also had a flaw, which the
+  report discloses). It can miss entities or over-propose, which is why everything it proposes needs your decision.
 - Live mode supports one provider (Anthropic). Replies appear when a request finishes (the interface polls once a
   second and shows tool activity meanwhile); there is no token streaming yet. Policy scope is global: every active
   policy version is searched, and a citation pins the exact version it quotes. Chat messages can contain document
@@ -352,7 +370,7 @@ backend/app/mcp_server     MCP server over stdio: seven tools (Phase 3)
 backend/tests              pytest suite
 frontend/src               React app (api/, hooks/, components/, lib/)
 sample_data/               synthetic contract generator + two fictional policies
-evaluation/                retrieval dev set + tuning script (Phase 4); full evaluation in Phase 6
-docs/                      spec, architecture, decisions
+evaluation/                retrieval sets + scripts (Phase 4); assistant model comparison (Phase 6)
+docs/                      spec, architecture, decisions, demo_script.md (3 minutes), interview_guide.md
 scripts/                   dev_mongo.sh, dev_node.sh, dev_backend.sh, dev_frontend.sh, download_models.sh
 ```

@@ -1,0 +1,749 @@
+{
+ "_about": "SECOND held-out set for policy retrieval. FROZEN: its SHA-256 is in retrieval_heldout2.sha256 and eval_heldout.py --set 2 refuses to run if the file changed. Never use it to tune anything. The questions were written by a language model that was NOT shown the policies, and each was labelled against the policy passages by two other models; a question is kept only if both agreed. This is more independent than the first held-out set, but it is not human-written and not real users' questions. See evaluation/retrieval2/PROTOCOL.md.",
+ "policies": [
+  "northwind-redaction-policy",
+  "northwind-sharing-guidelines"
+ ],
+ "_provenance": {
+  "writer": "claude-haiku-5-5",
+  "labelers": [
+   "claude-sonnet-5-5",
+   "claude-haiku-5-5"
+  ],
+  "prompt_sha256": {
+   "writer": "90d332784aa57efda6381aa9407edf82a862897f766015da8eb34794eb28b8d7",
+   "labeler": "8ffe5e481e17868d1776f012754094b75059de3cff059d664399ed33a3b9b8e0"
+  },
+  "candidates_written": 148,
+  "dropped_as_repeats": {
+   "empty_or_too_long": 0,
+   "repeat": 3,
+   "copy_of_earlier_set": 0
+  },
+  "candidates_labelled": 145,
+  "labelers_agree_on_verdict": "115/144",
+  "excluded": {
+   "missing_label": 1,
+   "unclear": 46,
+   "labelers_disagree_on_verdict": 3,
+   "labelers_name_different_passages": 0
+  },
+  "kept": 95,
+  "spent_usd": 0.0607
+ },
+ "answerable": [
+  {
+   "id": "s01",
+   "q": "Can I send the redacted version of this lease to opposing counsel, or does it need a second person to check it first?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s02",
+   "q": "Do I black out a tenant's home address on a lease before it goes to the client's accountant?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s03",
+   "q": "Is a redacted PDF enough, or do I need to strip the hidden metadata too?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "4. Hidden content and file metadata"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s04",
+   "q": "The invoice has a bank account number and a SSN for a sole proprietor. What gets redacted before it's shared?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "4. Government and tax identifiers"
+    ],
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s05",
+   "q": "Who approves sharing a document outside the company?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s06",
+   "q": "After I redact a signature block, should I keep the unredacted original somewhere?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "6. Keeping records"
+    ]
+   ],
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "s07",
+   "q": "Do I need to black out the bank account number on an invoice before it goes to opposing counsel?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s08",
+   "q": "Our demand letter attaches a client's SSN in an exhibit. Has to come out before sending?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "4. Government and tax identifiers"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s09",
+   "q": "How long do we keep the unredacted originals after the matter closes?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "6. Keeping records"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s10",
+   "q": "I'm sending back a signed contract, and the signature block has someone's personal cell number. Redact it?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s11",
+   "q": "Does anyone have to sign off on redactions before a document leaves the firm?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s12",
+   "q": "Need to scrub metadata and tracked changes from a contract before it goes out. Is that required?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "4. Hidden content and file metadata"
+    ]
+   ],
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "s13",
+   "q": "Can I send the signed offer letter to the client without redacting the salary line?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "s14",
+   "q": "Who signs off before we send anything outside the company?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "s15",
+   "q": "Before I email the NDA to a new client, which personal details have to come out?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ],
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "s16",
+   "q": "The demand letter includes an employee's home address. Does that need removing before it goes to our insurer?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "s17",
+   "q": "Signature block names: do they count as personal info that has to be blacked out?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s18",
+   "q": "We're sending an executed NDA to a vendor, and it lists the other company's staff by name. Is that a problem?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s19",
+   "q": "Before a demand letter goes to opposing counsel, what personal details have to come out?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ],
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s20",
+   "q": "Invoices list the contractor's bank account numbers. Does that need redacting before the accountant sees them?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s21",
+   "q": "Redacted copy done. Does a second person have to check it?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s22",
+   "q": "Once a document is redacted, do we still have to keep the original?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "6. Keeping records"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s23",
+   "q": "SSNs on contractor invoices: redact or leave?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "4. Government and tax identifiers"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s24",
+   "q": "Are salary figures in an offer letter treated as personal information?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s25",
+   "q": "Who decides whether a demand letter can leave the company?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "s26",
+   "q": "Do I need to redact the salary figure on an offer letter before sending it to our outside payroll vendor?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s27",
+   "q": "Is it okay to email a lease to the landlord's lawyer with the tenant's home address still showing?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s28",
+   "q": "Invoice line items list a client's employee names. Redact or leave them?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s29",
+   "q": "What counts as personal information for redaction purposes?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "2. Personal identifiers of individuals"
+    ],
+    [
+     "northwind-redaction-policy",
+     "3. Contact details"
+    ],
+    [
+     "northwind-redaction-policy",
+     "4. Government and tax identifiers"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s30",
+   "q": "Who signs off before a redacted contract goes to an outside party?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s31",
+   "q": "Bank account numbers on vendor invoices: must those be blacked out?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "5. Financial account information"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s32",
+   "q": "I accidentally sent a demand letter to opposing counsel with a Social Security number visible. What now?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "7. When an unredacted document is shared by mistake"
+    ]
+   ],
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "s33",
+   "q": "Our lease has a tenant's personal guarantee that includes an SSN. What gets blacked out?",
+   "relevant": [
+    [
+     "northwind-redaction-policy",
+     "4. Government and tax identifiers"
+    ]
+   ],
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "s34",
+   "q": "If the regulator wants our full contract file, what's the approval path for sending it outside?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "5. Requests from courts, regulators and other third parties"
+    ]
+   ],
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "s35",
+   "q": "Who signs off before a redacted document goes to an external party?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "2. Who may approve external sharing"
+    ]
+   ],
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "s36",
+   "q": "Could we give the regulator a summary in place of the actual documents?",
+   "relevant": [
+    [
+     "northwind-sharing-guidelines",
+     "5. Requests from courts, regulators and other third parties"
+    ]
+   ],
+   "persona": "a compliance officer answering a request from a regulator"
+  }
+ ],
+ "unanswerable": [
+  {
+   "id": "su01",
+   "q": "Can I keep a copy of a client's contract on my laptop after the project ends?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su02",
+   "q": "If a client asks us to delete their documents, do we have to do it right away?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su03",
+   "q": "Is a non-compete in an offer letter enforceable in California?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su04",
+   "q": "Which Word version should I use to open a contract with tracked changes?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su05",
+   "q": "How do I reset my password on the redaction tool?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su06",
+   "q": "Need a stronger indemnity clause for this vendor agreement. Who writes that?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su07",
+   "q": "What's the statute of limitations for a breach of lease claim in Ohio?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su08",
+   "q": "How do I bill the client for the hours I spent on contract review?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su09",
+   "q": "Does GDPR apply to a German tenant's data in a lease we're reviewing?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su10",
+   "q": "Should we settle this demand letter or push it to trial?",
+   "persona": "a first-year paralegal reviewing contracts for a client"
+  },
+  {
+   "id": "su11",
+   "q": "Lease exhibit includes a personal guarantor's date of birth. Mask it or leave it?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su12",
+   "q": "Is emailing the redacted PDF okay, or does it have to go through the secure portal?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su13",
+   "q": "When I redact a name, should the placeholder say [REDACTED] or something more specific?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su14",
+   "q": "A demand letter quotes a client's medical history. Does that get handled like other personal data?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su15",
+   "q": "Is a salary range in an offer letter going to be a problem under California pay transparency rules?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su16",
+   "q": "What's the best way to configure the redaction tool's default pattern matching for phone numbers?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su17",
+   "q": "Should I convert this scanned lease to PDF/A before I send it?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su18",
+   "q": "Does GDPR cover the UK counterparty's contact details listed in the lease?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su19",
+   "q": "Should the demand letter mention that we'll seek sanctions if they don't respond?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su20",
+   "q": "Can you tighten the indemnity clause in this NDA before it goes back?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su21",
+   "q": "Why does the redaction tool freeze every time I open a scanned invoice?",
+   "persona": "a senior associate preparing documents to send to opposing counsel"
+  },
+  {
+   "id": "su22",
+   "q": "Once a project closes, how many days do we have to delete client files?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su23",
+   "q": "Quick one: may I keep a copy of a departed contractor's signed agreement on my laptop?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su24",
+   "q": "Which wording should I use for a late-payment clause in our standard service agreement?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su25",
+   "q": "Does a new hire's offer letter need a non-compete under our state's employment law?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su26",
+   "q": "Our invoice PDF won't open on my phone. How do I convert it to a different format?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su27",
+   "q": "Can I change the redaction tool's default highlight color to white?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su28",
+   "q": "Is it lawful under GDPR to keep a German client's contact list on our Virginia server?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su29",
+   "q": "Should we settle this demand letter or wait for the lawyer's response?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su30",
+   "q": "What password rules should the shared contracts drive require?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su31",
+   "q": "How do I turn on two-factor login for the e-signature service?",
+   "persona": "a client-service manager at a small analytics company"
+  },
+  {
+   "id": "su32",
+   "q": "How long do we keep signed offer letters after someone has left the company?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su33",
+   "q": "Does an offer letter's non-compete clause hold up in California?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su34",
+   "q": "Which encryption setting should the redaction tool use for exported PDFs?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su35",
+   "q": "How do I set up single sign-on for the contracts folder?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su36",
+   "q": "Does GDPR apply to invoices we issue to our German client?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su37",
+   "q": "Should our NDA template be mutual or one-way?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su38",
+   "q": "What's the best way to counter a demand letter without weakening our position?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su39",
+   "q": "Why does the invoice template show two separate tax lines?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su40",
+   "q": "Can the redaction tool export to Word without the black boxes disappearing?",
+   "persona": "an IT and security analyst who supports the legal team"
+  },
+  {
+   "id": "su41",
+   "q": "After an candidate declines our offer, can we keep their resume on file?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su42",
+   "q": "Are non-compete clauses in offer letters enforceable in California?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su43",
+   "q": "How do I set the redaction tool to auto-detect names across a whole folder?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su44",
+   "q": "Can you convert this scanned lease PDF into an editable Word file?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su45",
+   "q": "Should our offer letter template include a probation period clause?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su46",
+   "q": "Should we answer this demand letter with a settlement offer or wait to see if they sue?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su47",
+   "q": "Does GDPR require us to delete a former employee's file within 30 days of departure?",
+   "persona": "an HR coordinator who handles offer letters and employee files"
+  },
+  {
+   "id": "su48",
+   "q": "Are scanned copies held to the same retention period as the originals?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su49",
+   "q": "Do redaction logs have to be kept, and for how long?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su50",
+   "q": "A legal hold notice came in, so does it override the normal retention schedule?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su51",
+   "q": "Should a redacted PDF go through a secure transfer channel when sent to the regulator's portal?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su52",
+   "q": "Set the redaction tool to auto-detect names in Word files. Where is that setting?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su53",
+   "q": "Which employment law rules govern how long a signed offer letter must be kept in California?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su54",
+   "q": "Should our standard NDA include a non-compete clause?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su55",
+   "q": "Tips for responding to a demand letter that threatens litigation?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su56",
+   "q": "Which access controls should apply to the shared drive where contracts live?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su57",
+   "q": "Can these invoices be converted from .xls to PDF/A before we send them?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su58",
+   "q": "The March invoice went out twice from the accounting system. How do we fix that?",
+   "persona": "a compliance officer answering a request from a regulator"
+  },
+  {
+   "id": "su59",
+   "q": "What rights do our Dutch contractors have under GDPR to see their offer letters?",
+   "persona": "a compliance officer answering a request from a regulator"
+  }
+ ]
+}

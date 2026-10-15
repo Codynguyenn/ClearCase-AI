@@ -1,0 +1,854 @@
+{
+ "split": "dev",
+ "protocol_version": 1,
+ "generated_at": "2026-10-15T04:12:17.840452+00:00",
+ "git": {
+  "commit": "b317d9841f2c5a9b19f24e93b8055c367ebe72f2",
+  "dirty": true
+ },
+ "systems": {
+  "detectors_pattern_only": {
+   "summary": {
+    "documents": 6,
+    "proposals": 37,
+    "correct": 37,
+    "keep_violations": 0,
+    "extras": 0,
+    "sensitive_items": 82,
+    "found": 37,
+    "precision": 1.0,
+    "recall": 0.45121951219512196,
+    "f1": 0.6218487394957983,
+    "keep_items": 18,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 0,
+      "of": 36,
+      "recall": 0.0
+     },
+     "EMAIL": {
+      "found": 12,
+      "of": 12,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 9,
+      "recall": 0.0
+     },
+     "SSN": {
+      "found": 5,
+      "of": 5,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 20,
+      "of": 20,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 20,
+      "of": 20,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 12,
+      "of": 12,
+      "precision": 1.0
+     },
+     "SSN": {
+      "correct": 5,
+      "of": 5,
+      "precision": 1.0
+     }
+    }
+   },
+   "per_document": [
+    {
+     "id": "consulting_agreement_100",
+     "proposals": [
+      [
+       1,
+       304,
+       332,
+       "EMAIL"
+      ],
+      [
+       1,
+       419,
+       438,
+       "ADDRESS"
+      ],
+      [
+       1,
+       439,
+       456,
+       "ADDRESS"
+      ],
+      [
+       1,
+       552,
+       581,
+       "EMAIL"
+      ],
+      [
+       1,
+       820,
+       831,
+       "SSN"
+      ],
+      [
+       2,
+       152,
+       182,
+       "EMAIL"
+      ],
+      [
+       2,
+       212,
+       230,
+       "ADDRESS"
+      ],
+      [
+       2,
+       233,
+       249,
+       "ADDRESS"
+      ]
+     ]
+    },
+    {
+     "id": "offer_letter_101",
+     "proposals": [
+      [
+       1,
+       68,
+       86,
+       "ADDRESS"
+      ],
+      [
+       1,
+       87,
+       103,
+       "ADDRESS"
+      ],
+      [
+       1,
+       422,
+       433,
+       "SSN"
+      ],
+      [
+       1,
+       543,
+       572,
+       "EMAIL"
+      ],
+      [
+       1,
+       622,
+       654,
+       "EMAIL"
+      ]
+     ]
+    },
+    {
+     "id": "nda_102",
+     "proposals": [
+      [
+       1,
+       442,
+       463,
+       "ADDRESS"
+      ],
+      [
+       1,
+       466,
+       483,
+       "ADDRESS"
+      ],
+      [
+       1,
+       501,
+       529,
+       "EMAIL"
+      ],
+      [
+       1,
+       590,
+       611,
+       "ADDRESS"
+      ],
+      [
+       1,
+       614,
+       631,
+       "ADDRESS"
+      ],
+      [
+       1,
+       1784,
+       1807,
+       "EMAIL"
+      ]
+     ]
+    },
+    {
+     "id": "lease_103",
+     "proposals": [
+      [
+       1,
+       116,
+       145,
+       "EMAIL"
+      ],
+      [
+       1,
+       254,
+       269,
+       "ADDRESS"
+      ],
+      [
+       1,
+       270,
+       287,
+       "ADDRESS"
+      ],
+      [
+       1,
+       523,
+       534,
+       "SSN"
+      ],
+      [
+       1,
+       591,
+       607,
+       "ADDRESS"
+      ],
+      [
+       1,
+       608,
+       624,
+       "ADDRESS"
+      ],
+      [
+       1,
+       676,
+       705,
+       "EMAIL"
+      ]
+     ]
+    },
+    {
+     "id": "invoice_104",
+     "proposals": [
+      [
+       1,
+       316,
+       332,
+       "ADDRESS"
+      ],
+      [
+       1,
+       333,
+       351,
+       "ADDRESS"
+      ],
+      [
+       1,
+       398,
+       428,
+       "EMAIL"
+      ],
+      [
+       1,
+       482,
+       511,
+       "EMAIL"
+      ],
+      [
+       1,
+       607,
+       618,
+       "SSN"
+      ]
+     ]
+    },
+    {
+     "id": "demand_letter_105",
+     "proposals": [
+      [
+       1,
+       24,
+       40,
+       "ADDRESS"
+      ],
+      [
+       1,
+       41,
+       59,
+       "ADDRESS"
+      ],
+      [
+       1,
+       241,
+       271,
+       "ADDRESS"
+      ],
+      [
+       1,
+       274,
+       290,
+       "ADDRESS"
+      ],
+      [
+       1,
+       565,
+       601,
+       "EMAIL"
+      ],
+      [
+       1,
+       674,
+       685,
+       "SSN"
+      ]
+     ]
+    }
+   ]
+  },
+  "detectors_pattern_plus_ner": {
+   "summary": {
+    "documents": 6,
+    "proposals": 72,
+    "correct": 67,
+    "keep_violations": 0,
+    "extras": 5,
+    "sensitive_items": 82,
+    "found": 64,
+    "precision": 0.9305555555555556,
+    "recall": 0.7804878048780488,
+    "f1": 0.8489408038012275,
+    "keep_items": 18,
+    "keep_items_covered": 0,
+    "recall_by_category": {
+     "PERSON": {
+      "found": 27,
+      "of": 36,
+      "recall": 0.75
+     },
+     "EMAIL": {
+      "found": 12,
+      "of": 12,
+      "recall": 1.0
+     },
+     "PHONE": {
+      "found": 0,
+      "of": 9,
+      "recall": 0.0
+     },
+     "SSN": {
+      "found": 5,
+      "of": 5,
+      "recall": 1.0
+     },
+     "ADDRESS": {
+      "found": 20,
+      "of": 20,
+      "recall": 1.0
+     }
+    },
+    "precision_by_label": {
+     "ADDRESS": {
+      "correct": 20,
+      "of": 20,
+      "precision": 1.0
+     },
+     "EMAIL": {
+      "correct": 12,
+      "of": 12,
+      "precision": 1.0
+     },
+     "PERSON": {
+      "correct": 30,
+      "of": 35,
+      "precision": 0.8571428571428571
+     },
+     "SSN": {
+      "correct": 5,
+      "of": 5,
+      "precision": 1.0
+     }
+    }
+   },
+   "per_document": [
+    {
+     "id": "consulting_agreement_100",
+     "proposals": [
+      [
+       1,
+       238,
+       249,
+       "PERSON"
+      ],
+      [
+       1,
+       274,
+       285,
+       "PERSON"
+      ],
+      [
+       1,
+       304,
+       332,
+       "EMAIL"
+      ],
+      [
+       1,
+       407,
+       418,
+       "PERSON"
+      ],
+      [
+       1,
+       419,
+       438,
+       "ADDRESS"
+      ],
+      [
+       1,
+       439,
+       456,
+       "ADDRESS"
+      ],
+      [
+       1,
+       505,
+       518,
+       "PERSON"
+      ],
+      [
+       1,
+       552,
+       581,
+       "EMAIL"
+      ],
+      [
+       1,
+       802,
+       814,
+       "PERSON"
+      ],
+      [
+       1,
+       820,
+       831,
+       "SSN"
+      ],
+      [
+       2,
+       15,
+       32,
+       "PERSON"
+      ],
+      [
+       2,
+       152,
+       182,
+       "EMAIL"
+      ],
+      [
+       2,
+       212,
+       230,
+       "ADDRESS"
+      ],
+      [
+       2,
+       233,
+       249,
+       "ADDRESS"
+      ]
+     ]
+    },
+    {
+     "id": "offer_letter_101",
+     "proposals": [
+      [
+       1,
+       54,
+       67,
+       "PERSON"
+      ],
+      [
+       1,
+       68,
+       86,
+       "ADDRESS"
+      ],
+      [
+       1,
+       87,
+       93,
+       "PERSON"
+      ],
+      [
+       1,
+       87,
+       103,
+       "ADDRESS"
+      ],
+      [
+       1,
+       109,
+       122,
+       "PERSON"
+      ],
+      [
+       1,
+       422,
+       433,
+       "SSN"
+      ],
+      [
+       1,
+       543,
+       572,
+       "EMAIL"
+      ],
+      [
+       1,
+       602,
+       618,
+       "PERSON"
+      ],
+      [
+       1,
+       622,
+       654,
+       "EMAIL"
+      ],
+      [
+       1,
+       1618,
+       1634,
+       "PERSON"
+      ]
+     ]
+    },
+    {
+     "id": "nda_102",
+     "proposals": [
+      [
+       1,
+       425,
+       439,
+       "PERSON"
+      ],
+      [
+       1,
+       442,
+       463,
+       "ADDRESS"
+      ],
+      [
+       1,
+       466,
+       473,
+       "PERSON"
+      ],
+      [
+       1,
+       466,
+       483,
+       "ADDRESS"
+      ],
+      [
+       1,
+       501,
+       529,
+       "EMAIL"
+      ],
+      [
+       1,
+       573,
+       587,
+       "PERSON"
+      ],
+      [
+       1,
+       590,
+       611,
+       "ADDRESS"
+      ],
+      [
+       1,
+       614,
+       631,
+       "ADDRESS"
+      ],
+      [
+       1,
+       1660,
+       1674,
+       "PERSON"
+      ],
+      [
+       1,
+       1729,
+       1743,
+       "PERSON"
+      ],
+      [
+       1,
+       1772,
+       1782,
+       "PERSON"
+      ],
+      [
+       1,
+       1784,
+       1807,
+       "EMAIL"
+      ]
+     ]
+    },
+    {
+     "id": "lease_103",
+     "proposals": [
+      [
+       1,
+       28,
+       36,
+       "PERSON"
+      ],
+      [
+       1,
+       116,
+       145,
+       "EMAIL"
+      ],
+      [
+       1,
+       175,
+       187,
+       "PERSON"
+      ],
+      [
+       1,
+       254,
+       269,
+       "ADDRESS"
+      ],
+      [
+       1,
+       270,
+       287,
+       "ADDRESS"
+      ],
+      [
+       1,
+       462,
+       470,
+       "PERSON"
+      ],
+      [
+       1,
+       523,
+       534,
+       "SSN"
+      ],
+      [
+       1,
+       591,
+       607,
+       "ADDRESS"
+      ],
+      [
+       1,
+       608,
+       624,
+       "ADDRESS"
+      ],
+      [
+       1,
+       625,
+       637,
+       "PERSON"
+      ],
+      [
+       1,
+       676,
+       705,
+       "EMAIL"
+      ],
+      [
+       2,
+       30,
+       42,
+       "PERSON"
+      ],
+      [
+       2,
+       43,
+       51,
+       "PERSON"
+      ]
+     ]
+    },
+    {
+     "id": "invoice_104",
+     "proposals": [
+      [
+       1,
+       86,
+       90,
+       "PERSON"
+      ],
+      [
+       1,
+       129,
+       142,
+       "PERSON"
+      ],
+      [
+       1,
+       154,
+       163,
+       "PERSON"
+      ],
+      [
+       1,
+       316,
+       332,
+       "ADDRESS"
+      ],
+      [
+       1,
+       333,
+       351,
+       "ADDRESS"
+      ],
+      [
+       1,
+       381,
+       395,
+       "PERSON"
+      ],
+      [
+       1,
+       398,
+       428,
+       "EMAIL"
+      ],
+      [
+       1,
+       467,
+       479,
+       "PERSON"
+      ],
+      [
+       1,
+       482,
+       511,
+       "EMAIL"
+      ],
+      [
+       1,
+       573,
+       587,
+       "PERSON"
+      ],
+      [
+       1,
+       607,
+       618,
+       "SSN"
+      ]
+     ]
+    },
+    {
+     "id": "demand_letter_105",
+     "proposals": [
+      [
+       1,
+       24,
+       40,
+       "ADDRESS"
+      ],
+      [
+       1,
+       41,
+       59,
+       "ADDRESS"
+      ],
+      [
+       1,
+       103,
+       118,
+       "PERSON"
+      ],
+      [
+       1,
+       226,
+       237,
+       "PERSON"
+      ],
+      [
+       1,
+       241,
+       271,
+       "ADDRESS"
+      ],
+      [
+       1,
+       262,
+       267,
+       "PERSON"
+      ],
+      [
+       1,
+       274,
+       290,
+       "ADDRESS"
+      ],
+      [
+       1,
+       539,
+       559,
+       "PERSON"
+      ],
+      [
+       1,
+       565,
+       601,
+       "EMAIL"
+      ],
+      [
+       1,
+       674,
+       685,
+       "SSN"
+      ],
+      [
+       1,
+       1590,
+       1618,
+       "PERSON"
+      ],
+      [
+       1,
+       1623,
+       1634,
+       "PERSON"
+      ]
+     ]
+    }
+   ]
+  }
+ }
+}

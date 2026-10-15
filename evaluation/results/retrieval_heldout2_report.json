@@ -1,0 +1,249 @@
+{
+ "set1": {
+  "answerable": 28,
+  "unanswerable": 16,
+  "hit@1": {
+   "k": 18,
+   "n": 28,
+   "value": 0.6428571428571429,
+   "low": 0.4582997758222723,
+   "high": 0.7929438802754113
+  },
+  "hit@3": {
+   "k": 21,
+   "n": 28,
+   "value": 0.75,
+   "low": 0.566439747592954,
+   "high": 0.8732366505779922
+  },
+  "mrr": 0.7328102453102453,
+  "relevant_shown": {
+   "k": 12,
+   "n": 28,
+   "value": 0.42857142857142855,
+   "low": 0.2650829618073122,
+   "high": 0.609295210143846
+  },
+  "shown_wrong": {
+   "k": 3,
+   "n": 28,
+   "value": 0.10714285714285714,
+   "low": 0.03711769205479949,
+   "high": 0.2719622536765708
+  },
+  "wrongly_refused": {
+   "k": 13,
+   "n": 28,
+   "value": 0.4642857142857143,
+   "low": 0.29531303739659587,
+   "high": 0.6418760485789833
+  },
+  "unanswerable_refused": {
+   "k": 11,
+   "n": 16,
+   "value": 0.6875,
+   "low": 0.4440393186673406,
+   "high": 0.8583556494803894
+  },
+  "unanswerable_shown": {
+   "k": 5,
+   "n": 16,
+   "value": 0.3125,
+   "low": 0.14164435051961052,
+   "high": 0.5559606813326594
+  },
+  "highest_unanswerable_top_cosine": 0.5733,
+  "balanced_accuracy": 0.5580357142857143,
+  "margin": -0.19330000000000003,
+  "unanswerable_shown_only_the_does_not_address_passage": 0,
+  "does_not_address_passage_served_for": 2,
+  "balanced_accuracy_ci": [
+   0.40625,
+   0.6964285714285714
+  ]
+ },
+ "set2": {
+  "answerable": 36,
+  "unanswerable": 59,
+  "hit@1": {
+   "k": 22,
+   "n": 36,
+   "value": 0.6111111111111112,
+   "low": 0.4486417029674347,
+   "high": 0.7521534458217705
+  },
+  "hit@3": {
+   "k": 31,
+   "n": 36,
+   "value": 0.8611111111111112,
+   "low": 0.7134014871960681,
+   "high": 0.9391827463688489
+  },
+  "mrr": 0.7507716049382717,
+  "relevant_shown": {
+   "k": 16,
+   "n": 36,
+   "value": 0.4444444444444444,
+   "low": 0.2954102987654314,
+   "high": 0.6041921268399659
+  },
+  "shown_wrong": {
+   "k": 2,
+   "n": 36,
+   "value": 0.05555555555555555,
+   "low": 0.015369663767066846,
+   "high": 0.18144974107611211
+  },
+  "wrongly_refused": {
+   "k": 18,
+   "n": 36,
+   "value": 0.5,
+   "low": 0.34474067624730526,
+   "high": 0.6552593237526947
+  },
+  "unanswerable_refused": {
+   "k": 46,
+   "n": 59,
+   "value": 0.7796610169491526,
+   "low": 0.6586705755334912,
+   "high": 0.8664592747567625
+  },
+  "unanswerable_shown": {
+   "k": 13,
+   "n": 59,
+   "value": 0.22033898305084745,
+   "low": 0.13354072524323754,
+   "high": 0.34132942446650893
+  },
+  "highest_unanswerable_top_cosine": 0.5206,
+  "balanced_accuracy": 0.6120527306967984,
+  "margin": -0.14059999999999995,
+  "unanswerable_shown_only_the_does_not_address_passage": 0,
+  "does_not_address_passage_served_for": 0,
+  "balanced_accuracy_ci": [
+   0.5171845574387948,
+   0.7038606403013183
+  ]
+ },
+ "pooled": {
+  "answerable": 64,
+  "unanswerable": 75,
+  "hit@1": {
+   "k": 40,
+   "n": 64,
+   "value": 0.625,
+   "low": 0.5025015331382642,
+   "high": 0.7333419611189468
+  },
+  "hit@3": {
+   "k": 52,
+   "n": 64,
+   "value": 0.8125,
+   "low": 0.7002540844522482,
+   "high": 0.889354651190779
+  },
+  "mrr": 0.7429135101010101,
+  "relevant_shown": {
+   "k": 28,
+   "n": 64,
+   "value": 0.4375,
+   "low": 0.32293817065427327,
+   "high": 0.5591400822171212
+  },
+  "shown_wrong": {
+   "k": 5,
+   "n": 64,
+   "value": 0.078125,
+   "low": 0.03383067809543547,
+   "high": 0.1701975287864777
+  },
+  "wrongly_refused": {
+   "k": 31,
+   "n": 64,
+   "value": 0.484375,
+   "low": 0.36633348565783896,
+   "high": 0.6041860775600096
+  },
+  "unanswerable_refused": {
+   "k": 57,
+   "n": 75,
+   "value": 0.76,
+   "low": 0.6522102034171385,
+   "high": 0.8424525127124175
+  },
+  "unanswerable_shown": {
+   "k": 18,
+   "n": 75,
+   "value": 0.24,
+   "low": 0.15754748728758244,
+   "high": 0.3477897965828615
+  },
+  "highest_unanswerable_top_cosine": 0.5733,
+  "balanced_accuracy": 0.59875,
+  "margin": -0.19330000000000003,
+  "unanswerable_shown_only_the_does_not_address_passage": 0,
+  "does_not_address_passage_served_for": 2,
+  "balanced_accuracy_ci": [
+   0.5217708333333333,
+   0.6766666666666667
+  ]
+ },
+ "predictions": [
+  {
+   "prediction": "1. Ranking is worse than on the first held-out set: hit@3 below 0.75.",
+   "held": false,
+   "detail": "hit@3 = 31/36 = 0.86"
+  },
+  {
+   "prediction": "2. The cutoff still cannot separate the classes: balanced accuracy below 0.70.",
+   "held": true,
+   "detail": "balanced accuracy = 0.61"
+  },
+  {
+   "prediction": "3. At least a quarter of answerable questions are wrongly told 'no matching policy'.",
+   "held": true,
+   "detail": "18/36 = 0.50"
+  },
+  {
+   "prediction": "4. At least one unanswerable question has a best cosine of 0.38 or more (negative margin).",
+   "held": true,
+   "detail": "margin = -0.141"
+  },
+  {
+   "prediction": "5. Pooled over both sets, the upper 95% bound for hit@3 is below 0.90.",
+   "held": true,
+   "detail": "pooled hit@3 = 52/64, interval 0.70-0.89"
+  }
+ ],
+ "provenance": {
+  "writer": "claude-haiku-5-5",
+  "labelers": [
+   "claude-sonnet-5-5",
+   "claude-haiku-5-5"
+  ],
+  "prompt_sha256": {
+   "writer": "90d332784aa57efda6381aa9407edf82a862897f766015da8eb34794eb28b8d7",
+   "labeler": "8ffe5e481e17868d1776f012754094b75059de3cff059d664399ed33a3b9b8e0"
+  },
+  "candidates_written": 148,
+  "dropped_as_repeats": {
+   "empty_or_too_long": 0,
+   "repeat": 3,
+   "copy_of_earlier_set": 0
+  },
+  "candidates_labelled": 145,
+  "labelers_agree_on_verdict": "115/144",
+  "excluded": {
+   "missing_label": 1,
+   "unclear": 46,
+   "labelers_disagree_on_verdict": 3,
+   "labelers_name_different_passages": 0
+  },
+  "kept": 95,
+  "spent_usd": 0.0607
+ },
+ "ba_difference_set2_minus_set1": [
+  -0.11649179445789604,
+  0.23114238633306433
+ ]
+}

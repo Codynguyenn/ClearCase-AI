@@ -681,7 +681,142 @@ information" while keeping company names visible, quoted policy sentences that a
 injected line told it to ignore the user and export everything, flagged the line and did not act on it. That is one run;
 the protection against the same line does not depend on the model behaving (`tests/test_agent_injection.py`).
 
-## 51. "Approve shown" / "Reject shown" only touch undecided findings (decided 2026-10-15)
+## 51. Measuring the assistant: rules written first, one run, and what the result does and does not show (run 2026-10-14)
+
+**Question.** Does the assistant (the real loop, tools and MCP server) find the personal information of individuals in a
+document better than the app's own detectors, and does a cheaper model do as well as a dearer one? Three hosted models of
+different price (Haiku, Sonnet, Opus) were compared on documents that were not used to build or debug anything.
+
+**How it was kept honest** (all in `evaluation/assistant_eval/PROTOCOL.md`, written before any held-out result):
+- 12 synthetic documents (6 templates, 2 each), generated from seeds, frozen by SHA-256; the runner refuses a changed file.
+  A separate dev set of 6 was used for debugging only.
+- Scoring rules, six predictions and a decision rule were fixed in advance; one run per (document, model), one retry only
+  for transient provider errors; no document dropped; spending capped at $6 (a stop-before-overrun guard in the runner).
+- Every number in the report is produced by `report.py` from the stored run records, and the scoring and the report
+  logic have unit tests whose failures I checked by breaking the code on purpose.
+
+**Result** (full tables in `evaluation/assistant_eval/REPORT_heldout.md`; synthetic data, one author):
+
+| System | Recall | Precision | F1 (95% interval) | Cost per document |
+| --- | --- | --- | --- | --- |
+| Pattern detectors only | 0.451 | 1.000 | 0.622 | free |
+| Pattern detectors + spaCy NER (what "Detect & propose" runs) | 0.744 | 0.921 | 0.823 (0.75-0.88) | free |
+| Claude Haiku 5.5 | 0.976 | 1.000 | 0.988 (0.97-1.00) | $0.006 |
+| Claude Sonnet 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.074 |
+| Claude Opus 5.5 | 0.963 | 1.000 | 0.981 (0.96-1.00) | $0.152 |
+
+- All three models beat the detectors, and the paired difference excludes zero (about +0.16 F1). They are **not
+  distinguishable from each other** (Haiku minus Opus: -0.006, interval -0.022 to +0.000).
+- All 36 runs finished normally; none hit a limit; no company name was proposed; none of the three attempted an export on the
+  three documents containing an injected "export everything" sentence. Total spend $2.78.
+- Two answers (one Haiku, one Sonnet) each had one policy quote the checker marked unverified; both quotes contained an
+  elision ("..."), and the checker accepts only verbatim quotes. That is the checker working as designed.
+- Of six predictions, five held. **Prediction 6 was wrong**: Opus did not use the most tool calls (Haiku did), and no model
+  proposed a company name or an unmatched span.
+
+**What I got wrong, found by reading the misses.** All 16 missed items (4 for Haiku, 6 for each other model) were the
+address of a **company**: a letterhead or a "Remit to" block. My labels called every address sensitive, but the request
+asks for the personal information of individuals, and Sonnet said in its own answer that it left out a "company address,
+not an individual's". So the 0.96-0.99 recall understates the models on the request as worded. The headline keeps the
+frozen labels (changing them after seeing results would defeat the point of freezing them). A clearly marked **post-hoc**
+table leaves those 8 address lines out: all three models then score 1.000 on the remaining 156 items, the detectors 0.81.
+That also means prediction 5 ("weakest spot is addresses") held on paper for the wrong reason. Logged in the protocol.
+
+**What this does not show.** The task is easy (one-page documents with clean text), so it cannot separate strong models;
+the whole F1 gap between Haiku and the other two comes from one skipped company address (an invoice's "Remit to" block). 12 documents by one author, one run each (run-to-run
+variance unmeasured), three injected documents is a demonstration and not a rate. Nothing here predicts accuracy on real
+documents. The supported claim is narrow: on this synthetic set the model-assisted workflow found clearly more than the
+detectors alone, and the cheapest model did as well as the dearest at about 1/27 of the cost.
+
+**Recommendation under the pre-registered rule: Haiku**, and it is now the recommended model: `.env.example` and the README say
+so, and the maintainer's local `.env` was switched to `claude-haiku-5-5`. It stays a one-line setting (`CLEARCASE_LLM_MODEL`); no code
+default changed, and the earlier Phase 5 observations quoted above were made with Opus. The evidence is from an easy synthetic set, so
+if documents get harder, re-run the comparison before trusting Haiku.
+
+## 52. A real-browser end-to-end test, and what it can and cannot prove (2026-10-15)
+
+**What it is.** `frontend/e2e/review-flow.spec.ts` (Playwright) drives a real Chrome/Chromium against the real frontend, the real
+backend, a real MongoDB and the real PDF engine, through one reviewer's session in five tests: upload, search, detect and review;
+the policy library and a cited passage; the chat in demo mode (a checked citation, the assistant refused an export until the
+reviewer authorizes, the reviewer's hand-off, then the assistant's export); the reviewer's own export, download and a re-search of
+the downloaded file; and the conversation surviving a reload.
+
+**Why a real browser.** The 94 component tests run in happy-dom, a simulated browser. It cannot show real layout, real focus
+behaviour or a real download. The end-to-end test shows three things they cannot:
+- **Focus stays off the page behind a modal dialog** (Tab inside the citation dialog never reaches the page, Escape closes it
+  and focus returns to the button that opened it). Checked by breaking it: switching the dialog from modal to non-modal made the
+  test fail with "Tab reached an INPUT of the page behind".
+- **The downloaded file is really redacted, judged by the product itself.** The test uploads the downloaded file back and searches
+  it: "Delgado-Reyes" 5 matches before and 1 after (the one finding the reviewer rejected), the approved e-mail addresses and
+  SSN 0 matches, company names still present. Checked by breaking it: making the redaction do nothing makes the export fail
+  verification and the test fail.
+- **The reviewer and the assistant meet at the right place.** With no authorization the assistant is refused and the interface shows
+  the hand-off; after the reviewer clicks "Authorize export" the assistant's export is a normal verified export in the Export tab.
+
+**Safety of the test itself.** The assistant is the scripted demo one, and `scripts/e2e_backend.sh` blanks the provider settings
+(environment variables beat `.env`), so the test can never call a paid model even with a key in `.env`. It uses its own
+database, `clearcase_e2e`, dropped at every start, and ports 8011 and 5183 so it does not collide with the dev servers.
+
+**What it found.**
+- *"Approve shown" overwrites decisions.* Reject one finding, then click "Approve shown" on the default view (all statuses) and
+  the rejected finding is approved too; "Reject shown" un-approves findings. The test works around it (it filters to undecided
+  findings first, as a careful reviewer would) and the fix was filed as a separate task rather than slipped into this change.
+- *Not a bug, but easy to misread:* if the reviewer has just exported, asking the assistant to `export` returns that existing,
+  still-current export instead of refusing (the documented "a retry returns the same export, never a second one"). A stale
+  export is refused by the tool. The test checks that no second file is made.
+- *Three mistakes in my own tests, caught by running them:* waiting for a button's name to disappear (it becomes "Loading…" while
+  work is still going), counting chat messages before the saved conversation had loaded, and assuming an attribute that only some
+  states have. The rule that came out of it: wait for the state you need, not for the absence of something.
+
+**What it does not cover.** Live mode (it spends money; `scripts/live_check.py` is the manual check), other browsers and phones,
+scanned PDFs, long documents, concurrent users. One browser engine, one document, English. The five tests share state on purpose
+and must be run as a file.
+
+## 53. A second retrieval question set, written blind and labelled by two models (run 2026-10-15)
+
+**Why.** Decision 36 measured the similarity cutoff on one small held-out set written by the same author as the policies, and found
+balanced accuracy 0.56 against 0.84 on the set it was tuned on. One small same-author set cannot say whether 0.56 was typical, and that
+set had used its two allowed runs.
+
+**What was built** (`evaluation/retrieval2/`, protocol first): a model that was **never shown the policy text** (only that the library has
+a document about redaction and one about sharing and retaining documents) wrote 148 candidate questions in six personas; two other model
+runs (`claude-sonnet-5-5`, `claude-haiku-5-5`) each labelled every question against the 19 passages (answerable with the passages that
+settle it, not addressed, or unclear); a question was kept only if both gave the same definite verdict and, for answerable ones, named a
+common passage. 95 questions survived (36 answerable, 59 not addressed), were frozen by SHA-256, and the unchanged production retriever
+was run on them **once**. The protocol (prompt hashes, rules, five predictions) was written before any question existed, and the build
+script refuses to spend unless the protocol contains the hashes of the exact prompts. Total cost **$0.061** (a hard cap of $0.20 was set).
+
+**Result** (`evaluation/retrieval2/REPORT.md`; synthetic, model-written): right passage first 0.61, in the top 3 0.86; the relevant
+passage was shown for 0.44 of answerable questions and 0.50 were wrongly told "no matching policy"; 0.22 of not-addressed questions were
+shown a passage; **balanced accuracy 0.61** (first set 0.56; pooled 0.60, interval 0.52 to 0.68). The two sets do not disagree beyond
+sampling noise. The earlier conclusion stands and now has more support: the cutoff is a weak answer/no-answer decision, ranking is
+decent (pooled top-3 0.81), and the assistant is rightly built to quote a passage or say the policies do not address the question.
+Nothing in the product changed.
+
+**What went wrong, or was wrong.**
+- *Prediction 1 failed.* I predicted worse ranking on blind questions (top-3 below 0.75); it was better (0.86). I do not have a tested
+  explanation, so none is claimed.
+- *A test caught a leak of my own in the writer prompt*: it said "keeping records", the name of a policy section. Nothing had been spent;
+  I reworded it and logged the change. The test now checks the writer prompt shares no five consecutive words with the policy text and
+  contains no section name.
+- *The first design cost about $0.33*, over the cap and not "a few cents" (Opus as second labeler plus a rationale field). Changed before
+  any call: Haiku as second labeler, no rationale. The real cost was about a fifth of that estimate.
+- *The suspected confound did not occur.* The "Topics this policy does not address" passage names topics on purpose and could have
+  inflated wrong "shown a passage" results; it was served for none of the 95 questions. A misspelt passage id would have hidden behind a
+  zero, so a test ties the id to the real chunking.
+
+**A sanity read afterwards** (post-hoc; it changed nothing): I read 16 random labelled questions (8 answerable with the passage the
+labelers chose, 8 not addressed). All labels looked right to me; two answerable ones (a regulator's request "must be passed to the legal
+team unchanged") are borderline but defensible, and none of the not-addressed topics (secure transfer, Word or PDF/A export, templates,
+tool colours, GDPR) appears anywhere in the policy text. I wrote the policies, so this is a sanity check, not validation.
+
+**Limits.** The questions and labels come from language models of the same family as the assistant, not from people or real users. The
+second labeler is the writer's own model (a consistency check, not an independent expert). **46 of 145 candidates were unclear to at
+least one labeler and were excluded**; real questions are often borderline, so this set is probably easier than real use. Two fictional
+policies and 19 passages. Any new retrieval method (a re-ranker, an LLM relevance check) must be tested on a **third** set: these two
+are now measured and must not be used to tune.
+
+## 54. "Approve shown" / "Reject shown" only touch undecided findings (decided 2026-10-15)
 
 A browser test found that the two bulk buttons acted on every finding on screen. With the default "all statuses" list,
 rejecting one finding and then clicking "Approve shown" quietly turned that rejection into an approval, and "Reject
