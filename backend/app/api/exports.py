@@ -8,7 +8,13 @@ from fastapi import APIRouter, Path, status
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import ExportSvc, OwnerId
-from app.models.findings import ExportAuthorization, ExportRecord, ExportRequest
+from app.models.findings import (
+    ExportAudience,
+    ExportAuthorization,
+    ExportAuthorizationRequest,
+    ExportRecord,
+    ExportRequest,
+)
 
 router = APIRouter(prefix="/documents/{document_id}", tags=["export"])
 
@@ -17,9 +23,19 @@ ExportId = Annotated[str, Path(min_length=1, max_length=40)]
 
 
 @router.post("/export-authorizations", response_model=ExportAuthorization, status_code=status.HTTP_201_CREATED)
-def authorize_export(document_id: DocumentId, service: ExportSvc, owner_id: OwnerId) -> ExportAuthorization:
-    """The reviewer's explicit go-ahead. 409 if anything is unresolved."""
-    return service.issue_authorization(document_id, owner_id)
+def authorize_export(
+    document_id: DocumentId,
+    service: ExportSvc,
+    owner_id: OwnerId,
+    body: ExportAuthorizationRequest | None = None,
+) -> ExportAuthorization:
+    """The reviewer's explicit go-ahead. 409 if anything is unresolved.
+
+    ``audience`` is ``reviewer`` (the default: their own export, presented as a token) or ``assistant``
+    (they let the assistant export once). An authorization works only for the audience it was issued for.
+    """
+    audience = body.audience if body is not None else ExportAudience.REVIEWER
+    return service.issue_authorization(document_id, owner_id, audience)
 
 
 @router.post("/exports", response_model=ExportRecord, status_code=status.HTTP_201_CREATED)

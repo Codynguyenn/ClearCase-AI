@@ -245,6 +245,17 @@ export default function App() {
                 )
               })
             }
+            onProposeCopies={() =>
+              void review.run(async () => {
+                const r = await api.proposeRemainingCopies(selected.id)
+                setNotice(
+                  r.created.length > 0
+                    ? `${describeProposal(r)} Approve or reject them in the Review tab, then export again.`
+                    : describeProposal(r),
+                )
+                if (r.created.length > 0) setTab('review')
+              })
+            }
             onAcknowledge={(exportId) =>
               void review.run(async () => {
                 await api.acknowledgeExportWarnings(selected.id, exportId)

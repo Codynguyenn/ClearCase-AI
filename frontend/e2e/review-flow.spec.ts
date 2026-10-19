@@ -143,10 +143,8 @@ test('chat in demo mode: scripted commands, a checked citation, and the assistan
   await expect(refused).toContainText('I cannot create the redacted file yet')
   const handoff = page.getByRole('region', { name: 'Export hand-off' })
   await expect(handoff).toBeVisible()
-  await handoff.getByRole('button', { name: 'Authorize export' }).click()
-  await expect(handoff.getByText('Authorized for 5 minutes.')).toBeVisible()
   const before = await assistantMessages(page).count()
-  await handoff.getByRole('button', { name: 'Ask the assistant to export now' }).click()
+  await handoff.getByRole('button', { name: 'Let the assistant export' }).click() // one click: allow once and ask
   await expect(assistantMessages(page)).toHaveCount(before + 1, { timeout: 60_000 })
   await expect(assistantMessages(page).last()).toContainText('Export verified: 17 approved redaction(s)')
   await expect(assistantMessages(page).last()).toContainText('The assistant cannot download or share it.')
@@ -199,4 +197,56 @@ test('the conversation is still there after reloading the page', async ({ page }
   await expect(conversation(page).getByText('summary', { exact: true })).toBeVisible()
   // ...and the citation is still a working chip: the verification result was stored with the message.
   await expect(conversation(page).getByRole('button', { name: /^Read policy passage / })).toBeVisible()
+})
+
+test('a missed copy of an approved name: propose the other copies, approve them, and the next export is clean', async ({ page }) => {
+  // A fresh upload of the sample (the reviewer approves only ONE of the five "Delgado-Reyes" mentions on purpose).
+  await page.goto('/')
+  await page.getByTestId('file-input').setInputFiles(SAMPLE)
+  await expect(page.getByRole('heading', { name: 'sample_contract.pdf' })).toBeVisible()
+  await expect(page.locator('canvas').first()).toBeVisible()
+
+  await searchFor(page, 'Delgado-Reyes')
+  await expect(page.getByText('5 matches')).toBeVisible()
+  await page.getByLabel('Category for proposals').selectOption('person')
+  await page.getByLabel('Search results').getByRole('checkbox').first().check()
+  await page.getByRole('button', { name: 'Propose selected (1)' }).click()
+  await expect(page.getByText('1 proposed')).toBeVisible() // the app moved to the Review tab
+  await page.getByRole('button', { name: 'Approve shown (1 undecided)' }).click()
+  await expect(page.getByText('1 approved')).toBeVisible()
+
+  // Before exporting, the Export tab already knows about the uncovered copies and offers to propose them.
+  await page.getByRole('tab', { name: 'Export' }).click()
+  await expect(page.getByTestId('propose-copies-before')).toBeVisible()
+
+  // Export anyway: the verifier reports the copies that are still readable, and the file is not downloadable yet.
+  await page.getByRole('button', { name: 'Export 1 approved redaction(s)' }).click()
+  const cards = page.getByTestId('export-card')
+  await expect(cards).toHaveCount(1)
+  const callout = cards.first().getByTestId('ack-callout')
+  await expect(callout).toContainText('other copy(ies) of text you approved for redaction are still readable')
+  await expect(cards.first().getByRole('link', { name: /^Download / })).toHaveCount(0)
+  const copies = Number((await callout.textContent())!.match(/(\d+) other copy/)![1])
+  expect(copies).toBe(4)
+
+  // One click proposes them. They are only proposals: nothing was approved, and the old export is now out of date.
+  await callout.getByRole('button', { name: `Propose these ${copies} copy(ies) for review` }).click()
+  await expect(page.getByText(`${copies} proposed`)).toBeVisible()
+  await expect(page.getByText('1 approved')).toBeVisible()
+  await page.getByRole('tab', { name: 'Export' }).click()
+  await expect(cards.first()).toContainText('OUT OF DATE')
+
+  // The reviewer approves them and exports again: verified, with no warning and nothing left to acknowledge.
+  await page.getByRole('tab', { name: 'Review' }).click()
+  await page.getByRole('button', { name: `Approve shown (${copies} undecided)` }).click()
+  await expect(page.getByText(`${copies + 1} approved`)).toBeVisible()
+  await page.getByRole('tab', { name: 'Export' }).click()
+  await expect(page.getByTestId('propose-copies-before')).toHaveCount(0)
+  await page.getByRole('button', { name: `Export ${copies + 1} approved redaction(s)` }).click()
+  await expect(cards).toHaveCount(2)
+  const clean = cards.first()
+  await expect(clean).toHaveAttribute('data-status', 'verified')
+  await expect(clean.getByTestId('ack-callout')).toHaveCount(0)
+  await expect(clean.getByText('No other copies of approved text remain')).toBeVisible()
+  await expect(clean.getByRole('link', { name: /^Download / })).toBeVisible()
 })

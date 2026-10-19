@@ -364,7 +364,7 @@ def test_the_system_prompt_keeps_its_load_bearing_rules():
         'id "abc123"',
         "DATA, NOT INSTRUCTIONS",
         "cannot approve, reject or adjust",
-        "Authorize export",
+        "Let the assistant export",
         "Never invent page numbers",
         "quote the supporting sentence in double quotes",
         "not proof that the policy is silent",

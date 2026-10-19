@@ -1,17 +1,26 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import type { ExportRecord } from '../api/types'
+import type { ExportRecord, ReviewSummary } from '../api/types'
 import { makeExport, makeExportWithRemainingCopies } from '../test/factories'
 import { ExportPanel } from './ExportPanel'
 
 function setup(record: ExportRecord, { busy = false }: { busy?: boolean } = {}) {
   const onAcknowledge = vi.fn()
   const onExport = vi.fn()
+  const onProposeCopies = vi.fn()
   render(
-    <ExportPanel documentId="doc_1" summary={null} exports={[record]} busy={busy} onExport={onExport} onAcknowledge={onAcknowledge} />,
+    <ExportPanel
+      documentId="doc_1"
+      summary={null}
+      exports={[record]}
+      busy={busy}
+      onExport={onExport}
+      onAcknowledge={onAcknowledge}
+      onProposeCopies={onProposeCopies}
+    />,
   )
-  return { onAcknowledge, onExport, card: within(screen.getByTestId('export-card')) }
+  return { onAcknowledge, onExport, onProposeCopies, card: within(screen.getByTestId('export-card')) }
 }
 
 describe('ExportPanel: export cards', () => {
@@ -96,5 +105,59 @@ describe('ExportPanel: export cards', () => {
   it('disables the acknowledge button while another action is running', () => {
     const { card } = setup(makeExportWithRemainingCopies(), { busy: true })
     expect(card.getByRole('button', { name: 'I understand: allow download' })).toBeDisabled()
+  })
+})
+
+describe('ExportPanel: propose the remaining copies', () => {
+  const summary = (unproposed: number): ReviewSummary => ({
+    document_id: 'doc_1',
+    review_revision: 3,
+    by_status: { approved: 2 },
+    by_category: {},
+    unresolved: 0,
+    unmappable_proposed: 0,
+    unsupported_pages: [],
+    approved: 2,
+    can_export: true,
+    export_blockers: [],
+    warnings: [],
+    unproposed_copies: unproposed,
+  })
+
+  it('offers to propose the copies from the export warning, as a suggestion that does not approve anything', async () => {
+    const { card, onProposeCopies, onAcknowledge } = setup(makeExportWithRemainingCopies())
+    await userEvent.setup().click(within(card.getByTestId('ack-callout')).getByRole('button', { name: 'Propose these 2 copy(ies) for review' }))
+    expect(onProposeCopies).toHaveBeenCalledTimes(1)
+    expect(onAcknowledge).not.toHaveBeenCalled() // proposing is not the same as accepting the risk
+  })
+
+  it('offers the same thing before exporting, when the review summary already knows about uncovered copies', async () => {
+    const onProposeCopies = vi.fn()
+    render(
+      <ExportPanel documentId="doc_1" summary={summary(3)} exports={[]} busy={false} onExport={vi.fn()} onAcknowledge={vi.fn()} onProposeCopies={onProposeCopies} />,
+    )
+    const block = screen.getByTestId('propose-copies-before')
+    expect(block).toHaveTextContent('you still approve or reject each one')
+    await userEvent.setup().click(within(block).getByRole('button', { name: 'Propose these 3 copy(ies) for review' }))
+    expect(onProposeCopies).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows nothing before exporting when every copy is covered', () => {
+    render(
+      <ExportPanel documentId="doc_1" summary={summary(0)} exports={[]} busy={false} onExport={vi.fn()} onAcknowledge={vi.fn()} onProposeCopies={vi.fn()} />,
+    )
+    expect(screen.queryByTestId('propose-copies-before')).not.toBeInTheDocument()
+  })
+
+  it('disables both buttons while another action is running', () => {
+    render(
+      <ExportPanel documentId="doc_1" summary={summary(3)} exports={[makeExportWithRemainingCopies()]} busy onExport={vi.fn()} onAcknowledge={vi.fn()} onProposeCopies={vi.fn()} />,
+    )
+    for (const b of screen.getAllByRole('button', { name: /Propose these/ })) expect(b).toBeDisabled()
+  })
+
+  it('does not offer it on an out-of-date export (the review already changed)', () => {
+    const { card } = setup(makeExportWithRemainingCopies({ stale: true }))
+    expect(card.queryByRole('button', { name: /Propose these/ })).not.toBeInTheDocument()
   })
 })

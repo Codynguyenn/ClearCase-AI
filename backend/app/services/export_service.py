@@ -12,7 +12,10 @@ grant from the human reviewer. ``issue_authorization`` is a reviewer-only endpoi
   approved rectangles - if anything changes, the token stops working,
 * consumed atomically, so two simultaneous requests cannot both run an export,
 * idempotent: re-sending the same token after it was used returns the *same*
-  export record instead of creating another file.
+  export record instead of creating another file,
+* issued *for* one audience: the reviewer's own export (REST token) or the assistant
+  (the reviewer clicked "Let the assistant export"). The two are never interchangeable,
+  so the assistant cannot use the moment around the reviewer's own export click.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from app.db import Mongo
 from app.models.common import BBox, utcnow
 from app.models.documents import DocumentRecord
 from app.models.findings import (
+    ExportAudience,
     ExportAuthorization,
     ExportRecord,
     ExportRequest,
@@ -107,7 +111,9 @@ class ExportService:
         self.review = ReviewService(mongo, settings)
 
     # ------------------------------------------------------------ authorization
-    def issue_authorization(self, document_id: str, owner_id: str) -> ExportAuthorization:
+    def issue_authorization(
+        self, document_id: str, owner_id: str, audience: ExportAudience = ExportAudience.REVIEWER
+    ) -> ExportAuthorization:
         record = self.documents.get(document_id, owner_id=owner_id)
         summary = self.review.summary(document_id, owner_id)
         if not summary.can_export:
@@ -126,15 +132,25 @@ class ExportService:
                 "content_hash": record.content_hash,
                 "review_revision": record.review_revision,
                 "approved_digest": approved_digest(findings),
+                "audience": audience.value,
                 "created_at": utcnow(),
                 "expires_at": expires,
                 "consumed_at": None,
                 "export_id": None,
             }
         )
-        self.audit.record(document_id, owner_id, "export_authorized", {"review_revision": record.review_revision})
+        self.audit.record(
+            document_id,
+            owner_id,
+            "export_authorized",
+            {"review_revision": record.review_revision, "audience": audience.value},
+        )
         return ExportAuthorization(
-            token=token, document_id=document_id, review_revision=record.review_revision, expires_at=expires
+            token=token,
+            document_id=document_id,
+            review_revision=record.review_revision,
+            expires_at=expires,
+            audience=audience,
         )
 
     # ------------------------------------------------------------------- export
@@ -145,12 +161,14 @@ class ExportService:
             owner_id,
             hash_token(req.authorization),
             acknowledge_unsupported_pages=req.acknowledge_unsupported_pages,
+            audience=ExportAudience.REVIEWER,
         )
 
     def export_with_reviewer_authorization(self, document_id: str, owner_id: str) -> ExportRecord:
         """Assistant path (MCP): the model never sees or supplies a token.
 
-        The reviewer issues an authorization in the UI. This finds the newest one for
+        The reviewer clicks "Let the assistant export" in the UI, which issues an authorization
+        for the assistant. This finds the newest such one for
         this document (issued within the last few minutes) and runs the exact same
         checks as the REST path: unexpired, unconsumed, and still matching the
         document hash, review revision and approved rectangles. Retrying after a
@@ -160,17 +178,22 @@ class ExportService:
         decision made in the UI.
         """
         self.documents.get(document_id, owner_id=owner_id)  # ownership first: unknown id -> not found
-        auth = self.authorizations.find_latest(
+        auth = self.authorizations.find_latest_for_assistant(
             document_id, owner_id, created_after=utcnow() - AUTHORIZATION_TTL
         )
         if auth is None:
             raise AuthorizationError(
-                "No export authorization from the reviewer is pending. Ask the reviewer to click "
-                "'Authorize export' on the hand-off card in the Chat tab, then try again.",
+                "The reviewer has not let the assistant export. Ask the reviewer to click "
+                "'Let the assistant export' on the hand-off card in the Chat tab, then try again.",
                 code="authorization_required",
             )
         return self._export_authorized(
-            document_id, owner_id, auth["_id"], acknowledge_unsupported_pages=False, actor="assistant"
+            document_id,
+            owner_id,
+            auth["_id"],
+            acknowledge_unsupported_pages=False,
+            audience=ExportAudience.ASSISTANT,
+            actor="assistant",
         )
 
     def _export_authorized(
@@ -180,12 +203,19 @@ class ExportService:
         token_hash: str,
         *,
         acknowledge_unsupported_pages: bool,
+        audience: ExportAudience,
         actor: str = "reviewer",
     ) -> ExportRecord:
         record = self.documents.get(document_id, owner_id=owner_id)
         auth = self.authorizations.get(token_hash, document_id=document_id, owner_id=owner_id)
         if auth is None:
             raise AuthorizationError("Unknown export authorization. Request a new one.")
+        if auth.get("audience", ExportAudience.REVIEWER.value) != audience.value:
+            # Each authorization works for exactly one kind of caller. Nothing is consumed.
+            raise AuthorizationError(
+                "This export authorization was issued for a different purpose. Request a new one.",
+                code="authorization_wrong_audience",
+            )
 
         # Retry of an already-used token: return the same export, never a second one.
         if auth.get("consumed_at") is not None:

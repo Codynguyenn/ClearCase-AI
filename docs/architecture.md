@@ -102,7 +102,7 @@ stdio. The tools are thin wrappers over the same services the REST API uses.
 | `retrieve_policy_guidance` | read | the same retrieval as the Policy tab: passages above the cutoff with citation ids, or an honest "not addressed" / "unavailable" |
 | `propose_redactions` | writes `proposed` only | span + exact expected text, verified server-side; idempotent |
 | `get_review_summary` | read | counts, blockers, unresolved ids; no document text |
-| `export_approved_redactions` | creates an export | works only after the *reviewer* issued an authorization |
+| `export_approved_redactions` | creates an export | works only after the *reviewer* clicked "Let the assistant export" (an authorization issued for the assistant; the reviewer's own export grant cannot be used here) |
 
 What is deliberately **not** a tool: approve, reject, adjust, delete, issue an
 export authorization. See `docs/decisions.md` 17–23.

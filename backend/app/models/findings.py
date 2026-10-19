@@ -231,11 +231,23 @@ class ReviewSummary(ApiModel):
 # ------------------------------------------------------------------------ export
 
 
+class ExportAudience(StrEnum):
+    """Who an export authorization is for. The two are never interchangeable."""
+
+    REVIEWER = "reviewer"  # the reviewer's own export (Export tab): presented as a token over REST
+    ASSISTANT = "assistant"  # the reviewer lets the assistant export once: used only by the MCP export tool
+
+
+class ExportAuthorizationRequest(BaseModel):
+    audience: ExportAudience = ExportAudience.REVIEWER
+
+
 class ExportAuthorization(ApiModel):
     token: str
     document_id: str
     review_revision: int
     expires_at: datetime
+    audience: ExportAudience = ExportAudience.REVIEWER
 
 
 class ExportRequest(BaseModel):

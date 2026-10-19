@@ -53,7 +53,7 @@ demo assistant (no AI model, no network). `cd frontend && E2E_CHANNEL=chrome npm
   Export requires a 5-minute, hash-pinned authorization the model cannot create.
 - Deleting a document removes pages, findings, revisions, exports, GridFS files
   and audit payloads.
-- 633 backend tests against a **real MongoDB**, 100 frontend tests (geometry and components) and 5 real-browser end-to-end tests (see Tests below).
+- 653 backend tests against a **real MongoDB**, 105 frontend tests (geometry and components) and 6 real-browser end-to-end tests (see Tests below).
 
 ### Policy library and retrieval (Phase 4)
 
@@ -79,7 +79,7 @@ A **Chat** tab next to the findings. You ask in plain words ("Find the client's 
 redactions, and keep company names visible"); the assistant uses the same seven MCP tools as everything else
 (search, excerpts, detection, policy lookup, propose, review summary, export) and **proposes**. It cannot approve,
 reject or adjust anything, cannot issue an export authorization, and cannot read any other document. Its export
-tool works only after *you* click **Authorize export** (5 minutes, single use), and it still produces only the
+tool works only after *you* click **Let the assistant export** (5 minutes, one export, usable only by the assistant), and it still produces only the
 redactions you approved.
 
 - **Demo mode** (default; no key, no network): a few labelled scripted commands (`help`, `find`, `detect`,
@@ -259,12 +259,13 @@ CI (`.github/workflows/ci.yml`) runs three jobs (backend, frontend, browser end-
 | `GET` | `/api/documents/{id}/findings` | List findings (filter by status/category/page) |
 | `POST` | `/api/documents/{id}/findings/propose-detected` | Turn selected detector categories into *proposed* findings |
 | `POST` | `/api/documents/{id}/findings/propose-search` | Propose matches of a search (one occurrence or all) |
+| `POST` | `/api/documents/{id}/findings/propose-remaining-copies` | Propose every other copy of text you approved that no finding covers (proposals only; nothing is approved) |
 | `POST` | `/api/documents/{id}/findings/manual` | Reviewer-drawn region (created approved) |
 | `POST` | `/api/documents/{id}/findings/{fid}/decision` | Approve / reject / reopen; optional `apply_to_all_matching` |
 | `POST` | `/api/documents/{id}/findings/bulk-decision` | Decide many findings at once |
 | `PUT` | `/api/documents/{id}/findings/{fid}/boxes` | Adjust rectangles; finding returns to proposed |
 | `GET` | `/api/documents/{id}/review-summary` | Counts, blockers, warnings |
-| `POST` | `/api/documents/{id}/export-authorizations` | Short-lived reviewer grant (5 minutes) |
+| `POST` | `/api/documents/{id}/export-authorizations` | Short-lived reviewer grant (5 minutes). Body `{"audience": "reviewer" \| "assistant"}` (default `reviewer`); a grant works only for its audience |
 | `POST` | `/api/documents/{id}/exports` | Redact, verify, store only if required checks pass |
 | `GET` | `/api/documents/{id}/exports` | List exports |
 | `POST` | `/api/documents/{id}/exports/{eid}/acknowledge-warnings` | Reviewer-only: acknowledge that readable copies of approved text remain, which unlocks the download |
@@ -315,7 +316,7 @@ for the reasoning behind each major choice.
   (for example "MISCELLANEOUS NOTE" tagged as a person) and **misses some occurrences of names**: on two sets of 18 synthetic documents
   it covered 75 of 108 person mentions (first set) and 97 of 108 (a second, corrected set), so between a fifth and a half of the
   exports ended with a leftover copy of a name that had been approved elsewhere (9 and 4 of 18). The export verifier caught every
-  one of those leftovers (13 of 13) and blocks the download until the reviewer adds them or acknowledges. That is why every finding needs a human decision and why we never invent a confidence score.
+  one of those leftovers (13 of 13) and blocks the download until the reviewer adds them (one click proposes every other copy of an approved name; the reviewer still decides) or acknowledges. That is why every finding needs a human decision and why we never invent a confidence score.
 - The real-browser (Playwright) end-to-end test covers the main reviewer session in demo mode (see above). It does not cover
   live mode (that spends money; `scripts/live_check.py` is the manual check), other browsers, phones, scanned PDFs or long documents.
 - The assistant's quality is measured **only on two sets of 12 easy synthetic documents** (`evaluation/README.md`): on both, the
@@ -373,7 +374,7 @@ Tests that do exactly that: `backend/tests/test_mcp_protocol.py` and
 | Policy shows "needs re-index" | It was embedded with a different model revision (or embedding failed). Click **Re-index**. |
 | Policy upload says `policy_version_exists` | That version already exists with different text. Change the `version:` in the file's front matter and upload again. |
 | "No policy passage was similar enough" for a question you expected to match | The cutoff is a rough heuristic and often wrong (see Limitations). Open **Possibly related** under the message, rephrase with the policy's own words, or read the library. |
-| MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Authorize export** on the card that appears in the **Chat** tab (valid 5 minutes), then ask again. The Export tab has its own button that needs no authorization from the assistant. |
+| MCP tool says `authorization_required` | By design the assistant cannot export on its own. Click **Let the assistant export** on the card that appears in the **Chat** tab (it allows one export within 5 minutes and asks the assistant to run it). The Export tab has its own button that needs no authorization from the assistant. |
 | Export button disabled | Every proposal must be approved or rejected. Check the Review tab badge. |
 
 ## Repository layout

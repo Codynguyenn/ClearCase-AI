@@ -202,10 +202,10 @@ have no reason to hold the model key.
 The spec lists `export_approved_redactions` as a tool *and* says the model must
 not be able to create the export authorization. We reconcile them like this:
 
-1. The reviewer clicks "Authorize export" in the UI. That creates the same
-   5-minute, hash-pinned, single-use authorization as before.
+1. The reviewer clicks "Let the assistant export" in the UI (originally "Authorize export"; see decision 58). That creates the same
+   5-minute, hash-pinned, single-use authorization as before, issued *for the assistant*.
 2. The MCP tool takes **only a document id**. The server looks up the newest
-   authorization the reviewer issued for that document and runs the same checks
+   authorization the reviewer issued for the assistant for that document and runs the same checks
    as the REST path (unexpired, unused, still matching document hash, review
    revision and approved rectangles).
 3. No pending authorization → `authorization_required: ask the reviewer`. The
@@ -216,10 +216,8 @@ not be able to create the export authorization. We reconcile them like this:
    answers `export_stale` instead of presenting the old export as a success.
 5. The audit log records `actor: assistant` or `actor: reviewer` on every export.
 
-**Known limit.** The assistant can use *any* authorization the reviewer issued in
-the last 5 minutes. In the normal UI flow "authorize" and "export" are one click,
-so this is a very small window; a dedicated "let the assistant export" button would
-close it and is listed as a possible hardening step.
+**Known limit (closed by decision 58).** The assistant could use *any* authorization the reviewer issued in
+the last 5 minutes, including the one the Export tab creates for the reviewer's own click. Decision 58 closes it.
 
 ## 21. The assistant's proposals are labelled and never trusted for coordinates
 
@@ -965,3 +963,75 @@ unchanged since 2026-10-13, before every measured run).
 
 **Two exceptions remain and are named, not hidden:** extraction's time budget is checked between pages and cannot interrupt a single page that
 hangs inside PyMuPDF (partly met), and retrieval searches every active policy version instead of a per-document selection (decision 48).
+
+## 58. Export authorizations are issued for an audience, and the hand-off is one click (2026-10-19)
+
+**The problem.** Decision 20 let the assistant use the newest authorization of the last five minutes, whoever it was issued for. The
+Export tab creates one for the reviewer's own click, so for the moment between that click's two requests the assistant could have used
+it. The window was small and the assistant is propose-only, but it was a real gap that the decision itself listed.
+
+**What changed.**
+- An authorization now records an `audience`: `reviewer` (the reviewer's own export, presented as a token over REST) or `assistant`
+  (the reviewer let the assistant export). `POST /export-authorizations` takes an optional `{"audience": ...}` and defaults to `reviewer`.
+- The assistant's export tool finds only `assistant` authorizations. The REST export accepts only `reviewer` ones and refuses an
+  `assistant` one with `authorization_wrong_audience`, without consuming anything. The two kinds are disjoint in both directions.
+- A record with no `audience` (written before this change) counts as `reviewer`, so it cannot become assistant-usable by accident.
+- The audit log records the audience of every authorization.
+- In the Chat tab the two steps became one button, **Let the assistant export**: it issues the `assistant` authorization and then sends
+  `export`. That shortens the time the permission is open from "until the reviewer clicks again" to the length of one request. The
+  wording says what it does: one export, five minutes, only what was approved, and the Export tab is the way to export yourself.
+
+**What it does not change.** The assistant still cannot export unless a human clicked, still never sees a token, still cannot
+acknowledge warnings or unsupported pages, and an authorization is still single-use, hash-pinned and revision-pinned. It is still not
+authentication: the reviewer is the one fixed demo identity (see `docs/production_readiness.md`).
+
+**Checked by breaking it.** `backend/tests/test_export_audience.py` (7 tests). Making the assistant's lookup ignore the audience makes three
+of them fail (the reviewer's own authorization would be usable by the assistant, and so would an old one without an audience); making the REST
+export accept either audience makes the fourth fail. In the interface, asking for a reviewer grant instead of an assistant one, or
+authorizing without asking the assistant to export, each fail the Chat panel test.
+
+## 59. Hermetic test settings: a live-mode `.env` must not make tests call a paid model (2026-10-19)
+
+**What happened.** Running the backend tests after the project's `.env` was switched to live mode (for the live demo) made one
+demo-assistant test answer through the real provider: the shared `test_settings` fixture built `Settings(...)` without disabling `.env`,
+so it inherited `CLEARCASE_ASSISTANT_MODE=live` and the API key. The test failed (its demo-mode wording was absent) and I saw an HTTPS
+request to the provider in its log. I ran that test about three times before understanding why, so roughly three short requests to the
+cheapest model were made: well under a cent, but a real spend nobody had approved for a test run.
+
+**Fix.** `test_settings` now passes `_env_file=None` and sets demo mode with no provider, key or model explicitly (explicit arguments
+beat environment variables). `backend/tests/test_hermetic_settings.py` pins it, including a case that proves a plain `Settings()` really
+does pick up a live `.env`, so the guard cannot pass vacuously. Checked by breaking it: removing the explicit settings fails both tests.
+The browser test was already safe (`scripts/e2e_backend.sh` blanks the provider settings) and the evaluation scripts read `.env` on
+purpose, because they are the paid runs.
+
+**Lesson.** Tests that can spend money have to be unable to, not merely unlikely to.
+
+## 60. One click to propose the other copies of an approved name (2026-10-19)
+
+**The problem.** Detection misses some mentions of a name (decisions 55 and 56: the NER model covered 75 and 97 of 108 person mentions on
+the two synthetic sets). The export verifier then reported "N other copies of approved text are still readable" (9 of 18 exports on the first
+set, 4 of 18 on the second), but fixing that meant leaving the Export tab, searching for the text and proposing each copy by hand.
+
+**What it does.** `POST /documents/{id}/findings/propose-remaining-copies` finds every other whole-word, case-insensitive copy of text the
+reviewer approved that no finding covers, and proposes each one.
+- **Proposals only.** Each copy arrives undecided, in the same category and group as the approved finding it copies (so "apply to all
+  matching" can decide them together). The reviewer approves or rejects them like any other finding. Nothing is approved on their behalf.
+- **The reviewer's earlier choices stand.** A copy covered by *any* finding counts as covered, so a copy the reviewer rejected on purpose is
+  never proposed again. Calling it twice creates nothing new and does not move the revision.
+- **One definition of "uncovered".** The review summary (the count shown before exporting) and this endpoint use the same helper, so the
+  number on the screen is the number the button proposes. The verifier's after-the-fact count is the same set, found by re-reading the output.
+- **The revision moves** (the proposals are a change to the review), so an earlier export is marked out of date, as for any other change.
+- **Labelled honestly:** source `copy:approved_text`, origin `search`, label `user_specified`, explanation "Another copy of text you
+  approved for redaction", because the reason it was proposed is the reviewer's own approval, not a detector's judgement.
+- **In the interface:** a button in the Export tab before exporting (when the summary knows of uncovered copies) and a button in the amber
+  warning on an export that has remaining copies, next to "I understand: allow download". After proposing, the app opens the Review tab.
+
+**What it does not do.** It finds exact copies of the approved text only: not variants ("Maria" for "Maria Delgado-Reyes", initials,
+misspellings), and only in the stored text layer, not text inside images. Those still depend on the detectors and on the reviewer. The
+assistant has no tool for this; its tool set is unchanged (it can still propose spans it found through `propose_redactions`).
+
+**Checked by breaking it.** `backend/tests/test_propose_remaining_copies.py` (11 tests): letting a rejected copy count as uncovered, giving
+every copy the same category, and making the proposals arrive approved each fail tests. Frontend: 5 tests (making the button acknowledge the
+warning instead fails one) and one real-browser story that approves one of five mentions of a name, exports, sees the warning, proposes the
+other four, approves them and exports a clean file.
+

@@ -76,6 +76,14 @@ def propose_search(
     return service.propose_from_search(document_id, owner_id, body)
 
 
+@router.post(
+    "/findings/propose-remaining-copies", response_model=ProposalResult, status_code=status.HTTP_201_CREATED
+)
+def propose_remaining_copies(document_id: DocumentId, service: ReviewSvc, owner_id: OwnerId) -> ProposalResult:
+    """Propose the other copies of text the reviewer approved that no finding covers. Proposals only."""
+    return service.propose_remaining_copies(document_id, owner_id)
+
+
 @router.post("/findings/manual", response_model=Finding, status_code=status.HTTP_201_CREATED)
 def manual_region(
     document_id: DocumentId, body: ManualRegionRequest, service: ReviewSvc, owner_id: OwnerId

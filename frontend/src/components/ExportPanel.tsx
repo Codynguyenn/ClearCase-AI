@@ -9,6 +9,8 @@ interface Props {
   busy: boolean
   onExport: (acknowledgeUnsupported: boolean) => void
   onAcknowledge: (exportId: string) => void
+  /** Propose the other copies of approved text that no finding covers (proposals only; the reviewer still decides). */
+  onProposeCopies: () => void
 }
 
 const CHECK_TITLES: Record<string, string> = {
@@ -24,7 +26,7 @@ const CHECK_TITLES: Record<string, string> = {
   export_completed: 'Export completed',
 }
 
-export function ExportPanel({ documentId, summary, exports, busy, onExport, onAcknowledge }: Props) {
+export function ExportPanel({ documentId, summary, exports, busy, onExport, onAcknowledge, onProposeCopies }: Props) {
   const [ack, setAck] = useState(false)
   const unsupported = summary?.unsupported_pages ?? []
   const needsAck = unsupported.length > 0
@@ -54,6 +56,20 @@ export function ExportPanel({ documentId, summary, exports, busy, onExport, onAc
         </ul>
       )}
 
+      {summary && summary.unproposed_copies > 0 && (
+        <div className="mt-2 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" data-testid="propose-copies-before">
+          <p>Proposing only suggests them: you still approve or reject each one, then export.</p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onProposeCopies}
+            className="mt-1.5 rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+          >
+            Propose these {summary.unproposed_copies} copy(ies) for review
+          </button>
+        </div>
+      )}
+
       {needsAck && (
         <label className="mt-2 flex items-start gap-1.5 text-xs text-slate-700">
           <input type="checkbox" className="mt-0.5" checked={ack} onChange={(e) => setAck(e.target.checked)} />
@@ -77,7 +93,14 @@ export function ExportPanel({ documentId, summary, exports, busy, onExport, onAc
       {exports.length === 0 && <p className="mt-1 text-xs text-slate-500">No exports yet.</p>}
       <ul className="mt-1 space-y-3">
         {exports.map((e) => (
-          <ExportCard key={e.id} documentId={documentId} record={e} busy={busy} onAcknowledge={onAcknowledge} />
+          <ExportCard
+            key={e.id}
+            documentId={documentId}
+            record={e}
+            busy={busy}
+            onAcknowledge={onAcknowledge}
+            onProposeCopies={onProposeCopies}
+          />
         ))}
       </ul>
     </div>
@@ -89,11 +112,13 @@ function ExportCard({
   record: e,
   busy,
   onAcknowledge,
+  onProposeCopies,
 }: {
   documentId: string
   record: ExportRecord
   busy: boolean
   onAcknowledge: (exportId: string) => void
+  onProposeCopies: () => void
 }) {
   const failedRequired = e.checks.filter((c) => c.required && !c.passed)
   const warnings = e.checks.filter((c) => !c.required && !c.passed)
@@ -149,17 +174,28 @@ function ExportCard({
             (page{remainingPages.length === 1 ? '' : 's'} {remainingPages.join(', ')}).
           </p>
           <p className="mt-1 text-[11px] leading-snug">
-            No finding covers them, so they were not removed. Hidden or invisible text is a common cause. You can add
-            them in the Review or Search tab and export again, or acknowledge this and download the file anyway.
+            No finding covers them, so they were not removed. Hidden or invisible text is a common cause. Propose them
+            for review, approve the ones you want removed, and export again. Or acknowledge this and download the file
+            anyway.
           </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onAcknowledge(e.id)}
-            className="mt-1.5 rounded border border-amber-700 bg-white px-2 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-50"
-          >
-            I understand: allow download
-          </button>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onProposeCopies}
+              className="rounded bg-amber-700 px-2 py-1 text-xs font-medium text-white hover:bg-amber-800 disabled:opacity-50"
+            >
+              Propose these {e.retained.unresolved} copy(ies) for review
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onAcknowledge(e.id)}
+              className="rounded border border-amber-700 bg-white px-2 py-1 text-xs font-medium text-amber-950 hover:bg-amber-100 disabled:opacity-50"
+            >
+              I understand: allow download
+            </button>
+          </div>
         </div>
       )}
       {e.requires_acknowledgement && e.warnings_acknowledged && (
