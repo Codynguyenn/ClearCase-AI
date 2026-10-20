@@ -198,9 +198,9 @@ def test_summary_reports_status_blockers_and_warnings():
 
 
 def test_export_without_a_reviewer_authorization_explains_the_hand_off():
-    err = fail("e", "tool_error", "authorization_required: No export authorization from the reviewer is pending.")
+    err = fail("e", "tool_error", "authorization_required: The reviewer has not let the assistant export.")
     text = run(FakeTools({"export_approved_redactions": err}), "export").text
-    assert "click “Authorize export” on the card that appears below this message in the Chat tab" in text and "5 minutes" in text
+    assert "click “Let the assistant export” on the card that appears below this message in the Chat tab" in text and "5 minutes" in text
 
 
 def test_export_after_authorization_reports_the_result():
@@ -295,7 +295,7 @@ def test_the_assistants_export_works_only_after_the_reviewer_approves_and_author
     client.post(f"/api/documents/{doc}/findings/bulk-decision", json={"action": "approve", "finding_ids": ids})
     assert "cannot create the redacted file yet" in say(client, cid, "export")["assistant_message"]["content"]  # approved, but no authorization yet
 
-    authorize(client, doc)  # ...and the REVIEWER authorizes
+    authorize(client, doc, audience="assistant")  # ...and the REVIEWER authorizes
     exported = say(client, cid, "export")["assistant_message"]["content"]
     assert "Export verified" in exported and "ready to download" in exported
     records = client.get(f"/api/documents/{doc}/exports").json()

@@ -44,7 +44,7 @@ from app.models.findings import (
 )
 from app.repositories.documents import DocumentRepository, PageRepository
 from app.repositories.review import FindingRepository, ReviewRevisionRepository
-from app.services.coverage import any_overlap, find_copies
+from app.services.coverage import Copy, any_overlap, find_copies
 from app.services.detection import detect_candidates
 from app.services.errors import ConflictError, NotFoundError, ValidationFailed
 from app.services.ids import group_key, make_finding_id, make_manual_finding_id
@@ -396,6 +396,70 @@ class ReviewService:
         self.revisions.record(document_id, owner_id, revision, "adjust", [finding_id])
         return self.findings.get(document_id, owner_id, finding_id)
 
+    # ------------------------------------------------------- remaining copies
+    def _uncovered_copies(
+        self, document_id: str, owner_id: str, items: list[Finding]
+    ) -> tuple[list[str], list[Copy]]:
+        """Copies of text the reviewer approved that no finding covers.
+
+        Returns the approved texts (copy ``text_index`` points into that list) and the copies. "Covered" means
+        any finding at all, whatever its status: a rejected finding is the reviewer deliberately keeping that
+        copy, and a proposed one is already on the list.
+        """
+        approved = [f for f in items if f.status == ReviewStatus.APPROVED]
+        texts = sorted({f.text for f in approved if f.text and f.category != Category.MANUAL})
+        if not texts:
+            return [], []
+        pages = self.pages.list_full(document_id, owner_id=owner_id)
+        all_boxes: dict[int, list[BBox]] = defaultdict(list)
+        for f in items:
+            all_boxes[f.page_number].extend(f.boxes)
+        copies = [
+            copy
+            for copy in find_copies(pages, texts, document_id=document_id)
+            if not any_overlap(copy.boxes, all_boxes.get(copy.page_number, []))
+        ]
+        return texts, copies
+
+    def propose_remaining_copies(self, document_id: str, owner_id: str) -> ProposalResult:
+        """Propose every other copy of approved text that no finding covers.
+
+        This is the reviewer's shortcut for "I approved this name, now find the mentions the detector missed".
+        It only *proposes*: each copy arrives as an undecided finding in the same category as the approved
+        finding it copies, the reviewer approves or rejects it like any other, and the revision moves, so an
+        earlier export correctly becomes out of date. Calling it again finds nothing new (the copies are
+        covered by the proposals now).
+        """
+        self.ready_document(document_id, owner_id)
+        items = self.findings.list(document_id, owner_id)
+        texts, copies = self._uncovered_copies(document_id, owner_id, items)
+
+        # Each copy takes the category of an approved finding with that same text. If one text was approved under
+        # two categories, the alphabetically first wins (any rule would do; this one is stable).
+        category_of: dict[str, Category] = {}
+        for f in sorted(items, key=lambda f: f.category.value):
+            if f.status == ReviewStatus.APPROVED and f.text and f.category != Category.MANUAL:
+                category_of.setdefault(f.text, f.category)
+
+        inputs = [
+            ProposalInput(
+                page_number=copy.page_number,
+                char_start=copy.char_start,
+                char_end=copy.char_end,
+                category=category_of[texts[copy.text_index]],
+                source="copy:approved_text",
+                origin=Origin.SEARCH,
+                label=ReviewLabel.USER_SPECIFIED,
+                explanation="Another copy of text you approved for redaction.",
+                expected_text=copy.text,
+            )
+            for copy in copies
+        ]
+        proposal = self.propose(document_id, owner_id, inputs, action="propose_remaining_copies")
+        if not copies:
+            proposal.notes = ["No other copies of approved text are uncovered."]
+        return proposal
+
     # -------------------------------------------------------------- summary
     def summary(self, document_id: str, owner_id: str) -> ReviewSummary:
         record = self.documents.get(document_id, owner_id=owner_id)
@@ -431,20 +495,14 @@ class ReviewService:
         if by_status.get(ReviewStatus.STALE.value):
             warnings.append(f"{by_status[ReviewStatus.STALE.value]} finding(s) are stale and will be ignored.")
 
-        unproposed_locations: list[dict[str, int | str]] = []
-        approved_texts = sorted({f.text for f in approved if f.text and f.category != Category.MANUAL})
-        if approved_texts:
-            pages = self.pages.list_full(document_id, owner_id=owner_id)
-            all_boxes: dict[int, list[BBox]] = defaultdict(list)
-            for f in items:
-                all_boxes[f.page_number].extend(f.boxes)
-            for copy in find_copies(pages, approved_texts, document_id=document_id):
-                if not any_overlap(copy.boxes, all_boxes.get(copy.page_number, [])):
-                    unproposed_locations.append({"page": copy.page_number, "group": copy.text_index})
+        _, uncovered = self._uncovered_copies(document_id, owner_id, items)
+        unproposed_locations: list[dict[str, int | str]] = [
+            {"page": copy.page_number, "group": copy.text_index} for copy in uncovered
+        ]
         if unproposed_locations:
             warnings.append(
                 f"{len(unproposed_locations)} other occurrence(s) of text you approved are not covered by any "
-                "finding. Search for the text and propose them, or leave them knowingly."
+                "finding. Propose them for review, or leave them knowingly."
             )
 
         return ReviewSummary(

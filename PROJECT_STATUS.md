@@ -1,6 +1,6 @@
 # ClearCase — project status
 
-Last updated: 2026-10-15 (**all six phases complete.** Merged to `main` through PR #11; the polish PR and the pipeline-measurement PR are the last two open)
+Last updated: 2026-10-19 (**all six phases complete** and released as v1.0.0; two follow-up improvements and a test-safety fix are described under "After v1.0.0" and are not yet committed)
 
 This file is the hand-off point for any new session. Read it first, then
 `docs/ClearCase_Cursor_Prompt.md` (the specification) and `docs/decisions.md`.
@@ -371,6 +371,31 @@ predictions held**, and the rule again recommends Haiku. Decision 56; tests in `
 - **Window size checked:** the layout is fine from about 900 px up, overflows sideways below about 700 px and is not usable on a
   phone (three fixed-width columns). Documented as a limitation; a responsive layout was not built.
 
+### After v1.0.0: assistant-only export grants, one-click remaining copies, hermetic tests (2026-10-19, not yet committed)
+
+Three changes, each recorded in `docs/decisions.md`:
+- **Decision 58: export authorizations have an audience.** `reviewer` (the Export tab's own click, a token over REST) or `assistant`
+  (the new one-click **Let the assistant export** button in the Chat tab, which allows one export and asks the assistant to run it). The
+  assistant's tool can use only the second kind and REST only the first, so the old "assistant could use any pending authorization" gap is
+  closed. Authorizations written before this change count as `reviewer`. The audit log records the audience.
+- **Decision 60: one click proposes the other copies of an approved name** (`POST .../findings/propose-remaining-copies`, buttons in the
+  Export tab before and after an export). Proposals only, same category and group as the approved finding, rejected copies are left alone,
+  idempotent, and an earlier export becomes out of date like after any review change. Exact copies only (no name variants).
+- **Decision 59: test settings no longer read `.env`.** A live-mode `.env` had made one demo-assistant test call the real provider (about
+  three short Haiku requests, well under a cent, before I understood why). `tests/conftest.py` now builds hermetic settings and
+  `tests/test_hermetic_settings.py` pins it.
+
+**Verified (2026-10-19):** full backend run **`653 passed in 375.20s`** (633 before; +7 audience, +11 remaining copies, +2 hermetic); frontend **105
+passed** (+5), type-check and lint clean; real-browser end-to-end **6 passed** (+1 new story: approve one of five mentions, export, see the
+warning, propose the other four, approve, export clean), run in the installed Google Chrome with `E2E_CHANNEL=chrome` because Playwright's
+own Chromium is not installed on this machine. Each rule was also broken on purpose to confirm a test fails (nine breaks: assistant lookup
+ignores the audience, REST ignores the audience, rejected copies counted as uncovered, wrong category, proposals arriving approved; and in
+the interface the wrong audience, no export request, the propose button acknowledging instead).
+
+**Not done / limits:** exact copies only (the other mentions of "Maria" for "Maria Delgado-Reyes" still depend on detection and the
+reviewer); the assistant has no tool for proposing copies; the README screenshots in `docs/images` were not regenerated (none of them shows
+the changed buttons, but they were not re-checked); release v1.0.0 does not include these changes.
+
 ### Phase 5 verification (2026-10-14, branch `phase-5-agent`)
 
 Built in eight steps, each verified before the next; the design and its approved choices are in `docs/phase5_design.md`,
@@ -492,12 +517,9 @@ Checked, not assumed:
   warnings instead of 6). `httpx==0.28.1` is still pinned for dev.
 
 Caveats that remain (design limits, not bugs):
-- **Any** pending reviewer authorization can be used by the assistant. If the
-  reviewer clicks "Authorize export" and walks away, the assistant could consume
-  it within 5 minutes. The normal UI flow authorizes and exports in one click, so
-  the window is normally tiny. A stricter option (not built) is a separate
-  "allow the assistant to export" button that issues an assistant-only
-  authorization.
+- *(Closed 2026-10-19, decision 58.)* Originally **any** pending reviewer authorization could be used by
+  the assistant. Authorizations now carry an audience, and the assistant can use only one issued by the
+  "Let the assistant export" button.
 - The client does not reconnect if the server process dies mid-session; calls
   return `transport_error`. Phase 5 should reuse one server per conversation (a fresh server pays a
   ~20 s model load on its first policy question) and restart it if a call returns `transport_error`.
@@ -602,8 +624,8 @@ tests were checked by reverting the fix: they fail.
 **Phase 6 is complete** (the specification's deliverables and evaluation requirements are all met, with their limits stated; the Compose
 re-run was done on 2026-10-15). Optional follow-ups, none of which blocks anything: a retrieval question set **written by people**
 (both held-out sets are model-written or same-author); a harder, longer, messier assistant evaluation with corrected labels and valid
-phone numbers, written first; a button that proposes the unresolved copies straight from the export warning (the pipeline measurement
-shows a fifth to a half of the NER-based exports hit it); a responsive layout; real authentication and a worker process.
+phone numbers, written first; a responsive layout; real authentication and a worker process. (The button that proposes the
+unresolved copies straight from the export warning was built on 2026-10-19: decision 60.)
 
 **Known gaps (deliberate or deferred)**:
 - Live assistant quality is measured **only on 12 easy synthetic one-page documents** (see Phase 6 above): it separates the

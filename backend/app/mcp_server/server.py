@@ -389,9 +389,9 @@ def create_server(settings: Settings) -> MCPServer:
     @mcp.tool(
         description=(
             "Create the redacted PDF from the reviewer's approved selection. Works ONLY if the human "
-            "reviewer has just issued an export authorization in the app (valid for 5 minutes); you cannot "
-            "create or see that authorization. If none is pending, ask the reviewer to click 'Authorize "
-            "export'. The file is verified after creation; the reviewer downloads it."
+            "reviewer has just let you export by clicking 'Let the assistant export' in the app (valid for "
+            "5 minutes, one export); you cannot create or see that permission. If none is pending, ask the "
+            "reviewer to click it. The file is verified after creation; the reviewer downloads it."
         ),
         annotations=ToolAnnotations(
             read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False
@@ -404,7 +404,7 @@ def create_server(settings: Settings) -> MCPServer:
             # An earlier export that the reviewer has since invalidated. Not a success: say so plainly.
             raise ToolError(
                 "export_stale: the review changed after that export was made, so it is out of date and "
-                "cannot be downloaded. Ask the reviewer to click 'Authorize export' again."
+                "cannot be downloaded. Ask the reviewer to click 'Let the assistant export' again."
             )
         return ExportOutput(
             document_id=document_id,

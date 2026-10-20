@@ -47,8 +47,7 @@ figures are my rough estimates for one engineer, not measurements. Every file an
 - **A required human process.** A second reviewer and a full-document read-through. The verifier checks only what was approved: 31% of person
   mentions on one synthetic set were never proposed, and where no copy of the same text was approved they stay readable with no warning
   (`docs/decisions.md` 55).
-- **Product gaps.** A one-click "propose the remaining copies" from the export warning (9 of 18 NER-based exports needed an acknowledgement on one set,
-  4 of 18 on the other), collaborative review, undo history, a responsive layout, an accessibility (WCAG) audit, and e-discovery features such as
+- **Product gaps.** Collaborative review, undo history, a responsive layout, an accessibility (WCAG) audit, and e-discovery features such as
   redaction logs and Bates numbering if lawyers are the market.
 - **Company basics.** Security and privacy policies, an incident runbook, service-level targets, support.
 

@@ -39,7 +39,7 @@ export function ChatPanel({ documentId, pollMs, onJumpToPage, onOpenCitation, on
   const [acknowledged, setAcknowledged] = useState(false)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
-  const [authState, setAuthState] = useState<'idle' | 'working' | 'done'>('idle')
+  const [authState, setAuthState] = useState<'idle' | 'working'>('idle')
   const [authError, setAuthError] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -91,16 +91,19 @@ export function ChatPanel({ documentId, pollMs, onJumpToPage, onOpenCitation, on
   const needsAuthorization =
     chat.lastFinished?.tool_events.some((e) => e.tool === 'export_approved_redactions' && e.status === 'error') ?? false
 
-  const authorize = async () => {
+  /** One click: the reviewer lets the assistant export once, and the assistant is asked to do it now. */
+  const letAssistantExport = async () => {
     setAuthState('working')
     setAuthError(null)
     try {
-      await api.authorizeExport(documentId) // the reviewer's authorization; the assistant never sees it
-      setAuthState('done')
+      await api.authorizeExport(documentId, 'assistant') // the assistant never sees or receives this
     } catch (e) {
       setAuthState('idle')
-      setAuthError(e instanceof Error ? e.message : 'Could not authorize the export.')
+      setAuthError(e instanceof Error ? e.message : 'Could not allow the export.')
+      return
     }
+    await chat.send('export')
+    setAuthState('idle')
   }
 
   return (
@@ -170,31 +173,18 @@ export function ChatPanel({ documentId, pollMs, onJumpToPage, onOpenCitation, on
         {needsAuthorization && !working && (
           <div role="region" aria-label="Export hand-off" className="space-y-2 rounded border border-indigo-200 bg-indigo-50 p-3 text-xs text-indigo-900">
             <p>
-              The assistant cannot create the redacted file until <strong>you</strong> authorize it. Authorizing is a reviewer
-              action and lasts 5 minutes; the assistant never sees it.
+              The assistant cannot create the redacted file until <strong>you</strong> let it. Clicking below allows{' '}
+              <strong>one export</strong> within 5 minutes and asks the assistant to run it now. It exports only what you
+              approved, and the assistant never sees the permission. (To export yourself, use the Export tab.)
             </p>
-            {authState === 'done' ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <span>Authorized for 5 minutes.</span>
-                <button
-                  type="button"
-                  disabled={!canType || working}
-                  onClick={() => void chat.send('export')}
-                  className="rounded bg-indigo-700 px-2 py-1 font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-                >
-                  Ask the assistant to export now
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                disabled={authState === 'working'}
-                onClick={() => void authorize()}
-                className="rounded bg-indigo-700 px-2 py-1 font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
-              >
-                {authState === 'working' ? 'Authorizing…' : 'Authorize export'}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={authState === 'working' || !canType}
+              onClick={() => void letAssistantExport()}
+              className="rounded bg-indigo-700 px-2 py-1 font-medium text-white hover:bg-indigo-800 disabled:opacity-50"
+            >
+              {authState === 'working' ? 'Working…' : 'Let the assistant export'}
+            </button>
             {authError && (
               <p role="alert" className="text-red-700">
                 {authError}

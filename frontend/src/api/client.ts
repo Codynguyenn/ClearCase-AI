@@ -129,6 +129,10 @@ export const api = {
     },
   ) => request<ProposalResult>(`/api/documents/${id}/findings/propose-search`, jsonInit('POST', body)),
 
+  /** Propose every other copy of text the reviewer approved that no finding covers. Proposals only: nothing is approved. */
+  proposeRemainingCopies: (id: string) =>
+    request<ProposalResult>(`/api/documents/${id}/findings/propose-remaining-copies`, { method: 'POST' }),
+
   decide: (id: string, findingId: string, action: DecisionAction, applyToAllMatching = false) =>
     request<unknown>(
       `/api/documents/${id}/findings/${findingId}/decision`,
@@ -151,8 +155,12 @@ export const api = {
     ),
 
   // ---- export
-  authorizeExport: (id: string) =>
-    request<ExportAuthorization>(`/api/documents/${id}/export-authorizations`, { method: 'POST' }),
+  /** `reviewer` is the reviewer's own export; `assistant` lets the assistant export once (only it can use that one). */
+  authorizeExport: (id: string, audience: 'reviewer' | 'assistant' = 'reviewer') =>
+    request<ExportAuthorization>(
+      `/api/documents/${id}/export-authorizations`,
+      audience === 'assistant' ? jsonInit('POST', { audience }) : { method: 'POST' },
+    ),
 
   createExport: (id: string, authorization: string, acknowledgeUnsupportedPages: boolean) =>
     request<ExportRecord>(

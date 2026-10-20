@@ -37,6 +37,11 @@ class Copy:
     text_index: int  # index into the `texts` list passed in
     page_number: int
     boxes: tuple[BBox, ...]
+    # Where the copy sits in the page text, and what the page actually says there (it can differ in case from
+    # the text that was searched for). Together they let the review turn a copy into a proposal.
+    char_start: int = 0
+    char_end: int = 0
+    text: str = ""
 
 
 def find_copies(pages: Sequence, texts: Sequence[str], *, document_id: str = "-") -> list[Copy]:
@@ -50,5 +55,14 @@ def find_copies(pages: Sequence, texts: Sequence[str], *, document_id: str = "-"
             max_results=1000,
         )
         for occ in result.occurrences:
-            copies.append(Copy(text_index=idx, page_number=occ.page_number, boxes=tuple(occ.boxes)))
+            copies.append(
+                Copy(
+                    text_index=idx,
+                    page_number=occ.page_number,
+                    boxes=tuple(occ.boxes),
+                    char_start=occ.char_start,
+                    char_end=occ.char_end,
+                    text=occ.text,
+                )
+            )
     return copies

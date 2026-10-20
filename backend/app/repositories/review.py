@@ -153,14 +153,23 @@ class AuthorizationRepository:
     def get(self, token_hash: str, *, document_id: str, owner_id: str) -> dict[str, Any] | None:
         return self._col.find_one({"_id": token_hash, "document_id": document_id, "owner_id": owner_id})
 
-    def find_latest(self, document_id: str, owner_id: str, *, created_after: datetime) -> dict[str, Any] | None:
-        """The newest authorization the reviewer issued for this document within the window.
+    def find_latest_for_assistant(
+        self, document_id: str, owner_id: str, *, created_after: datetime
+    ) -> dict[str, Any] | None:
+        """The newest authorization the reviewer issued *for the assistant* within the window.
 
-        Used by the MCP export tool, which never receives a token: the human issues
-        one in the UI and the server finds it here.
+        Used by the MCP export tool, which never receives a token: the human lets the assistant
+        export in the UI and the server finds it here. An authorization the reviewer issued for their
+        own export (no ``audience`` field counts as that) is never returned, so the assistant cannot
+        use the window around the Export tab's own click.
         """
         return self._col.find_one(
-            {"document_id": document_id, "owner_id": owner_id, "created_at": {"$gte": created_after}},
+            {
+                "document_id": document_id,
+                "owner_id": owner_id,
+                "audience": "assistant",
+                "created_at": {"$gte": created_after},
+            },
             sort=[("created_at", -1)],
         )
 

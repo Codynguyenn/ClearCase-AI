@@ -28,8 +28,9 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 - **Pushed on "why not plain function calls?"** They would skip the boundary; and the project spec forbids calling direct calls MCP.
 - **Pushed on "how is the document access limited?"** Identity comes from the process (set at start-up), never from a tool
   argument, and the document id is pinned by the loop for tools that take one. A model cannot name another document or user.
-- **Pushed on "can the assistant export?"** Only after a human clicks "Authorize export": a 5-minute, single-use token tied to the
-  document hash, the review revision and the approved rectangles. The assistant never sees it. (Decision 20; the browser test shows it.)
+- **Pushed on "can the assistant export?"** Only after a human clicks "Let the assistant export": a 5-minute, single-use permission issued *for the assistant* and tied to the
+  document hash, the review revision and the approved rectangles. The assistant never sees it, and the one the reviewer's own Export
+  button creates cannot be used by the assistant (decisions 20 and 58; the browser test shows it).
 
 ### RAG (retrieval-augmented generation) — decisions 24-31, 36-39
 - **Here:** policies are split into passages with stable citation ids (`policy:version:n`), embedded locally
@@ -72,7 +73,9 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 - **Say:** "Drawing a black box over text is not redaction; the text is still in the file. I delete it and then prove it by re-reading
   the output." The browser test goes one step further: it uploads the downloaded file back and searches it.
 - **Pushed on "what does it not catch?"** Text in images or annotations; scanned pages (no OCR: they are flagged as unsupported and
-  need a human acknowledgement); anything the detectors and the reviewer both miss; the file's other copies. It never claims compliance.
+  need a human acknowledgement); anything the detectors and the reviewer both miss; variants of a name ("Maria" for "Maria Delgado-Reyes").
+  It never claims compliance. When the detector misses one mention of an approved name, the Export tab offers one click to propose every
+  other exact copy; the reviewer still approves them (decision 60).
 
 ### Design trade-offs (pick two or three)
 - **Demo mode vs live mode:** the default is a labelled scripted assistant, so the app and CI work without a key or cost; live mode
@@ -101,7 +104,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Question | Answer |
 | --- | --- |
 | Did you train a model? | No. Pretrained spaCy and a pretrained embedding model; the language model is a hosted API. |
-| How do you know it works? | Backend tests against a real MongoDB (633), component tests (100), a real-browser test (5), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
+| How do you know it works? | Backend tests against a real MongoDB (653), component tests (105), a real-browser test (6), plus the pre-registered evaluation. Each says what it covers; none says it works on real documents. |
 | How do you test the tests? | I break the code on purpose and check the tests fail. Several tests passed for the wrong reason until I did (see decisions 50-52). |
 | What if the model follows an injected instruction in the PDF? | It still cannot approve, cannot export without the reviewer's authorization, and cannot read other documents. Injection is defended by structure, not by trusting the model (decision 22). |
 | Is it secure? | It is a local demo: the identity is not authentication, and live mode sends excerpts to a provider (the UI says so and asks first). Keys live only in the git-ignored `.env`; the SDK exception is not chained, so a key cannot reach logs or the database. |
@@ -119,7 +122,7 @@ sentence model run locally. The diagram is in `docs/architecture.md`.
 | Retrieval, right passage first / top 3 | 18/28 = 0.64 / 21/28 = 0.75 | `evaluation/README.md` (held-out, 28 answerable questions) |
 | Retrieval cutoff balanced accuracy | 0.84 dev, 0.56 first held-out, 0.61 second held-out, **0.60 pooled** (0.52-0.68) | decisions 30 and 53, `evaluation/retrieval2/REPORT.md` |
 | Retrieval, right passage in top 3 (pooled, 64 answerable questions) | 0.81 (0.70-0.89) | same |
-| Tests | 633 backend, 100 frontend, 5 browser | `PROJECT_STATUS.md` |
+| Tests | 653 backend, 105 frontend, 6 browser | `PROJECT_STATUS.md` |
 
 ## Plain-English glossary
 

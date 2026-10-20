@@ -75,7 +75,7 @@ def test_even_with_the_reviewers_authorization_obeying_the_injection_yields_only
     doc = new_sample(client, sample_contract_bytes)
     created = client.post(f"/api/documents/{doc}/findings/propose-detected", json={"categories": ["EMAIL"]}).json()["created"]
     client.post(f"/api/documents/{doc}/findings/bulk-decision", json={"action": "approve", "finding_ids": [f["id"] for f in created]})
-    authorize(client, doc)  # the reviewer, through the REST API
+    authorize(client, doc, audience="assistant")  # the reviewer, through the REST API
     before = {f["id"]: f["status"] for f in client.get(f"/api/documents/{doc}/findings").json()["items"]}
 
     model = reads_the_injection_then_obeys(("export_approved_redactions", {}))
@@ -94,7 +94,7 @@ def test_an_authorization_works_once_so_a_second_obedient_export_cannot_make_ano
     doc = new_sample(client, sample_contract_bytes)
     created = client.post(f"/api/documents/{doc}/findings/propose-detected", json={"categories": ["EMAIL"]}).json()["created"]
     client.post(f"/api/documents/{doc}/findings/bulk-decision", json={"action": "approve", "finding_ids": [f["id"] for f in created]})
-    authorize(client, doc)
+    authorize(client, doc, audience="assistant")
     model = reads_the_injection_then_obeys(("export_approved_redactions", {}), ("export_approved_redactions", {}))
     run_with_real_tools(test_settings, model, doc)
     assert len(client.get(f"/api/documents/{doc}/exports").json()) == 1  # the repeat returns the same export, not a new one

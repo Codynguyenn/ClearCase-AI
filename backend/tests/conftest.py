@@ -33,7 +33,19 @@ TEST_URI = os.environ.get("CLEARCASE_MONGODB_URI", "mongodb://127.0.0.1:27017")
 
 @pytest.fixture(scope="session")
 def test_settings() -> Settings:
-    return Settings(mongodb_uri=TEST_URI, mongodb_db=TEST_DB, max_upload_mb=2, max_pages=10, reindex_on_startup=False)
+    """Hermetic: never reads the developer's .env, so a live-mode .env cannot make a test call a paid model."""
+    return Settings(
+        _env_file=None,
+        mongodb_uri=TEST_URI,
+        mongodb_db=TEST_DB,
+        max_upload_mb=2,
+        max_pages=10,
+        reindex_on_startup=False,
+        assistant_mode="demo",
+        llm_provider="",
+        llm_api_key="",
+        llm_model="",
+    )
 
 
 @pytest.fixture(scope="session")

@@ -59,7 +59,7 @@ HELP = """Demo mode: these scripted commands run the real tools. No AI model is 
   propose [categories]    save detected spans as proposals for you to review (default: person email phone ssn)
   policy <question>       show the most similar policy passages with quotes, e.g.  policy can company names stay visible?
   summary                 show where the review stands
-  export                  create the redacted file (only after you click "Authorize export")
+  export                  create the redacted file (only after you click "Let the assistant export")
 
 Categories: person, organization, location, email, phone, ssn, address.
 Nothing is ever approved or exported by this assistant: you decide in the Findings and Export tabs."""
@@ -304,9 +304,9 @@ class DemoAssistant:
             error = executed.result.error or ""
             if "authorization_required" in error:
                 return (
-                    "I cannot create the redacted file yet. A reviewer has to click “Authorize export” on the card that appears below "
-                    "this message in the Chat tab (the authorization lasts 5 minutes). After that, say  export  again. "
-                    "The Export tab has its own button that needs no authorization from me."
+                    "I cannot create the redacted file yet. A reviewer has to click “Let the assistant export” on the card that appears below "
+                    "this message in the Chat tab (it lasts 5 minutes and allows one export). "
+                    "The Export tab has its own button that needs nothing from me."
                 )
             return self._tool_problem("export_approved_redactions", executed) or "The export did not run."
         data = executed.result.data or {}

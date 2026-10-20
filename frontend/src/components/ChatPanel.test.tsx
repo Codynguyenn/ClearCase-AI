@@ -370,10 +370,10 @@ describe('ChatPanel: live mode', () => {
 describe('ChatPanel: export hand-off', () => {
   const exportAttempt = makeRunDetail({
     tool_events: [makeToolEvent({ tool: 'export_approved_redactions', status: 'error', error_code: 'tool_error', summary: 'failed: tool_error' })],
-    assistant_message: answer('I cannot create the redacted file yet. A reviewer has to click “Authorize export”.'),
+    assistant_message: answer('I cannot create the redacted file yet. A reviewer has to click “Let the assistant export”.'),
   })
 
-  it('offers the reviewer the Authorize export action, and only then offers to let the assistant export', async () => {
+  it('lets the reviewer allow one assistant export with a single click, which also asks the assistant to export', async () => {
     const api = mockApi(
       noConversation({
         'POST /api/documents/doc1/conversations': { status: 201, json: makeConversation() },
@@ -382,7 +382,7 @@ describe('ChatPanel: export hand-off', () => {
           json: { message: makeMessage({ id: `u${Math.random()}`, seq: Math.floor(Math.random() * 1e6), content: (call.body as { content: string }).content, run_id: 'run1' }), run: makeRun({ status: 'running' }), duplicate: false },
         }),
         'GET /api/runs/run1': frames(exportAttempt),
-        'POST /api/documents/doc1/export-authorizations': { status: 201, json: { token: 'secret-token', expires_at: '2026-10-14T00:05:00Z' } },
+        'POST /api/documents/doc1/export-authorizations': { status: 201, json: { token: 'secret-token', audience: 'assistant', expires_at: '2026-10-14T00:05:00Z' } },
       }),
     )
     ui()
@@ -391,16 +391,16 @@ describe('ChatPanel: export hand-off', () => {
     await user.click(screen.getByRole('button', { name: 'Send' }))
 
     const card = await screen.findByRole('region', { name: 'Export hand-off' })
-    expect(card).toHaveTextContent('the assistant never sees it')
-    expect(within(card).queryByRole('button', { name: /Ask the assistant to export/ })).not.toBeInTheDocument()
-    await user.click(within(card).getByRole('button', { name: 'Authorize export' }))
-    expect(api.callsTo('POST', '/api/documents/doc1/export-authorizations')).toHaveLength(1)
-    expect(await within(card).findByText('Authorized for 5 minutes.')).toBeInTheDocument()
-    expect(document.body.textContent).not.toContain('secret-token') // the token is the reviewer's, never shown or passed on
+    expect(card).toHaveTextContent('the assistant never sees the permission')
+    expect(within(card).queryByRole('button', { name: /Authorize export/ })).not.toBeInTheDocument()
+    await user.click(within(card).getByRole('button', { name: 'Let the assistant export' }))
 
-    await user.click(within(card).getByRole('button', { name: 'Ask the assistant to export now' }))
+    // One click does both: the permission is issued FOR the assistant, then the assistant is asked to export.
     await waitFor(() => expect(api.callsTo('POST', '/api/conversations/conv1/messages')).toHaveLength(2))
+    const [grant] = api.callsTo('POST', '/api/documents/doc1/export-authorizations')
+    expect(grant.body).toEqual({ audience: 'assistant' })
     expect((api.callsTo('POST', '/api/conversations/conv1/messages')[1].body as { content: string }).content).toBe('export')
+    expect(document.body.textContent).not.toContain('secret-token') // the token is never shown or passed on
   })
 
   it('shows no hand-off card when the export did not fail', async () => {

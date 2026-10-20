@@ -227,6 +227,7 @@ export interface ExportAuthorization {
   document_id: string
   review_revision: number
   expires_at: string
+  audience: 'reviewer' | 'assistant'
 }
 
 export interface VerificationCheck {

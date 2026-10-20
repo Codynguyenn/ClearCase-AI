@@ -41,8 +41,9 @@ def approve_all_emails(client: TestClient, doc_id: str) -> list[dict]:
     return created
 
 
-def authorize(client: TestClient, doc_id: str) -> str:
-    r = client.post(f"/api/documents/{doc_id}/export-authorizations")
+def authorize(client: TestClient, doc_id: str, audience: str | None = None) -> str:
+    """The reviewer's authorization. ``audience="assistant"`` is the "Let the assistant export" click."""
+    r = client.post(f"/api/documents/{doc_id}/export-authorizations", json={"audience": audience} if audience else None)
     assert r.status_code == 201, r.text
     return r.json()["token"]
 

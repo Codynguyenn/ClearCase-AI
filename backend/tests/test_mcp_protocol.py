@@ -595,7 +595,7 @@ def test_export_succeeds_with_a_pending_reviewer_authorization_and_retries_are_i
 ):
     doc_id = new_doc(client)
     approve_all_emails(client, doc_id)
-    authorize(client, doc_id)  # the reviewer clicks "Authorize export"
+    authorize(client, doc_id, audience="assistant")  # the reviewer clicks "Let the assistant export"
 
     async def scenario(tools: McpToolClient):
         first = await tools.call("export_approved_redactions", {"document_id": doc_id})
@@ -623,7 +623,7 @@ def test_the_assistant_is_told_when_the_reviewer_must_acknowledge_remaining_copi
         json={"q": "Alice Smith", "occurrence_ids": [occ[0]["occurrence_id"]]},
     ).json()["created"]
     client.post(f"/api/documents/{doc_id}/findings/{created[0]['id']}/decision", json={"action": "approve"})
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
 
     first = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
     assert first.ok, first.error
@@ -644,7 +644,7 @@ def test_the_assistant_is_told_when_the_reviewer_must_acknowledge_remaining_copi
 def test_export_is_refused_when_the_review_changed_after_authorization(client: TestClient, test_settings: Settings):
     doc_id = new_doc(client)
     approved = approve_all_emails(client, doc_id)
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
     client.post(f"/api/documents/{doc_id}/findings/{approved[0]['id']}/decision", json={"action": "reject"})
     result = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
     assert not result.ok and "authorization_stale" in result.error
@@ -654,7 +654,7 @@ def test_export_is_refused_when_the_review_changed_after_authorization(client: T
 def test_export_ignores_an_old_authorization(client: TestClient, mongo_client, test_settings: Settings):
     doc_id = new_doc(client)
     approve_all_emails(client, doc_id)
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
     mongo_client[test_settings.mongodb_db][EXPORT_AUTHORIZATIONS].update_many(
         {}, {"$set": {"created_at": utcnow() - timedelta(minutes=30), "expires_at": utcnow() - timedelta(minutes=25)}}
     )
@@ -665,7 +665,7 @@ def test_export_ignores_an_old_authorization(client: TestClient, mongo_client, t
 def test_export_reports_an_out_of_date_export_as_an_error_not_a_success(client: TestClient, test_settings: Settings):
     doc_id = new_doc(client)
     approved = approve_all_emails(client, doc_id)
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
     first = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
     assert first.ok
     # The reviewer changes their mind after the export, inside the 5-minute window.
@@ -680,7 +680,7 @@ def test_audit_log_records_that_the_assistant_triggered_the_export(
 ):
     doc_id = new_doc(client)
     approve_all_emails(client, doc_id)
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
     assert call_once(test_settings, "export_approved_redactions", {"document_id": doc_id}).ok
     events = list(mongo_client[test_settings.mongodb_db]["audit_events"].find({"event": "export_completed"}))
     assert [e["details"]["actor"] for e in events] == ["assistant"]
@@ -692,7 +692,7 @@ def test_the_assistant_cannot_acknowledge_unsupported_pages(client: TestClient, 
         f"/api/documents/{doc_id}/findings/manual",
         json={"page_number": 1, "box": {"x0": 40, "y0": 100, "x1": 200, "y1": 200}},
     )
-    authorize(client, doc_id)
+    authorize(client, doc_id, audience="assistant")
     result = call_once(test_settings, "export_approved_redactions", {"document_id": doc_id})
     assert not result.ok and "unsupported_pages_unacknowledged" in result.error
     assert client.get(f"/api/documents/{doc_id}/exports").json() == []
